@@ -29,6 +29,7 @@ class CustomNonbondedHandler(ParameterHandler, abc.ABC):
     method = ParameterAttribute(
         default="cutoff", converter=_allow_only(["cutoff", "PME"])
     )
+    switch_width = ParameterAttribute(default=1.0 * unit.angstroms, unit=unit.angstrom)
 
     @classmethod
     @abc.abstractmethod
@@ -120,6 +121,10 @@ class CustomNonbondedHandler(ParameterHandler, abc.ABC):
                 force.setNonbondedMethod(openmm.CustomNonbondedForce.CutoffPeriodic)
                 force.setUseLongRangeCorrection(True)
                 force.setCutoffDistance(self.cutoff)
+                if self.switch_width > 0 * unit.angstroms:
+                    force.setUseSwitchingFunction(True)
+                    # the separation at which the switch function starts
+                    force.setSwitchingDistance(self.cutoff - self.switch_width)
 
     def create_force(self, system, topology, **_):
 
