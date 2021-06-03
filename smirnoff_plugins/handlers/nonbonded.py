@@ -121,7 +121,7 @@ class CustomNonbondedHandler(ParameterHandler, abc.ABC):
                 force.setNonbondedMethod(openmm.CustomNonbondedForce.CutoffPeriodic)
                 force.setUseLongRangeCorrection(True)
                 force.setCutoffDistance(self.cutoff)
-                if self.switch_width > 0 * unit.angstroms:
+                if self.switch_width.value_in_unit(unit.angstroms) > 0:
                     force.setUseSwitchingFunction(True)
                     # the separation at which the switch function starts
                     force.setSwitchingDistance(self.cutoff - self.switch_width)
