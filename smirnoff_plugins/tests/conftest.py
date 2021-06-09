@@ -77,7 +77,6 @@ def buckingham_water_force_field() -> ForceField:
             "b": 0.0 / unit.nanometer,
             "c6": 0.0 * unit.kilojoule_per_mole * unit.nanometer ** 6,
             "c8": 0.0 * unit.kilojoule_per_mole * unit.nanometer ** 8,
-            "gamma": 0.0 / unit.nanometer,
         }
     )
     buckingham_handler.add_parameter(
@@ -87,7 +86,6 @@ def buckingham_water_force_field() -> ForceField:
             "b": 42.00 / unit.nanometer,
             "c6": 0.003 * unit.kilojoule_per_mole * unit.nanometer ** 6,
             "c8": 0.00003 * unit.kilojoule_per_mole * unit.nanometer ** 8,
-            "gamma": 35.8967 / unit.nanometer,
         }
     )
     return force_field
