@@ -72,6 +72,8 @@ class CustomOBCHandler(ParameterHandler):
         unit=unit.calorie / unit.mole / unit.angstrom ** 2,
     )
     solvent_radius = ParameterAttribute(default=1.4 * unit.angstrom, unit=unit.angstrom)
+    # TODO: Check units for Kappa
+    kappa = ParameterAttribute(default=0.0 / unit.angstrom, unit=unit.angstrom**-1)
 
     def _validate_parameters(self):
         """
@@ -173,7 +175,7 @@ class CustomOBCHandler(ParameterHandler):
         """
         float_attrs_to_compare = ["alpha", "beta", "gamma", "solvent_dielectric", "solute_dielectric"]
         string_attrs_to_compare = ["sa_model"]
-        unit_attrs_to_compare = ["surface_area_penalty", "solvent_radius"]
+        unit_attrs_to_compare = ["surface_area_penalty", "solvent_radius", "kappa"]
 
         self._check_attributes_are_equal(
             other_handler,
@@ -181,6 +183,44 @@ class CustomOBCHandler(ParameterHandler):
             tolerance_attrs=float_attrs_to_compare + unit_attrs_to_compare,
             tolerance=self._SCALETOL,
         )
+
+    def _createEnergyTerms(self, force, solventDielectric, soluteDielectric, SA, cutoff, kappa, offset):
+        """Add the energy terms to the CustomGBForce.
+        These are identical for all the GB models.
+        """
+        #solventDielectric = solventDielectric.value_in_units(unit.)
+        kappa = kappa.value_in_unit(unit.nanometer**-1)
+
+        params = "; solventDielectric=%.16g; soluteDielectric=%.16g; kappa=%.16g; offset=%.16g" % (solventDielectric, soluteDielectric, kappa, offset)
+        if cutoff is not None:
+            params += "; cutoff=%.16g" % cutoff
+        if kappa > 0:
+            force.addEnergyTerm("-0.5*138.935485*(1/soluteDielectric-exp(-kappa*B)/solventDielectric)*charge^2/B"+params,
+                    openmm.CustomGBForce.SingleParticle)
+        elif kappa < 0:
+            # Do kappa check here to avoid repeating code everywhere
+            raise ValueError('kappa/ionic strength must be >= 0')
+        else:
+            force.addEnergyTerm("-0.5*138.935485*(1/soluteDielectric-1/solventDielectric)*charge^2/B"+params,
+                    openmm.CustomGBForce.SingleParticle)
+        if SA=='ACE':
+            force.addEnergyTerm("28.3919551*(radius+0.14)^2*(radius/B)^6; radius=or+offset"+params, openmm.CustomGBForce.SingleParticle)
+        elif SA is not None:
+            raise ValueError('Unknown surface area method: '+SA)
+        if cutoff is None:
+            if kappa > 0:
+                force.addEnergyTerm("-138.935485*(1/soluteDielectric-exp(-kappa*f)/solventDielectric)*charge1*charge2/f;"
+                                    "f=sqrt(r^2+B1*B2*exp(-r^2/(4*B1*B2)))"+params, openmm.CustomGBForce.ParticlePairNoExclusions)
+            else:
+                force.addEnergyTerm("-138.935485*(1/soluteDielectric-1/solventDielectric)*charge1*charge2/f;"
+                                    "f=sqrt(r^2+B1*B2*exp(-r^2/(4*B1*B2)))"+params, openmm.CustomGBForce.ParticlePairNoExclusions)
+        else:
+            if kappa > 0:
+                force.addEnergyTerm("-138.935485*(1/soluteDielectric-exp(-kappa*f)/solventDielectric)*charge1*charge2*(1/f-"+str(1/cutoff)+");"
+                                    "f=sqrt(r^2+B1*B2*exp(-r^2/(4*B1*B2)))"+params, openmm.CustomGBForce.ParticlePairNoExclusions)
+            else:
+                force.addEnergyTerm("-138.935485*(1/soluteDielectric-1/solventDielectric)*charge1*charge2*(1/f-"+str(1/cutoff)+");"
+                                    "f=sqrt(r^2+B1*B2*exp(-r^2/(4*B1*B2)))"+params, openmm.CustomGBForce.ParticlePairNoExclusions)
 
     def create_force(self, system, topology, **kwargs):
         import simtk
@@ -256,8 +296,10 @@ class CustomOBCHandler(ParameterHandler):
                                     "D=abs(r-sr2)", openmm.CustomGBForce.ParticlePairNoExclusions)
 
         #b_eqn = f"1/(1/or-tanh({alpha}*psi+{gamma}*psi^3)/radius);"
-        b_eqn = f"1/(1/or-tanh({alpha}*psi-{beta}*psi^2+{gamma}*psi^3)/radius);"
+        b_eqn = f"1/(1/or-tanh({self.alpha}*psi-{self.beta}*psi^2+{self.gamma}*psi^3)/radius);"
         gbsa_force.addComputedValue("B", b_eqn + "psi=I*or; radius=or+offset; offset=0.009", openmm.CustomGBForce.SingleParticle)
+
+        self._createEnergyTerms(gbsa_force, self.solvent_dielectric, self.solute_dielectric, self.sa_model, amber_cutoff, self.kappa, 0.009)
 
         # Add all GBSA terms to the system. Note that this will have been done above
         #if self.gb_model == "OBC2":
@@ -303,7 +345,7 @@ class CustomOBCHandler(ParameterHandler):
         #    gbsa_force.finalize()
 
         for particle_param in params_to_add:
-            gbsa_force.addParticle(*particle_param)
+            gbsa_force.addParticle(particle_param)
 
         # Check that no atoms (n.b. not particles) are missing force parameters.
         self._check_all_valence_terms_assigned(
