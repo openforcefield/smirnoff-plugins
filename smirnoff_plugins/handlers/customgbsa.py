@@ -189,33 +189,36 @@ class CustomOBCHandler(ParameterHandler):
         These are identical for all the GB models.
         """
         #solventDielectric = solventDielectric.value_in_units(unit.)
-        kappa = kappa.value_in_unit(unit.nanometer**-1)
+        kappa_nm = kappa.value_in_unit(unit.nanometer**-1)
 
-        params = "; solventDielectric=%.16g; soluteDielectric=%.16g; kappa=%.16g; offset=%.16g" % (solventDielectric, soluteDielectric, kappa, offset)
+        params = "; solventDielectric=%.16g; soluteDielectric=%.16g; kappa=%.16g; offset=%.16g" % (solventDielectric, soluteDielectric, kappa_nm, offset)
         if cutoff is not None:
             params += "; cutoff=%.16g" % cutoff
-        if kappa > 0:
+        if kappa_nm > 0:
+            # 138.93 may be the coulomb constant in some unit system.
             force.addEnergyTerm("-0.5*138.935485*(1/soluteDielectric-exp(-kappa*B)/solventDielectric)*charge^2/B"+params,
                     openmm.CustomGBForce.SingleParticle)
-        elif kappa < 0:
+        elif kappa_nm < 0:
             # Do kappa check here to avoid repeating code everywhere
             raise ValueError('kappa/ionic strength must be >= 0')
         else:
             force.addEnergyTerm("-0.5*138.935485*(1/soluteDielectric-1/solventDielectric)*charge^2/B"+params,
                     openmm.CustomGBForce.SingleParticle)
         if SA=='ACE':
+            # TODO: Is 0.14 below the solvent probe radius? Is this the only place we'd need to change it?
+            # TODO: Is 28.39... just the surface area penalty times 4*pi (units=joules per mol A**2)?
             force.addEnergyTerm("28.3919551*(radius+0.14)^2*(radius/B)^6; radius=or+offset"+params, openmm.CustomGBForce.SingleParticle)
         elif SA is not None:
             raise ValueError('Unknown surface area method: '+SA)
         if cutoff is None:
-            if kappa > 0:
+            if kappa_nm > 0:
                 force.addEnergyTerm("-138.935485*(1/soluteDielectric-exp(-kappa*f)/solventDielectric)*charge1*charge2/f;"
                                     "f=sqrt(r^2+B1*B2*exp(-r^2/(4*B1*B2)))"+params, openmm.CustomGBForce.ParticlePairNoExclusions)
             else:
                 force.addEnergyTerm("-138.935485*(1/soluteDielectric-1/solventDielectric)*charge1*charge2/f;"
                                     "f=sqrt(r^2+B1*B2*exp(-r^2/(4*B1*B2)))"+params, openmm.CustomGBForce.ParticlePairNoExclusions)
         else:
-            if kappa > 0:
+            if kappa_nm > 0:
                 force.addEnergyTerm("-138.935485*(1/soluteDielectric-exp(-kappa*f)/solventDielectric)*charge1*charge2*(1/f-"+str(1/cutoff)+");"
                                     "f=sqrt(r^2+B1*B2*exp(-r^2/(4*B1*B2)))"+params, openmm.CustomGBForce.ParticlePairNoExclusions)
             else:
@@ -332,7 +335,9 @@ class CustomOBCHandler(ParameterHandler):
             atom_idx = atom_key[0]
             gbsatype = atom_match.parameter_type
             charge, _, _2 = nonbonded_force.getParticleParameters(atom_idx)
-            params_to_add[atom_idx] = [charge, gbsatype.radius, gbsatype.scale]
+            params_to_add[atom_idx] = [charge,
+                                       gbsatype.radius - 0.009*unit.nanometer,
+                                       gbsatype.scale * (gbsatype.radius - 0.009*unit.nanometer)]
 
         #if self.gb_model == "OBC2":
         #    for particle_param in params_to_add:
