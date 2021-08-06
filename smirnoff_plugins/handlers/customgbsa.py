@@ -1,3 +1,4 @@
+import numpy as np
 from openff.toolkit.typing.engines.smirnoff import (
     ParameterAttribute,
     ParameterHandler,
@@ -106,27 +107,39 @@ class CustomOBCHandler(ParameterHandler):
 
     @staticmethod
     def _createEnergyTerms(
-        force, solventDielectric, soluteDielectric, SA, cutoff, kappa, offset
+        force,
+        cutoff,
+        solventDielectric,
+        soluteDielectric,
+        SA,
+        surface_area_penalty,
+        solvent_radius,
+        offset,
+        kappa,
     ):
         """Add the OBC energy terms to the CustomGBForce. These are identical for all the GB models."""
 
-        kappa_nm = kappa.value_in_unit(unit.nanometer ** -1)
-        offset_nm = offset.value_in_unit(unit.nanometer)
-
-        params = (
-            "; solventDielectric=%.16g; soluteDielectric=%.16g; kappa=%.16g; offset=%.16g"
-            % (solventDielectric, soluteDielectric, kappa_nm, offset_nm)
+        params = "; solventDielectric=%.16g; soluteDielectric=%.16g; surface_area_penalty=%.16g; solvent_radius=%.16g; kappa=%.16g; offset=%.16g; PI=%.16g;" % (
+            solventDielectric,
+            soluteDielectric,
+            surface_area_penalty.value_in_unit(
+                unit.kilojoule / unit.mole / unit.nanometer ** 2
+            ),
+            solvent_radius.value_in_unit(unit.nanometer),
+            kappa.value_in_unit(unit.nanometer ** -1),
+            offset.value_in_unit(unit.nanometer),
+            np.pi,
         )
         if cutoff is not None:
             params += "; cutoff=%.16g" % cutoff
-        if kappa_nm > 0:
+        if kappa.value_in_unit(unit.nanometer ** -1) > 0:
             # 138.93 may be the coulomb constant in some unit system.
             force.addEnergyTerm(
                 "-0.5*138.935485*(1/soluteDielectric-exp(-kappa*B)/solventDielectric)*charge^2/B"
                 + params,
                 openmm.CustomGBForce.SingleParticle,
             )
-        elif kappa_nm < 0:
+        elif kappa.value_in_unit(unit.nanometer ** -1) < 0:
             # Do kappa check here to avoid repeating code everywhere
             raise ValueError("kappa/ionic strength must be >= 0")
         else:
@@ -137,15 +150,15 @@ class CustomOBCHandler(ParameterHandler):
             )
         if SA == "ACE":
             # TODO: Is 0.14 below the solvent probe radius? Is this the only place we'd need to change it?
-            # TODO: Is 28.39... just the surface area penalty times 4*pi (units=joules per mol A**2)?
             force.addEnergyTerm(
-                "28.3919551*(radius+0.14)^2*(radius/B)^6; radius=or+offset" + params,
+                "4*PI*surface_area_penalty*(radius+solvent_radius)^2*(radius/B)^6; radius=or+offset"
+                + params,
                 openmm.CustomGBForce.SingleParticle,
             )
         elif SA is not None:
             raise ValueError("Unknown surface area method: " + SA)
         if cutoff is None:
-            if kappa_nm > 0:
+            if kappa.value_in_unit(unit.nanometer ** -1) > 0:
                 force.addEnergyTerm(
                     "-138.935485*(1/soluteDielectric-exp(-kappa*f)/solventDielectric)*charge1*charge2/f;"
                     "f=sqrt(r^2+B1*B2*exp(-r^2/(4*B1*B2)))" + params,
@@ -158,7 +171,7 @@ class CustomOBCHandler(ParameterHandler):
                     openmm.CustomGBForce.ParticlePairNoExclusions,
                 )
         else:
-            if kappa_nm > 0:
+            if kappa.value_in_unit(unit.nanometer ** -1) > 0:
                 force.addEnergyTerm(
                     "-138.935485*(1/soluteDielectric-exp(-kappa*f)/solventDielectric)*charge1*charge2*(1/f-"
                     + str(1 / cutoff)
@@ -177,8 +190,6 @@ class CustomOBCHandler(ParameterHandler):
 
     def create_force(self, system, topology, **kwargs):
         import simtk
-
-        self._validate_parameters()
 
         # Grab the existing nonbonded force (which will have particle charges)
         existing = [system.getForce(i) for i in range(system.getNumForces())]
@@ -239,12 +250,14 @@ class CustomOBCHandler(ParameterHandler):
         # Create energy terms
         self._createEnergyTerms(
             gbsa_force,
+            amber_cutoff,
             self.solvent_dielectric,
             self.solute_dielectric,
             self.sa_model,
-            amber_cutoff,
-            self.kappa,
+            self.surface_area_penalty,
+            self.solvent_radius,
             self.offset,
+            self.kappa,
         )
 
         # Iterate over all defined GBSA types, allowing later matches to override earlier ones.
