@@ -29,17 +29,18 @@ class CustomNonbondedHandler(ParameterHandler, abc.ABC):
     method = ParameterAttribute(
         default="cutoff", converter=_allow_only(["cutoff", "PME"])
     )
+    switch_width = ParameterAttribute(default=1.0 * unit.angstroms, unit=unit.angstrom)
 
     @classmethod
     @abc.abstractmethod
-    def _get_potential_function(cls) -> Tuple[str, List[str]]:
+    def _get_potential_function(cls) -> Tuple[str, List[str], List[str]]:
         """Returns the the potential energy function applied by this handler, as well
         as the symbols which appear in the function.
 
         Returns
         -------
-            A tuple of the potential energy function and a list of the required
-            parameters (e.g. ['epsilon', 'sigma']).
+            A tuple of the potential energy function and a list of the required per particle
+            parameters (e.g. ['epsilon', 'sigma']) and any global parameters.
         """
         raise NotImplementedError()
 
@@ -120,6 +121,10 @@ class CustomNonbondedHandler(ParameterHandler, abc.ABC):
                 force.setNonbondedMethod(openmm.CustomNonbondedForce.CutoffPeriodic)
                 force.setUseLongRangeCorrection(True)
                 force.setCutoffDistance(self.cutoff)
+                if self.switch_width.value_in_unit(unit.angstroms) > 0:
+                    force.setUseSwitchingFunction(True)
+                    # the separation at which the switch function starts
+                    force.setSwitchingDistance(self.cutoff - self.switch_width)
 
     def create_force(self, system, topology, **_):
 
@@ -147,12 +152,20 @@ class CustomNonbondedHandler(ParameterHandler, abc.ABC):
             existing_parameters, 0.0
         ), "the system already contains interacting particles."
 
-        potential_function, potential_parameters = self._get_potential_function()
+        (
+            potential_function,
+            potential_parameters,
+            global_parameters,
+        ) = self._get_potential_function()
 
         force = self._OPENMMTYPE(potential_function)
 
         for symbol in potential_parameters:
             force.addPerParticleParameter(symbol)
+
+        for parameter in global_parameters:
+            value = getattr(self, parameter)
+            force.addGlobalParameter(parameter, value)
 
         initial_values = tuple(0.0 for _ in range(len(potential_parameters)))
 
@@ -201,6 +214,8 @@ class CustomNonbondedHandler(ParameterHandler, abc.ABC):
 class DampedBuckingham68(CustomNonbondedHandler):
     """A custom  the B68 potential."""
 
+    gamma = ParameterAttribute(default=35.8967, unit=unit.nanometer ** -1)
+
     class B68Type(ParameterType):
 
         _VALENCE_TYPE = "Atom"  # ChemicalEnvironment valence type expected for SMARTS
@@ -214,26 +229,23 @@ class DampedBuckingham68(CustomNonbondedHandler):
         c8 = ParameterAttribute(
             default=None, unit=unit.kilojoule_per_mole * unit.nanometer ** 8
         )
-        gamma = ParameterAttribute(default=None, unit=unit.nanometer ** -1)
 
     _TAGNAME = "DampedBuckingham68"  # SMIRNOFF tag name to process
     _INFOTYPE = B68Type  # info type to store
 
     @classmethod
-    def _get_potential_function(cls) -> Tuple[str, List[str]]:
+    def _get_potential_function(cls) -> Tuple[str, List[str], List[str]]:
 
         potential_function = (
             "buckinghamRepulsion-c6E*c6-c8E*c8;"
             "c6=c61*c62;"
             "c8=c81*c82;"
-            "c6E=invR6-expTerm*(invR6+d*invR5+d2*invR4+d3*invR3+d4*invR2+d5*invR+d6);"
-            "c8E=invR8-expTerm*(invR8+d*invR7+d2*invR6+d3*invR5+d4*invR4+d5*invR3+d6*invR2+d7*invR+d8);"
+            "c6E=invR6-expTerm*(invR6+gamma*invR5+d2*invR4+d3*invR3+d4*invR2+d5*invR+d6);"
+            "c8E=invR8-expTerm*(invR8+gamma*invR7+d2*invR6+d3*invR5+d4*invR4+d5*invR3+d6*invR2+d7*invR+d8);"
             "buckinghamRepulsion=combinedA*exp(buckinghamExp);"
-            "buckinghamExp=-2.0*combinedB*r;"
+            "buckinghamExp=-combinedB*r;"
             "combinedA=a1*a2;"
-            "combinedB=b1*b2*0.5;"
-            "invR10=invR9*invR;"
-            "invR9=invR8*invR;"
+            "combinedB=b1*b2;"
             "invR8=invR7*invR;"
             "invR7=invR6*invR;"
             "invR6=invR5*invR;"
@@ -242,23 +254,22 @@ class DampedBuckingham68(CustomNonbondedHandler):
             "invR3=invR2*invR;"
             "invR2=invR*invR;"
             "invR=1.0/r;"
-            "d10=d9*d*0.1;"
-            "d9=d8*d*0.1111111111;"
-            "d8=d7*d*0.125;"
-            "d7=d6*d*0.1428571429;"
-            "d6=d5*d*0.1666666667;"
-            "d5=d4*d*0.2;"
-            "d4=d3*d*0.25;"
-            "d3=d2*d*0.3333333333;"
-            "d2=d*d*0.5;"
+            "d8=d7*gamma*0.125;"
+            "d7=d6*gamma*0.1428571429;"
+            "d6=d5*gamma*0.1666666667;"
+            "d5=d4*gamma*0.2;"
+            "d4=d3*gamma*0.25;"
+            "d3=d2*gamma*0.3333333333;"
+            "d2=gamma*gamma*0.5;"
             "expTerm=exp(mdr);"
-            "mdr=-d*r;"
-            "d=gamma1+gamma2;"
+            "mdr=-gamma*r;"
         )
 
-        potential_parameters = ["a", "b", "c6", "c8", "gamma"]
+        potential_parameters = ["a", "b", "c6", "c8"]
 
-        return potential_function, potential_parameters
+        global_parameters = ["gamma"]
+
+        return potential_function, potential_parameters, global_parameters
 
     def _apply_parameter(
         self,
@@ -282,6 +293,5 @@ class DampedBuckingham68(CustomNonbondedHandler):
                         unit.kilojoule_per_mole * unit.nanometer ** 8
                     )
                 ),
-                (parameter_type.gamma * 0.5).value_in_unit(unit.nanometer ** -1),
             ),
         )
