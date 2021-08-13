@@ -212,7 +212,7 @@ class CustomNonbondedHandler(ParameterHandler, abc.ABC):
 
 
 class DampedBuckingham68(CustomNonbondedHandler):
-    """A custom  the B68 potential."""
+    """The B68 potential."""
 
     gamma = ParameterAttribute(default=35.8967, unit=unit.nanometer ** -1)
 
@@ -295,3 +295,64 @@ class DampedBuckingham68(CustomNonbondedHandler):
                 ),
             ),
         )
+
+
+class DoubleExponential(CustomNonbondedHandler):
+    """
+    The double exponential potential as proposed in <https://doi.org/10.1021/acs.jctc.0c01267>
+    """
+
+    # these parameters have no units
+    alpha = ParameterAttribute(18.7)
+    beta = ParameterAttribute(3.3)
+
+    class DEType(ParameterType):
+
+        _VALENCE_TYPE = "Atom"  # ChemicalEnvironment valence type expected for SMARTS
+        _ELEMENT_NAME = "Atom"
+
+        r_min = ParameterAttribute(default=None, unit=unit.nanometers)
+        epsilon = ParameterAttribute(default=None, unit=unit.kilojoule_per_mole)
+
+    _TAGNAME = "DoubleExponential"  # SMIRNOFF tag name to process
+    _INFOTYPE = DEType  # info type to store
+
+    def _apply_parameter(
+        self,
+        force: openmm.CustomNonbondedForce,
+        atom_index: int,
+        parameter_type: DEType,
+    ):
+        # sqrt the epsilon during assignment
+        # half r_min during assigment
+        force.setParticleParameters(
+            atom_index,
+            (
+                parameter_type.r_min.value_in_unit(unit.nanometers) / 2,
+                numpy.sqrt(
+                    parameter_type.epsilon.value_in_unit(unit.kilojoule_per_mole)
+                ),
+            ),
+        )
+
+    @classmethod
+    def _get_potential_function(cls) -> Tuple[str, List[str], List[str]]:
+
+        # do the epsilon square root outside of the evaluation at parameter assignment time
+        potential_function = (
+            "CombinedEpsilon*RepulsionFactor*RepulsionExp-CombinedEpsilon*AttractionFactor*AttractionExp;"
+            "CombinedEpsilon=epsilon1*epsilon2;"
+            "RepulsionFactor=beta*exp(alpha)/AlphaMinBeta;"
+            "AttractionFactor=alpha*exp(beta)/AlphaMinBeta;"
+            "RepulsionExp=exp(-alpha*ExpDistance);"
+            "AttractionExp=exp(-beta*ExpDistance);"
+            "AlphaMinBeta=alpha-beta;"
+            "ExpDistance=r/CombinedR;"
+            "CombinedR=r_min1+r_min2;"
+        )
+
+        potential_parameters = ["r_min", "epsilon"]
+
+        global_parameters = ["alpha", "beta"]
+
+        return potential_function, potential_parameters, global_parameters

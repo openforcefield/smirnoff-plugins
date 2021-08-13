@@ -1,10 +1,11 @@
 import logging
+import math
 import os
 import time
-from typing import Literal, Optional
+from typing import Literal, Optional, Tuple
 
 import numpy
-from openff.toolkit.topology import Topology, TopologyAtom
+from openff.toolkit.topology import Molecule, Topology, TopologyAtom
 from openff.toolkit.typing.engines.smirnoff import ForceField
 from simtk import openmm, unit
 from simtk.openmm import app
@@ -186,3 +187,49 @@ def simulate(
             pressure=pressure,
             platform=platform,
         )
+
+
+def water_box(n_molecules: int) -> Tuple[Topology, unit.Quantity]:
+    """
+    Build a water with the requested number of water molecules.
+
+    Parameters
+    ----------
+    n_molecules
+        The number of water molecules that should be put into the water box
+
+    Returns
+    -------
+        The openff.toolkit Topology of the system and the position array wrapped with units.
+    """
+
+    # Create a topology containing water molecules.
+    molecule = Molecule.from_smiles("O")
+    molecule.generate_conformers(n_conformers=1)
+
+    topology = Topology.from_molecules([molecule] * n_molecules)
+
+    # Create some coordinates (without the v-sites) and estimate box vectors.
+    topology.box_vectors = (
+        numpy.eye(3) * math.ceil(n_molecules ** (1 / 3) + 2) * 2.5 * unit.angstrom
+    )
+
+    positions = (
+        numpy.vstack(
+            [
+                (
+                    molecule.conformers[0].value_in_unit(unit.angstrom)
+                    + numpy.array([[x, y, z]]) * 2.5
+                )
+                for x in range(math.ceil(n_molecules ** (1 / 3)))
+                for y in range(math.ceil(n_molecules ** (1 / 3)))
+                for z in range(math.ceil(n_molecules ** (1 / 3)))
+            ]
+        )[: topology.n_topology_atoms, :]
+        * unit.angstrom
+    )
+
+    with open("input.pdb", "w") as file:
+        app.PDBFile.writeFile(topology.to_openmm(), positions, file)
+
+    return topology, positions

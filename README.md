@@ -11,6 +11,7 @@ via the OpenFF toolkits built-in plugin system.
 Currently, these include:
 
 * `DampedBuckingham68` - a damped version of the 6-8 buckingham potential proposed by [Tang and Toennies](https://aip.scitation.org/doi/10.1063/1.447150).
+* `DoubleExponential` - a double exponential van der Waals potential proposed by [Man et al](https://doi.org/10.1021/acs.jctc.0c01267)
 
 ## Installation
 
