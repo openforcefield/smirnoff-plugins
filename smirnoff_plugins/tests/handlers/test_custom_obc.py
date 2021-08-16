@@ -224,7 +224,7 @@ class TestCustomOBC:
         # Create Contexts
         integrator = openmm.VerletIntegrator(1.0 * unit.femtoseconds)
         platform = Platform.getPlatformByName("Reference")
-        #platform = Platform.getPlatformByName("OpenCL")
+        # platform = Platform.getPlatformByName("OpenCL")
         amber_context = openmm.Context(amber_omm_system, integrator, platform)
         off_context = openmm.Context(
             off_omm_system, copy.deepcopy(integrator), platform
@@ -240,7 +240,9 @@ class TestCustomOBC:
 
         # Ensure that the GBSA energies (which we put into ForceGroup 1) are identical
         # For Platform=OpenCL, we do get "=="-level identical numbers, but for "Reference", we don't.
-        assert abs(amber_energy[1] - off_energy[1]) < 5.0e-3 * unit.kilojoule / unit.mole
+        assert (
+            abs(amber_energy[1] - off_energy[1]) < 5.0e-3 * unit.kilojoule / unit.mole
+        )
 
         # Ensure that all system energies are the same
         compare_system_energies(

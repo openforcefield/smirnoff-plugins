@@ -286,7 +286,9 @@ class CustomOBCHandler(ParameterHandler):
                 charge,  # charge(atom)
                 gbsatype.radius - self.offset_radius,  # radius(atom) - offset_radius
                 gbsatype.scale
-                * (gbsatype.radius - self.offset_radius),  # scale*(radius(atom) - offset_radius)
+                * (
+                    gbsatype.radius - self.offset_radius
+                ),  # scale*(radius(atom) - offset_radius)
             ]
 
         for particle_param in params_to_add:
