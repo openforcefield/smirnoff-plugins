@@ -14,7 +14,7 @@ obc1_equiv_offxml = """\
 <SMIRNOFF version="0.3" aromaticity_model="OEAroModel_MDL">
     <!-- This file is intended to replicate the settings and per-particle parameters provided by OpenMM's customgbforces.GBSAOBC1Force class -->
     <!-- This file should replicate the OBC1 parameter set and energies -->
-    <CustomOBC version="0.3" alpha="0.8" beta="0.0" gamma="2.909125" solvent_dielectric="78.5" solute_dielectric="1" sa_model="ACE" surface_area_penalty="5.4*calories/mole/angstroms**2" solvent_radius="1.4*angstroms" offset="0.09*angstroms" kappa="0.0/angstrom">
+    <CustomOBC version="0.3" alpha="0.8" beta="0.0" gamma="2.909125" solvent_dielectric="78.5" solute_dielectric="1" sa_model="ACE" surface_area_penalty="5.4*calories/mole/angstroms**2" solvent_radius="1.4*angstroms" offset_radius="0.09*angstroms" kappa="0.0/angstrom">
       <Atom smirks="[*:1]" radius="0.15*nanometer" scale="0.8"/>
       <Atom smirks="[#1:1]" radius="0.12*nanometer" scale="0.85"/>
       <Atom smirks="[#1:1]~[#7]" radius="0.13*nanometer" scale="0.85"/>
@@ -33,7 +33,7 @@ obc1_equiv_offxml = """\
 obc2_equiv_offxml = """\
 <SMIRNOFF version="0.3" aromaticity_model="OEAroModel_MDL">
     <!-- This file is intended to replicate the OBC2 GBSA model as provided by OpenMM's GBSAOBCForce class, and per-particle parameters provided by OpenMM's customgbforces.GBSAOBC2Force class -->
-    <CustomOBC version="0.3" alpha="1.0" beta="0.8" gamma="4.85" solvent_dielectric="78.5" solute_dielectric="1" sa_model="ACE" surface_area_penalty="5.4*calories/mole/angstroms**2" solvent_radius="1.4*angstroms" offset="0.09*angstroms" kappa="0.0/angstrom">
+    <CustomOBC version="0.3" alpha="1.0" beta="0.8" gamma="4.85" solvent_dielectric="78.5" solute_dielectric="1" sa_model="ACE" surface_area_penalty="5.4*calories/mole/angstroms**2" solvent_radius="1.4*angstroms" offset_radius="0.09*angstroms" kappa="0.0/angstrom">
       <Atom smirks="[*:1]" radius="0.15*nanometer" scale="0.8"/>
       <Atom smirks="[#1:1]" radius="0.12*nanometer" scale="0.85"/>
       <Atom smirks="[#1:1]~[#7]" radius="0.13*nanometer" scale="0.85"/>
@@ -198,7 +198,7 @@ class TestCustomOBC:
             elif isinstance(amber_gbsa_force, openmm.CustomGBForce):
                 # !!! WARNING: CustomAmberGBForceBase expects different per-particle parameters
                 # depending on whether you use addParticle or setParticleParameters. In
-                # setParticleParameters, we have to apply the offset and scale BEFORE setting
+                # setParticleParameters, we have to apply the offset_radius and scale BEFORE setting
                 # parameters, whereas in addParticle, it is applied afterwards, and the particle
                 # parameters are not set until an auxiliary finalize() method is called. !!!
                 amber_gbsa_force.setParticleParameters(
@@ -224,6 +224,7 @@ class TestCustomOBC:
         # Create Contexts
         integrator = openmm.VerletIntegrator(1.0 * unit.femtoseconds)
         platform = Platform.getPlatformByName("Reference")
+        #platform = Platform.getPlatformByName("OpenCL")
         amber_context = openmm.Context(amber_omm_system, integrator, platform)
         off_context = openmm.Context(
             off_omm_system, copy.deepcopy(integrator), platform
@@ -239,7 +240,7 @@ class TestCustomOBC:
 
         # Ensure that the GBSA energies (which we put into ForceGroup 1) are identical
         # For Platform=OpenCL, we do get "=="-level identical numbers, but for "Reference", we don't.
-        assert abs(amber_energy[1] - off_energy[1]) < 5e-4 * unit.kilojoule / unit.mole
+        assert abs(amber_energy[1] - off_energy[1]) < 5.0e-3 * unit.kilojoule / unit.mole
 
         # Ensure that all system energies are the same
         compare_system_energies(

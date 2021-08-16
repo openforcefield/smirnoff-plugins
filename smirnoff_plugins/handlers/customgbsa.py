@@ -64,7 +64,7 @@ class CustomOBCHandler(ParameterHandler):
     solvent_radius = ParameterAttribute(default=1.4 * unit.angstrom, unit=unit.angstrom)
     # TODO: Check units for Kappa
     kappa = ParameterAttribute(default=0.0 / unit.angstrom, unit=unit.angstrom ** -1)
-    offset = ParameterAttribute(default=0.09 * unit.angstrom, unit=unit.angstrom)
+    offset_radius = ParameterAttribute(default=0.09 * unit.angstrom, unit=unit.angstrom)
 
     # Tolerance when comparing float attributes for handler compatibility.
     _SCALETOL = 1e-5
@@ -94,8 +94,8 @@ class CustomOBCHandler(ParameterHandler):
         unit_attrs_to_compare = [
             "surface_area_penalty",
             "solvent_radius",
+            "offset_radius",
             "kappa",
-            "offset",
         ]
 
         self._check_attributes_are_equal(
@@ -114,12 +114,12 @@ class CustomOBCHandler(ParameterHandler):
         SA,
         surface_area_penalty,
         solvent_radius,
-        offset,
+        offset_radius,
         kappa,
     ):
         """Add the OBC energy terms to the CustomGBForce. These are identical for all the GB models."""
 
-        params = "; solventDielectric=%.16g; soluteDielectric=%.16g; surface_area_penalty=%.16g; solvent_radius=%.16g; kappa=%.16g; offset=%.16g; PI=%.16g;" % (
+        params = "; solventDielectric=%.16g; soluteDielectric=%.16g; surface_area_penalty=%.16g; solvent_radius=%.16g; kappa=%.16g; offset_radius=%.16g; PI=%.16g;" % (
             solventDielectric,
             soluteDielectric,
             surface_area_penalty.value_in_unit(
@@ -127,7 +127,7 @@ class CustomOBCHandler(ParameterHandler):
             ),
             solvent_radius.value_in_unit(unit.nanometer),
             kappa.value_in_unit(unit.nanometer ** -1),
-            offset.value_in_unit(unit.nanometer),
+            offset_radius.value_in_unit(unit.nanometer),
             np.pi,
         )
         if cutoff is not None:
@@ -151,7 +151,7 @@ class CustomOBCHandler(ParameterHandler):
         if SA == "ACE":
             # TODO: Is 0.14 below the solvent probe radius? Is this the only place we'd need to change it?
             force.addEnergyTerm(
-                "4*PI*surface_area_penalty*(radius+solvent_radius)^2*(radius/B)^6; radius=or+offset"
+                "4*PI*surface_area_penalty*(radius+solvent_radius)^2*(radius/B)^6; radius=or+offset_radius"
                 + params,
                 openmm.CustomGBForce.SingleParticle,
             )
@@ -224,9 +224,9 @@ class CustomOBCHandler(ParameterHandler):
             # gbsa_force.setNonbondedMethod(simtk.openmm.NonbondedForce.NoCutoff)
             gbsa_force.setNonbondedMethod(simtk.openmm.CustomGBForce.NoCutoff)
 
-        gbsa_force.addPerParticleParameter("charge")  # Partial charge of atom
-        gbsa_force.addPerParticleParameter("or")  # Offset radius
-        gbsa_force.addPerParticleParameter("sr")  # Scaled offset radius
+        gbsa_force.addPerParticleParameter("charge")  # charge(atom)
+        gbsa_force.addPerParticleParameter("or")  # radius(atom) - offset_radius
+        gbsa_force.addPerParticleParameter("sr")  # scale*(radius(atom) - offset_radius)
 
         # 3D integral over vdW spheres
         gbsa_force.addComputedValue(
@@ -239,8 +239,8 @@ class CustomOBCHandler(ParameterHandler):
         )
 
         # OBC effective radii
-        effective_radii = f"1/(1/or-tanh({self.alpha}*psi-{self.beta}*psi^2+{self.gamma}*psi^3)/radius);"
-        effective_params = f"psi=I*or; radius=or+offset; offset={self.offset.value_in_unit(unit.nanometer)}"
+        effective_radii = "1/(1/or-tanh(alpha*psi-beta*psi^2+gamma*psi^3)/radius);"
+        effective_params = f"alpha={self.alpha}; beta={self.beta}; gamma={self.gamma}; psi=I*or; radius=or+offset_radius; offset_radius={self.offset_radius.value_in_unit(unit.nanometer)}"
         gbsa_force.addComputedValue(
             "B",
             effective_radii + effective_params,
@@ -256,7 +256,7 @@ class CustomOBCHandler(ParameterHandler):
             self.sa_model,
             self.surface_area_penalty,
             self.solvent_radius,
-            self.offset,
+            self.offset_radius,
             self.kappa,
         )
 
@@ -267,8 +267,8 @@ class CustomOBCHandler(ParameterHandler):
 
         # !!! WARNING: CustomAmberGBForceBase expects different per-particle parameters
         # depending on whether you use addParticle or setParticleParameters. In
-        # setParticleParameters, we have to apply the offset and scale BEFORE setting
-        # parameters, whereas in addParticle, the offset is applied automatically, and the particle
+        # setParticleParameters, we have to apply the offset_radius and scale BEFORE setting
+        # parameters, whereas in addParticle, the offset_radius is applied automatically, and the particle
         # parameters are not set until an auxillary finalize() method is called. !!!
 
         # To keep it simple, we DO NOT pre-populate the particles in the GBSA force here.
@@ -284,9 +284,9 @@ class CustomOBCHandler(ParameterHandler):
             charge, _, _2 = nonbonded_force.getParticleParameters(atom_idx)
             params_to_add[atom_idx] = [
                 charge,  # charge(atom)
-                gbsatype.radius - self.offset,  # radius(atom) - offset
+                gbsatype.radius - self.offset_radius,  # radius(atom) - offset_radius
                 gbsatype.scale
-                * (gbsatype.radius - self.offset),  # scale*(radius(atom) - offset)
+                * (gbsatype.radius - self.offset_radius),  # scale*(radius(atom) - offset_radius)
             ]
 
         for particle_param in params_to_add:
