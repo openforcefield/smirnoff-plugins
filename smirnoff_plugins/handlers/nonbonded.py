@@ -1,5 +1,5 @@
 import abc
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import numpy
 from openff.toolkit.topology import Topology
@@ -87,6 +87,17 @@ class CustomNonbondedHandler(ParameterHandler, abc.ABC):
         """Apply a parameter to the specified atom."""
         raise NotImplementedError()
 
+    @abc.abstractmethod
+    def _pre_computed_terms(self) -> Dict[str, float]:
+        """
+        Precompute some constant global terms used in the energy function, but are not explicit parameters.
+
+        Returns
+        -------
+            A dict of the global term and the value which should be used.
+        """
+        raise NotImplementedError()
+
     def _apply_nonbonded_settings(
         self, topology: Topology, force: openmm.CustomNonbondedForce
     ):
@@ -167,6 +178,9 @@ class CustomNonbondedHandler(ParameterHandler, abc.ABC):
             value = getattr(self, parameter)
             force.addGlobalParameter(parameter, value)
 
+        for parameter, value in self._pre_computed_terms().items():
+            force.addGlobalParameter(parameter, value)
+
         initial_values = tuple(0.0 for _ in range(len(potential_parameters)))
 
         # Set some starting dummy values
@@ -232,6 +246,9 @@ class DampedBuckingham68(CustomNonbondedHandler):
 
     _TAGNAME = "DampedBuckingham68"  # SMIRNOFF tag name to process
     _INFOTYPE = B68Type  # info type to store
+
+    def _pre_computed_terms(self) -> Dict[str, float]:
+        return {}
 
     @classmethod
     def _get_potential_function(cls) -> Tuple[str, List[str], List[str]]:
@@ -335,6 +352,21 @@ class DoubleExponential(CustomNonbondedHandler):
             ),
         )
 
+    def _pre_computed_terms(self) -> Dict[str, float]:
+
+        # compute alpha - beta
+        alpha_min_beta = self.alpha - self.beta
+        terms = {"AlphaMinBeta": alpha_min_beta}
+        # repulsion factor
+        repulsion_factor = self.beta * numpy.exp(self.alpha) / alpha_min_beta
+        # attraction factor
+        attraction_factor = self.alpha * numpy.exp(self.beta) / alpha_min_beta
+        return {
+            "AlphaMinBeta": alpha_min_beta,
+            "RepulsionFactor": repulsion_factor,
+            "AttractionFactor": attraction_factor,
+        }
+
     @classmethod
     def _get_potential_function(cls) -> Tuple[str, List[str], List[str]]:
 
@@ -342,11 +374,8 @@ class DoubleExponential(CustomNonbondedHandler):
         potential_function = (
             "CombinedEpsilon*RepulsionFactor*RepulsionExp-CombinedEpsilon*AttractionFactor*AttractionExp;"
             "CombinedEpsilon=epsilon1*epsilon2;"
-            "RepulsionFactor=beta*exp(alpha)/AlphaMinBeta;"
-            "AttractionFactor=alpha*exp(beta)/AlphaMinBeta;"
             "RepulsionExp=exp(-alpha*ExpDistance);"
             "AttractionExp=exp(-beta*ExpDistance);"
-            "AlphaMinBeta=alpha-beta;"
             "ExpDistance=r/CombinedR;"
             "CombinedR=r_min1+r_min2;"
         )
