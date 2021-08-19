@@ -248,7 +248,14 @@ class DampedBuckingham68(CustomNonbondedHandler):
     _INFOTYPE = B68Type  # info type to store
 
     def _pre_computed_terms(self) -> Dict[str, float]:
-        return {}
+        d2 = self.gamma ** 2 * 0.5
+        d3 = d2 * self.gamma * 0.3333333333
+        d4 = d3 * self.gamma * 0.25
+        d5 = d4 * self.gamma * 0.2
+        d6 = d5 * self.gamma * 0.1666666667
+        d7 = d6 * self.gamma * 0.1428571429
+        d8 = d7 * self.gamma * 0.125
+        return {"d2": d2, "d3": d3, "d4": d4, "d5": d5, "d6": d6, "d7": d7, "d8": d8}
 
     @classmethod
     def _get_potential_function(cls) -> Tuple[str, List[str], List[str]]:
@@ -271,13 +278,6 @@ class DampedBuckingham68(CustomNonbondedHandler):
             "invR3=invR2*invR;"
             "invR2=invR*invR;"
             "invR=1.0/r;"
-            "d8=d7*gamma*0.125;"
-            "d7=d6*gamma*0.1428571429;"
-            "d6=d5*gamma*0.1666666667;"
-            "d5=d4*gamma*0.2;"
-            "d4=d3*gamma*0.25;"
-            "d3=d2*gamma*0.3333333333;"
-            "d2=gamma*gamma*0.5;"
             "expTerm=exp(mdr);"
             "mdr=-gamma*r;"
         )
@@ -356,7 +356,6 @@ class DoubleExponential(CustomNonbondedHandler):
 
         # compute alpha - beta
         alpha_min_beta = self.alpha - self.beta
-        terms = {"AlphaMinBeta": alpha_min_beta}
         # repulsion factor
         repulsion_factor = self.beta * numpy.exp(self.alpha) / alpha_min_beta
         # attraction factor

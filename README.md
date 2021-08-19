@@ -118,6 +118,7 @@ We are now finally ready to add the custom damped buckingham potential:
 
 ```python
 buckingham_handler = force_field.get_parameter_handler("DampedBuckingham68")
+buckingham_handler.gamma = 35.8967 * unit.nanometer ** -1
 buckingham_handler.add_parameter(
     {
         "smirks": "[#1:1]-[#8X2H2+0]-[#1]",
@@ -125,7 +126,6 @@ buckingham_handler.add_parameter(
         "b": 0.0 / unit.nanometer,
         "c6": 0.0 * unit.kilojoule_per_mole * unit.nanometer ** 6,
         "c8": 0.0 * unit.kilojoule_per_mole * unit.nanometer ** 8,
-        "gamma": 0.0 / unit.nanometer,
     }
 )
 buckingham_handler.add_parameter(
@@ -135,7 +135,6 @@ buckingham_handler.add_parameter(
         "b": 42.00 / unit.nanometer,
         "c6": 0.003 * unit.kilojoule_per_mole * unit.nanometer ** 6,
         "c8": 0.00003 * unit.kilojoule_per_mole * unit.nanometer ** 8,
-        "gamma": 35.8967 / unit.nanometer,
     }
 )
 ```
