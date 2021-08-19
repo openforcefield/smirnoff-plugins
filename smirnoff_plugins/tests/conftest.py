@@ -106,3 +106,47 @@ def water_box_topology() -> Topology:
     )
 
     return topology
+
+
+@pytest.fixture()
+def ideal_water_force_field() -> ForceField:
+    """Returns a force field that will assign constraints, a vdW handler and
+    a library charge handler to a three site water molecule with all LJ
+    ``epsilon=0.0`` and all ``q=0.0``.
+    """
+    ff = ForceField(load_plugins=True)
+
+    constraint_handler = ff.get_parameter_handler("Constraints")
+    constraint_handler.add_parameter(
+        {"smirks": "[#1:1]-[#8X2H2+0:2]-[#1]", "distance": 0.9572 * unit.angstrom}
+    )
+    constraint_handler.add_parameter(
+        {"smirks": "[#1:1]-[#8X2H2+0]-[#1:2]", "distance": 1.5139 * unit.angstrom}
+    )
+    # add a dummy vdW term
+    vdw_handler = ff.get_parameter_handler("vdW")
+    vdw_handler.add_parameter(
+        {
+            "smirks": "[#1:1]-[#8X2H2+0]-[#1]",
+            "epsilon": 0.0 * unit.kilojoule_per_mole,
+            "sigma": 1.0 * unit.angstrom,
+        }
+    )
+    vdw_handler.add_parameter(
+        {
+            "smirks": "[#1]-[#8X2H2+0:1]-[#1]",
+            "epsilon": 0.0 * unit.kilojoules_per_mole,
+            "sigma": 0.0 * unit.nanometers,
+        }
+    )
+    ff.get_parameter_handler("Electrostatics")
+    # add the library charges
+    library_charge = ff.get_parameter_handler("LibraryCharges")
+    library_charge.add_parameter(
+        {"smirks": "[#1]-[#8X2H2+0:1]-[#1]", "charge1": 0 * unit.elementary_charge}
+    )
+    library_charge.add_parameter(
+        {"smirks": "[#1:1]-[#8X2H2+0]-[#1]", "charge1": 0 * unit.elementary_charge}
+    )
+
+    return ff
