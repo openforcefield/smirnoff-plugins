@@ -1,10 +1,11 @@
 import logging
+import math
 import os
 import time
-from typing import Literal, Optional
+from typing import List, Literal, Optional, Tuple
 
 import numpy
-from openff.toolkit.topology import Topology, TopologyAtom
+from openff.toolkit.topology import Molecule, Topology, TopologyAtom
 from openff.toolkit.typing.engines.smirnoff import ForceField
 from simtk import openmm, unit
 from simtk.openmm import app
@@ -186,3 +187,130 @@ def simulate(
             pressure=pressure,
             platform=platform,
         )
+
+
+def water_box(n_molecules: int) -> Tuple[Topology, unit.Quantity]:
+    """
+    Build a water box with the requested number of water molecules.
+
+    Parameters
+    ----------
+    n_molecules
+        The number of water molecules that should be put into the water box
+
+    Returns
+    -------
+        The openff.toolkit Topology of the system and the position array wrapped with units.
+    """
+
+    # Create a topology containing water molecules.
+    molecule = Molecule.from_smiles("O")
+    molecule.generate_conformers(n_conformers=1)
+
+    topology = Topology.from_molecules([molecule] * n_molecules)
+
+    topology.box_vectors = (
+        numpy.eye(3) * math.ceil(n_molecules ** (1 / 3) + 2) * 2.5 * unit.angstrom
+    )
+
+    positions = (
+        numpy.vstack(
+            [
+                (
+                    molecule.conformers[0].value_in_unit(unit.angstrom)
+                    + numpy.array([[x, y, z]]) * 2.5
+                )
+                for x in range(math.ceil(n_molecules ** (1 / 3)))
+                for y in range(math.ceil(n_molecules ** (1 / 3)))
+                for z in range(math.ceil(n_molecules ** (1 / 3)))
+            ]
+        )[: topology.n_topology_atoms, :]
+        * unit.angstrom
+    )
+
+    with open("input.pdb", "w") as file:
+        app.PDBFile.writeFile(topology.to_openmm(), positions, file)
+
+    return topology, positions
+
+
+def evaluate_water_energy_at_distances(
+    force_field: ForceField, distances: List[float]
+) -> List[float]:
+    """
+    Evaluate the energy of a system of two water molecules at the requested distances using the provided force field.
+
+    Parameters
+    ----------
+    force_field:
+        The openff.toolkit force field object that should be used to parameterise the system.
+    distances:
+        The list of absolute distances between the oxygen atoms in angstroms.
+
+    Returns
+    -------
+        A list of energies evaluated at the given distances in kj/mol
+    """
+
+    # build the topology
+    water = Molecule.from_smiles("O")
+    water.generate_conformers(n_conformers=1)
+    topology = Topology.from_molecules([water, water])
+
+    # make the openmm system
+    omm_system, topology = force_field.create_openmm_system(
+        topology, return_topology=True
+    )
+    # generate positions at the requested distance
+    positions = [
+        numpy.vstack(
+            [
+                water.conformers[0].value_in_unit(unit.angstrom),
+                water.conformers[0].value_in_unit(unit.angstrom)
+                + numpy.array([x, 0, 0]),
+            ]
+        )
+        * unit.angstrom
+        for x in distances
+    ]
+
+    # Add the virtual sites to the OpenMM topology and positions.
+    omm_topology = topology.to_openmm()
+    omm_chain = [*omm_topology.chains()][-1]
+    omm_residue = omm_topology.addResidue("", chain=omm_chain)
+
+    for particle in topology.topology_particles:
+
+        if isinstance(particle, TopologyAtom):
+            continue
+
+        omm_topology.addAtom(
+            particle.virtual_site.name, app.Element.getByMass(0), omm_residue
+        )
+
+    positions = [
+        numpy.vstack([p, numpy.zeros((topology.n_topology_virtual_sites, 3))])
+        * unit.angstrom
+        for p in positions
+    ]
+
+    integrator = openmm.LangevinIntegrator(
+        300 * unit.kelvin,  # simulation temperature,
+        1.0 / unit.picosecond,  # friction
+        2.0 * unit.femtoseconds,  # simulation timestep
+    )
+
+    platform = openmm.Platform.getPlatformByName("CPU")
+
+    simulation = app.Simulation(omm_topology, omm_system, integrator, platform)
+
+    energies = []
+    for i, p in enumerate(positions):
+        simulation.context.setPositions(p)
+        simulation.context.computeVirtualSites()
+        state = simulation.context.getState(getEnergy=True)
+        energies.append(
+            state.getPotentialEnergy().value_in_unit(unit.kilojoule_per_mole)
+        )
+
+    return energies

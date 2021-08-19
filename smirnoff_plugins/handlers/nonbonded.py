@@ -1,5 +1,5 @@
 import abc
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import numpy
 from openff.toolkit.topology import Topology
@@ -87,6 +87,17 @@ class CustomNonbondedHandler(ParameterHandler, abc.ABC):
         """Apply a parameter to the specified atom."""
         raise NotImplementedError()
 
+    @abc.abstractmethod
+    def _pre_computed_terms(self) -> Dict[str, float]:
+        """
+        Precompute some constant global terms used in the energy function, but are not explicit parameters.
+
+        Returns
+        -------
+            A dict of the global term and the value which should be used.
+        """
+        raise NotImplementedError()
+
     def _apply_nonbonded_settings(
         self, topology: Topology, force: openmm.CustomNonbondedForce
     ):
@@ -167,6 +178,9 @@ class CustomNonbondedHandler(ParameterHandler, abc.ABC):
             value = getattr(self, parameter)
             force.addGlobalParameter(parameter, value)
 
+        for parameter, value in self._pre_computed_terms().items():
+            force.addGlobalParameter(parameter, value)
+
         initial_values = tuple(0.0 for _ in range(len(potential_parameters)))
 
         # Set some starting dummy values
@@ -212,7 +226,7 @@ class CustomNonbondedHandler(ParameterHandler, abc.ABC):
 
 
 class DampedBuckingham68(CustomNonbondedHandler):
-    """A custom  the B68 potential."""
+    """The B68 potential."""
 
     gamma = ParameterAttribute(default=35.8967, unit=unit.nanometer ** -1)
 
@@ -232,6 +246,16 @@ class DampedBuckingham68(CustomNonbondedHandler):
 
     _TAGNAME = "DampedBuckingham68"  # SMIRNOFF tag name to process
     _INFOTYPE = B68Type  # info type to store
+
+    def _pre_computed_terms(self) -> Dict[str, float]:
+        d2 = self.gamma ** 2 * 0.5
+        d3 = d2 * self.gamma * 0.3333333333
+        d4 = d3 * self.gamma * 0.25
+        d5 = d4 * self.gamma * 0.2
+        d6 = d5 * self.gamma * 0.1666666667
+        d7 = d6 * self.gamma * 0.1428571429
+        d8 = d7 * self.gamma * 0.125
+        return {"d2": d2, "d3": d3, "d4": d4, "d5": d5, "d6": d6, "d7": d7, "d8": d8}
 
     @classmethod
     def _get_potential_function(cls) -> Tuple[str, List[str], List[str]]:
@@ -254,13 +278,6 @@ class DampedBuckingham68(CustomNonbondedHandler):
             "invR3=invR2*invR;"
             "invR2=invR*invR;"
             "invR=1.0/r;"
-            "d8=d7*gamma*0.125;"
-            "d7=d6*gamma*0.1428571429;"
-            "d6=d5*gamma*0.1666666667;"
-            "d5=d4*gamma*0.2;"
-            "d4=d3*gamma*0.25;"
-            "d3=d2*gamma*0.3333333333;"
-            "d2=gamma*gamma*0.5;"
             "expTerm=exp(mdr);"
             "mdr=-gamma*r;"
         )
@@ -295,3 +312,75 @@ class DampedBuckingham68(CustomNonbondedHandler):
                 ),
             ),
         )
+
+
+class DoubleExponential(CustomNonbondedHandler):
+    """
+    The double exponential potential as proposed in <https://doi.org/10.1021/acs.jctc.0c01267>
+    """
+
+    # these parameters have no units
+    alpha = ParameterAttribute(18.7)
+    beta = ParameterAttribute(3.3)
+
+    class DEType(ParameterType):
+
+        _VALENCE_TYPE = "Atom"  # ChemicalEnvironment valence type expected for SMARTS
+        _ELEMENT_NAME = "Atom"
+
+        r_min = ParameterAttribute(default=None, unit=unit.nanometers)
+        epsilon = ParameterAttribute(default=None, unit=unit.kilojoule_per_mole)
+
+    _TAGNAME = "DoubleExponential"  # SMIRNOFF tag name to process
+    _INFOTYPE = DEType  # info type to store
+
+    def _apply_parameter(
+        self,
+        force: openmm.CustomNonbondedForce,
+        atom_index: int,
+        parameter_type: DEType,
+    ):
+        # sqrt the epsilon during assignment
+        # half r_min during assigment
+        force.setParticleParameters(
+            atom_index,
+            (
+                parameter_type.r_min.value_in_unit(unit.nanometers) / 2,
+                numpy.sqrt(
+                    parameter_type.epsilon.value_in_unit(unit.kilojoule_per_mole)
+                ),
+            ),
+        )
+
+    def _pre_computed_terms(self) -> Dict[str, float]:
+
+        # compute alpha - beta
+        alpha_min_beta = self.alpha - self.beta
+        # repulsion factor
+        repulsion_factor = self.beta * numpy.exp(self.alpha) / alpha_min_beta
+        # attraction factor
+        attraction_factor = self.alpha * numpy.exp(self.beta) / alpha_min_beta
+        return {
+            "AlphaMinBeta": alpha_min_beta,
+            "RepulsionFactor": repulsion_factor,
+            "AttractionFactor": attraction_factor,
+        }
+
+    @classmethod
+    def _get_potential_function(cls) -> Tuple[str, List[str], List[str]]:
+
+        # do the epsilon square root outside of the evaluation at parameter assignment time
+        potential_function = (
+            "CombinedEpsilon*RepulsionFactor*RepulsionExp-CombinedEpsilon*AttractionFactor*AttractionExp;"
+            "CombinedEpsilon=epsilon1*epsilon2;"
+            "RepulsionExp=exp(-alpha*ExpDistance);"
+            "AttractionExp=exp(-beta*ExpDistance);"
+            "ExpDistance=r/CombinedR;"
+            "CombinedR=r_min1+r_min2;"
+        )
+
+        potential_parameters = ["r_min", "epsilon"]
+
+        global_parameters = ["alpha", "beta"]
+
+        return potential_function, potential_parameters, global_parameters
