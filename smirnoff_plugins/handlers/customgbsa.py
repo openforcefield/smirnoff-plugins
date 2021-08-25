@@ -303,7 +303,7 @@ class CustomGBSAHandler(ParameterHandler):
         """Add the GBSA energy terms to the CustomGBForce. These are identical for all the GB models."""
 
         # Base parameters
-        params = "; solventDielectric=%.16g; soluteDielectric=%.16g; surface_area_penalty=%.16g; solvent_radius=%.16g; kappa=%.16g; offset_radius=%.16g; PI=%.16g;" % (
+        params = "; solventDielectric=%.16g; soluteDielectric=%.16g; surface_area_penalty=%.16g; solvent_radius=%.16g; kappa=%.16g; offset_radius=%.16g; PI=%.16g" % (
             solvent_dielectric,
             solute_dielectric,
             surface_area_penalty.value_in_unit(
@@ -562,6 +562,7 @@ class CustomGBSAHandler(ParameterHandler):
 
         for particle_param in params_to_add:
             if self.gb_model in ["GBn", "GBn2"]:
+                # noinspection PyUnboundLocalVariable
                 radii_index = radius_to_index[
                     particle_param[1].value_in_unit(unit.nanometer)
                 ]
