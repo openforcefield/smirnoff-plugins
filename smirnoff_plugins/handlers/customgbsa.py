@@ -1,4 +1,5 @@
 from math import floor
+from typing import List, Union
 
 import numpy as np
 from openff.toolkit.typing.engines.smirnoff import (
@@ -250,7 +251,7 @@ class CustomGBSAHandler(ParameterHandler):
     # Tolerance when comparing float attributes for handler compatibility.
     _SCALETOL = 1e-5
 
-    def check_handler_compatibility(self, other_handler):
+    def check_handler_compatibility(self, other_handler: ParameterHandler):
         """
         Checks whether this ParameterHandler encodes compatible physics as another ParameterHandler. This is
         called if a second handler is attempted to be initialized for the same tag.
@@ -290,15 +291,15 @@ class CustomGBSAHandler(ParameterHandler):
 
     @staticmethod
     def _create_gbsa_energy_terms(
-        force,
-        cutoff,
-        solvent_dielectric,
-        solute_dielectric,
-        gbsa_model,
-        surface_area_penalty,
-        solvent_radius,
-        offset_radius,
-        kappa,
+        force: openmm.CustomGBForce,
+        cutoff: Union[float, None],
+        solvent_dielectric: float,
+        solute_dielectric: float,
+        gbsa_model: str,
+        surface_area_penalty: unit.Quantity,
+        solvent_radius: unit.Quantity,
+        offset_radius: unit.Quantity,
+        kappa: unit.Quantity,
     ):
         """Add the GBSA energy terms to the CustomGBForce. These are identical for all the GB models."""
 
@@ -376,7 +377,11 @@ class CustomGBSAHandler(ParameterHandler):
                 )
 
     @staticmethod
-    def _create_unique_table(full_table, unique_radii, offset_radius):
+    def _create_unique_table(
+        full_table: List[float],
+        unique_radii: List[float],
+        offset_radius: unit.Quantity,
+    ) -> List[float]:
         table_positions = [
             (r + offset_radius.value_in_unit(unit.nanometer) - 0.1) * 200
             for r in unique_radii
@@ -406,6 +411,7 @@ class CustomGBSAHandler(ParameterHandler):
                     + weight2[i] * weight1[j] * full_table[index2[i] * 21 + index1[j]]
                     + weight2[i] * weight2[j] * full_table[index2[i] * 21 + index2[j]]
                 )
+
         return table
 
     def create_force(self, system, topology, **kwargs):
