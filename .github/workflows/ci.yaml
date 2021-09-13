@@ -55,7 +55,7 @@ jobs:
         pytest -v --cov=smirnoff_plugins --cov-report=xml --color=yes smirnoff_plugins/tests/
 
     - name: CodeCov
-      uses: codecov/codecov-action@v2.0.2
+      uses: codecov/codecov-action@v2.1.0
       with:
         file: ./coverage.xml
         flags: unittests
