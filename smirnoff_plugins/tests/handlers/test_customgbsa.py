@@ -10,12 +10,13 @@ from openff.toolkit.tests.utils import requires_openeye_mol2
 from openff.toolkit.topology import Molecule
 from openff.toolkit.typing.engines.smirnoff import ForceField
 
+# HCT - mbondi radii
 hct_offxml = """\
 <SMIRNOFF version="0.3" aromaticity_model="OEAroModel_MDL">
     <Date>2019-08-08</Date>
     <Author>J. Chodera, (MSKCC); J. Wagner (Open Force Field)</Author>
     <!-- This file is intended to replicate the settings and per-particle parameters provided by OpenMM's customgbforces.GBSAHCTForce class -->
-    <CustomGBSA version="0.3" gb_model="HCT" solvent_dielectric="78.5" solute_dielectric="1" sa_model="ACE" surface_area_penalty="5.4*calories/mole/angstroms**2" solvent_radius="1.4*angstroms" offset_radius="0.09*angstroms" kappa="0.0/angstrom">
+    <CustomGBSA version="0.3" gb_model="HCT" solvent_dielectric="78.5" solute_dielectric="1" sa_model="ACE" surface_area_penalty="5.4*calories/mole/angstroms**2" solvent_radius="1.4*angstroms" offset_radius="0.09*angstroms" kappa="0.0 * nanometer**-1">
       <Atom smirks="[*:1]" radius="0.15*nanometer" scale="0.8"/>
       <Atom smirks="[#1:1]" radius="0.12*nanometer" scale="0.85"/>
       <Atom smirks="[#1:1]~[#6]" radius="0.13*nanometer" scale="0.85"/>
@@ -34,11 +35,12 @@ hct_offxml = """\
 </SMIRNOFF>\
 """
 
+# OBC1 - mbondi2 radii
 obc1_equiv_offxml = """\
 <SMIRNOFF version="0.3" aromaticity_model="OEAroModel_MDL">
     <!-- This file is intended to replicate the settings and per-particle parameters provided by OpenMM's customgbforces.GBSAOBC1Force class -->
     <!-- This file should replicate the OBC1 parameter set and energies -->
-    <CustomGBSA version="0.3" gb_model="OBC" alpha="0.8" beta="0.0" gamma="2.909125" solvent_dielectric="78.5" solute_dielectric="1" sa_model="ACE" surface_area_penalty="5.4*calories/mole/angstroms**2" solvent_radius="1.4*angstroms" offset_radius="0.09*angstroms" kappa="0.0/angstrom">
+    <CustomGBSA version="0.3" gb_model="OBC" alpha="0.8" beta="0.0" gamma="2.909125" solvent_dielectric="78.5" solute_dielectric="1" sa_model="ACE" surface_area_penalty="5.4*calories/mole/angstroms**2" solvent_radius="1.4*angstroms" offset_radius="0.09*angstroms" kappa="0.0 * nanometer**-1">
       <Atom smirks="[*:1]" radius="0.15*nanometer" scale="0.8"/>
       <Atom smirks="[#1:1]" radius="0.12*nanometer" scale="0.85"/>
       <Atom smirks="[#1:1]~[#7]" radius="0.13*nanometer" scale="0.85"/>
@@ -54,10 +56,11 @@ obc1_equiv_offxml = """\
 </SMIRNOFF>\
 """
 
+# OBC2 - mbondi2 radii
 obc2_equiv_offxml = """\
 <SMIRNOFF version="0.3" aromaticity_model="OEAroModel_MDL">
     <!-- This file is intended to replicate the OBC2 GBSA model as provided by OpenMM's GBSAOBCForce class, and per-particle parameters provided by OpenMM's customgbforces.GBSAOBC2Force class -->
-    <CustomGBSA version="0.3" gb_model="OBC" alpha="1.0" beta="0.8" gamma="4.85" solvent_dielectric="78.5" solute_dielectric="1" sa_model="ACE" surface_area_penalty="5.4*calories/mole/angstroms**2" solvent_radius="1.4*angstroms" offset_radius="0.09*angstroms" kappa="0.0/angstrom">
+    <CustomGBSA version="0.3" gb_model="OBC" alpha="1.0" beta="0.8" gamma="4.85" solvent_dielectric="78.5" solute_dielectric="1" sa_model="ACE" surface_area_penalty="5.4*calories/mole/angstroms**2" solvent_radius="1.4*angstroms" offset_radius="0.09*angstroms" kappa="0.0 * nanometer**-1">
       <Atom smirks="[*:1]" radius="0.15*nanometer" scale="0.8"/>
       <Atom smirks="[#1:1]" radius="0.12*nanometer" scale="0.85"/>
       <Atom smirks="[#1:1]~[#7]" radius="0.13*nanometer" scale="0.85"/>
@@ -73,10 +76,11 @@ obc2_equiv_offxml = """\
 </SMIRNOFF>\
 """
 
+# GBn - bondi radii
 gbn_offxml = """\
 <SMIRNOFF version="0.3" aromaticity_model="OEAroModel_MDL">
     <!-- This file is intended to replicate the GBn GBSA model as provided by OpenMM's class GBSAGBnForce using CustomGBForce, and per-particle parameters provided by OpenMM's customgbforces.GBSAOBC2Force class -->
-    <CustomGBSA version="0.3" gb_model="GBn" alpha="1.09511284" beta="1.907992938" gamma="2.50798245" neck_scale="0.361825" neck_cutoff="0.68" solvent_dielectric="78.5" solute_dielectric="1" sa_model="ACE" surface_area_penalty="5.4*calories/mole/angstroms**2" solvent_radius="1.4*angstroms" offset_radius="0.09*angstroms" kappa="0.0/angstrom">
+    <CustomGBSA version="0.3" gb_model="GBn" alpha="1.09511284" beta="1.907992938" gamma="2.50798245" neck_scale="0.361825" neck_cutoff="0.68" solvent_dielectric="78.5" solute_dielectric="1" sa_model="ACE" surface_area_penalty="5.4*calories/mole/angstroms**2" solvent_radius="1.4*angstroms" offset_radius="0.09*angstroms" kappa="0.0 * nanometer**-1">
       <Atom smirks="[*:1]" radius="0.15*nanometer" scale="0.5"/>
       <Atom smirks="[#1:1]" radius="0.12*nanometer" scale="1.09085413633"/>
       <Atom smirks="[#6:1]" radius="0.17*nanometer" scale="0.48435382330"/>
@@ -91,10 +95,11 @@ gbn_offxml = """\
 </SMIRNOFF>\
 """
 
+# GBn2 - mbondi3 radii
 gbn2_offxml = """\
 <SMIRNOFF version="0.3" aromaticity_model="OEAroModel_MDL">
     <!-- This file is intended to replicate the GBn2 GBSA model as provided by OpenMM's class GBSAGBnForce using CustomGBForce, and per-particle parameters provided by OpenMM's customgbforces.GBSAOBC2Force class -->
-    <CustomGBSA version="0.3" gb_model="GBn2" neck_scale="0.826836" neck_cutoff="0.68" solvent_dielectric="78.5" solute_dielectric="1" sa_model="ACE" surface_area_penalty="5.4*calories/mole/angstroms**2" solvent_radius="1.4*angstroms" offset_radius="0.195141*angstroms" kappa="0.0/angstrom">
+    <CustomGBSA version="0.3" gb_model="GBn2" neck_scale="0.826836" neck_cutoff="0.68" solvent_dielectric="78.5" solute_dielectric="1" sa_model="ACE" surface_area_penalty="5.4*calories/mole/angstroms**2" solvent_radius="1.4*angstroms" offset_radius="0.195141*angstroms" kappa="0.0 * nanometer**-1">
       <Atom smirks="[*:1]" radius="0.15*nanometer" scale="0.5" alpha="1.0" beta="0.8" gamma="4.851"/>
       <Atom smirks="[#1:1]" radius="0.12*nanometer" scale="1.425952" alpha="0.788440" beta="0.798699" gamma="0.437334"/>
       <Atom smirks="[#1:1]~[#7]" radius="0.13*nanometer" scale="1.425952" alpha="0.788440" beta="0.798699" gamma="0.437334"/>
@@ -114,7 +119,7 @@ gbn2_offxml = """\
 gbn2_nucleic_offxml = """\
 <SMIRNOFF version="0.3" aromaticity_model="OEAroModel_MDL">
     <!-- This file is intended to replicate the GBn GBSA model as provided by OpenMM's class GBSAGBnForce using CustomGBForce, and per-particle parameters provided by OpenMM's customgbforces.GBSAOBC2Force class -->
-    <GBSANeck version="0.3" gb_model="GBn2" neck_scale="0.826836" neck_cutoff="0.68" solvent_dielectric="78.5" solute_dielectric="1" sa_model="ACE" surface_area_penalty="5.4*calories/mole/angstroms**2" solvent_radius="1.4*angstroms" offset_radius="0.195141*angstroms" kappa="0.0/angstrom">
+    <GBSANeck version="0.3" gb_model="GBn2" neck_scale="0.826836" neck_cutoff="0.68" solvent_dielectric="78.5" solute_dielectric="1" sa_model="ACE" surface_area_penalty="5.4*calories/mole/angstroms**2" solvent_radius="1.4*angstroms" offset_radius="0.195141*angstroms" kappa="0.0 * nanometer**-1">
       <Atom smirks="[*:1]" radius="0.15*nanometer" scale="0.5" alpha="1.0" beta="0.8" gamma="4.851"/>
       <Atom smirks="[#1:1]" radius="0.12*nanometer" scale="1.696538" alpha="0.537050" beta="0.362861" gamma="0.116704"/>
       <Atom smirks="[#1:1]~[#7]" radius="0.13*nanometer" scale="1.696538" alpha="0.537050" beta="0.362861" gamma="0.116704"/>
@@ -133,8 +138,11 @@ gbn2_nucleic_offxml = """\
 
 class TestCustomGBSA:
     @requires_openeye_mol2
-    @pytest.mark.parametrize(("gbsa_model"), ["HCT", "OBC1", "OBC2", "GBn", "GBn2"])
-    @pytest.mark.parametrize(("is_periodic"), (False, True))
+    @pytest.mark.parametrize("gbsa_model", ["HCT", "OBC1", "OBC2", "GBn", "GBn2"])
+    @pytest.mark.parametrize("is_periodic", (False, True))
+    @pytest.mark.parametrize(
+        "salt_concentration", [0.0, 0.15] * unit.moles / unit.liter
+    )
     @pytest.mark.parametrize(
         ("freesolv_id", "forcefield_version", "allow_undefined_stereo"),
         generate_freesolv_parameters_assignment_cases(),
@@ -143,6 +151,7 @@ class TestCustomGBSA:
         self,
         gbsa_model,
         is_periodic,
+        salt_concentration,
         freesolv_id,
         forcefield_version,
         allow_undefined_stereo,
@@ -181,12 +190,21 @@ class TestCustomGBSA:
             "GBn": gbn_offxml,
             "GBn2": gbn2_offxml,
         }
-        # Create OpenFF System with the current toolkit.
+
+        # Load force field
         ff = ForceField(
             "test_forcefields/test_forcefield.offxml",
             gbsa_offxmls[gbsa_model],
             load_plugins=True,
         )
+
+        # Set salt concentration
+        temperature = 300.0 * unit.kelvin
+        gbsa_handler = ff.get_parameter_handler("CustomGBSA")
+        gbsa_handler.salt_concentration = salt_concentration
+        gbsa_handler.temperature = temperature
+
+        # Create OpenFF System with the current toolkit.
         off_top = molecule.to_topology()
         if is_periodic:
             off_top.box_vectors = (
@@ -251,11 +269,12 @@ class TestCustomGBSA:
         ) = create_system_from_amber(
             prmtop_file.name,
             inpcrd_file.name,
-            implicitSolvent=amber_gbsa_models[gbsa_model],
             nonbondedMethod=amber_nb_method,
             nonbondedCutoff=amber_cutoff,
+            implicitSolvent=amber_gbsa_models[gbsa_model],
+            implicitSolventSaltConc=salt_concentration,
+            temperature=temperature,
             gbsaModel="ACE",
-            implicitSolventKappa=0.0,
         )
 
         # Retrieve the GBSAForce from both the AMBER and OpenForceField systems
@@ -345,7 +364,7 @@ class TestCustomGBSA:
                     radii_index,
                 ) = amber_gbsa_force.getParticleParameters(idx)
 
-                offset_radius = 0.0195141
+                offset_radius = 0.0195141  # GBn2 offset radius
                 amber_gbsa_force.setParticleParameters(
                     idx,
                     (

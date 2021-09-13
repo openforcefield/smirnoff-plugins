@@ -243,9 +243,14 @@ class CustomGBSAHandler(ParameterHandler):
     solvent_radius = ParameterAttribute(default=1.4 * unit.angstrom, unit=unit.angstrom)
     offset_radius = ParameterAttribute(default=0.09 * unit.angstrom, unit=unit.angstrom)
 
-    # Debye-Huckel inverse screening length, dimension: 1/length
+    # Salt concentration based on Debye-Huckel theory. The temperature is used to compute the Debye length.
+    # `kappa` overrides `salt_concentration` if set as non-zero.
+    salt_concentration = ParameterAttribute(
+        default=0.0 * unit.moles / unit.liter, unit=unit.moles / unit.liter
+    )
+    temperature = ParameterAttribute(default=300 * unit.kelvin, unit=unit.kelvin)
     kappa = ParameterAttribute(
-        default=0.0 * unit.angstrom ** -1, unit=unit.angstrom ** -1
+        default=0.0 * unit.nanometer ** -1, unit=unit.nanometer ** -1
     )
 
     # Tolerance when comparing float attributes for handler compatibility.
@@ -292,7 +297,7 @@ class CustomGBSAHandler(ParameterHandler):
     @staticmethod
     def _create_gbsa_energy_terms(
         force: openmm.CustomGBForce,
-        cutoff: Union[float, None],
+        cutoff: Union[None, float],
         solvent_dielectric: float,
         solute_dielectric: float,
         gbsa_model: str,
@@ -301,10 +306,11 @@ class CustomGBSAHandler(ParameterHandler):
         offset_radius: unit.Quantity,
         kappa: unit.Quantity,
     ):
-        """Add the GBSA energy terms to the CustomGBForce. These are identical for all the GB models."""
+        """Add the GBSA energy terms to the CustomGBForce. These are identical for all the Amber-based GB models."""
 
         # Base parameters
-        params = "; solventDielectric=%.16g; soluteDielectric=%.16g; surface_area_penalty=%.16g; solvent_radius=%.16g; kappa=%.16g; offset_radius=%.16g; PI=%.16g" % (
+        # Coulomb constant 1/(4*PI*EPSILON0) = 138.935485 (kJ.mol.nm)/e^2 using EPS0 = 0.000573 e^2/(kJ.mol.nm)
+        params = "; solventDielectric=%.16g; soluteDielectric=%.16g; surface_area_penalty=%.16g; solvent_radius=%.16g; kappa=%.16g; offset_radius=%.16g; PI=%.16g; ONE_4PI_EPS0=138.935485;" % (
             solvent_dielectric,
             solute_dielectric,
             surface_area_penalty.value_in_unit(
@@ -322,9 +328,8 @@ class CustomGBSAHandler(ParameterHandler):
 
         # Assign Debye-Huckel screening
         if kappa.value_in_unit(unit.nanometer ** -1) > 0:
-            # 138.935485 may be the coulomb constant in some unit system? The constant in kcal/mol/A/e^2 is 332.0636.
             force.addEnergyTerm(
-                "-0.5*138.935485*(1/soluteDielectric-exp(-kappa*B)/solventDielectric)*charge^2/B"
+                "-0.5*ONE_4PI_EPS0*(1/soluteDielectric-exp(-kappa*B)/solventDielectric)*charge^2/B"
                 + params,
                 openmm.CustomGBForce.SingleParticle,
             )
@@ -333,7 +338,7 @@ class CustomGBSAHandler(ParameterHandler):
             raise ValueError("kappa/ionic strength must be >= 0")
         else:
             force.addEnergyTerm(
-                "-0.5*138.935485*(1/soluteDielectric-1/solventDielectric)*charge^2/B"
+                "-0.5*ONE_4PI_EPS0*(1/soluteDielectric-1/solventDielectric)*charge^2/B"
                 + params,
                 openmm.CustomGBForce.SingleParticle,
             )
@@ -352,26 +357,26 @@ class CustomGBSAHandler(ParameterHandler):
         if cutoff is None:
             if kappa.value_in_unit(unit.nanometer ** -1) > 0:
                 force.addEnergyTerm(
-                    "-138.935485*(1/soluteDielectric-exp(-kappa*f)/solventDielectric)*charge1*charge2/f;"
+                    "-ONE_4PI_EPS0*(1/soluteDielectric-exp(-kappa*f)/solventDielectric)*charge1*charge2/f;"
                     "f=sqrt(r^2+B1*B2*exp(-r^2/(4*B1*B2)))" + params,
                     openmm.CustomGBForce.ParticlePairNoExclusions,
                 )
             else:
                 force.addEnergyTerm(
-                    "-138.935485*(1/soluteDielectric-1/solventDielectric)*charge1*charge2/f;"
+                    "-ONE_4PI_EPS0*(1/soluteDielectric-1/solventDielectric)*charge1*charge2/f;"
                     "f=sqrt(r^2+B1*B2*exp(-r^2/(4*B1*B2)))" + params,
                     openmm.CustomGBForce.ParticlePairNoExclusions,
                 )
         else:
             if kappa.value_in_unit(unit.nanometer ** -1) > 0:
                 force.addEnergyTerm(
-                    f"-138.935485*(1/soluteDielectric-exp(-kappa*f)/solventDielectric)*charge1*charge2*(1/f-{1/cutoff});"
+                    f"-ONE_4PI_EPS0*(1/soluteDielectric-exp(-kappa*f)/solventDielectric)*charge1*charge2*(1/f-{1/cutoff});"
                     "f=sqrt(r^2+B1*B2*exp(-r^2/(4*B1*B2)))" + params,
                     openmm.CustomGBForce.ParticlePairNoExclusions,
                 )
             else:
                 force.addEnergyTerm(
-                    f"-138.935485*(1/soluteDielectric-1/solventDielectric)*charge1*charge2*(1/f-{1/cutoff});"
+                    f"-ONE_4PI_EPS0*(1/soluteDielectric-1/solventDielectric)*charge1*charge2*(1/f-{1/cutoff});"
                     "f=sqrt(r^2+B1*B2*exp(-r^2/(4*B1*B2)))" + params,
                     openmm.CustomGBForce.ParticlePairNoExclusions,
                 )
@@ -382,6 +387,8 @@ class CustomGBSAHandler(ParameterHandler):
         unique_radii: List[float],
         offset_radius: unit.Quantity,
     ) -> List[float]:
+        """Generate a list that maps the GB radii to the lookup table. Used for the Neck models, i.e., GBn and GBn2."""
+
         table_positions = [
             (r + offset_radius.value_in_unit(unit.nanometer) - 0.1) * 200
             for r in unique_radii
@@ -391,6 +398,7 @@ class CustomGBSAHandler(ParameterHandler):
         index2 = [0] * num_radii
         weight1 = [0] * num_radii
         weight2 = [0] * num_radii
+
         for i, p in enumerate(table_positions):
             if p <= 0:
                 weight1[i] = 1.0
@@ -402,6 +410,7 @@ class CustomGBSAHandler(ParameterHandler):
                 index2[i] = index1[i] + 1
                 weight1[i] = index2[i] - p
                 weight2[i] = 1.0 - weight1[i]
+
         table = []
         for i in range(num_radii):
             for j in range(num_radii):
@@ -499,6 +508,26 @@ class CustomGBSAHandler(ParameterHandler):
             "".join(effective_radii),
             openmm.CustomGBForce.SingleParticle,
         )
+
+        # Convert `salt_concentration` to Debye length, kappa
+        if (
+            self.kappa.value_in_unit(unit.nanometer ** -1) == 0.0
+            and self.salt_concentration.value_in_unit(unit.moles / unit.liter) != 0.0
+        ):
+            # The constant is 1 / sqrt( epsilon_0 * kB / (2 * NA * q^2 * 1000) )
+            # where NA is avogadro's number, epsilon_0 is the permittivity of
+            # free space, q is the elementary charge (this number matches
+            # Amber's kappa conversion factor)
+            kappa = 50.33355 * np.sqrt(
+                self.salt_concentration.value_in_unit(unit.moles / unit.liter)
+                / self.solvent_dielectric
+                / self.temperature.value_in_unit(unit.kelvin)
+            )
+            # Multiply by 0.73 to account for ion exclusions, and multiply by 10
+            # to convert to 1/nm from 1/angstroms
+            kappa *= 7.3
+
+            self.kappa = kappa * unit.nanometer ** -1
 
         # Create energy terms
         self._create_gbsa_energy_terms(
