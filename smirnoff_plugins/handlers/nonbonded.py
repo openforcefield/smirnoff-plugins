@@ -33,6 +33,20 @@ class CustomNonbondedHandler(ParameterHandler, abc.ABC):
 
     @classmethod
     @abc.abstractmethod
+    def _default_values(cls) -> Tuple[float, ...]:
+        """
+        Returns a tuple of default values which are first applied to every particle before applying SMARTs matched parameters.
+        This is useful for vsites which might need special values.
+
+        Returns
+        -------
+            A tuple of default per particle parameters for this force type.
+
+        """
+        raise NotImplementedError()
+
+    @classmethod
+    @abc.abstractmethod
     def _get_potential_function(cls) -> Tuple[str, List[str], List[str]]:
         """Returns the the potential energy function applied by this handler, as well
         as the symbols which appear in the function.
@@ -181,7 +195,7 @@ class CustomNonbondedHandler(ParameterHandler, abc.ABC):
         for parameter, value in self._pre_computed_terms().items():
             force.addGlobalParameter(parameter, value)
 
-        initial_values = tuple(0.0 for _ in range(len(potential_parameters)))
+        initial_values = self._default_values()
 
         # Set some starting dummy values
         for _ in topology.topology_particles:
@@ -258,6 +272,10 @@ class DampedBuckingham68(CustomNonbondedHandler):
         return {"d2": d2, "d3": d3, "d4": d4, "d5": d5, "d6": d6, "d7": d7, "d8": d8}
 
     @classmethod
+    def _default_values(cls) -> Tuple[float, ...]:
+        return 0.0, 0.0, 0.0, 0.0
+
+    @classmethod
     def _get_potential_function(cls) -> Tuple[str, List[str], List[str]]:
 
         potential_function = (
@@ -320,8 +338,8 @@ class DoubleExponential(CustomNonbondedHandler):
     """
 
     # these parameters have no units
-    alpha = ParameterAttribute(18.7)
-    beta = ParameterAttribute(3.3)
+    alpha = ParameterAttribute(default=18.7)
+    beta = ParameterAttribute(default=3.3)
 
     class DEType(ParameterType):
 
@@ -365,6 +383,10 @@ class DoubleExponential(CustomNonbondedHandler):
             "RepulsionFactor": repulsion_factor,
             "AttractionFactor": attraction_factor,
         }
+
+    @classmethod
+    def _default_values(cls) -> Tuple[float, ...]:
+        return 1.0, 0.0
 
     @classmethod
     def _get_potential_function(cls) -> Tuple[str, List[str], List[str]]:
