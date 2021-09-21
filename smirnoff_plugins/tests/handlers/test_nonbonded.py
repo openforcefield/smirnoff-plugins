@@ -180,16 +180,6 @@ def test_scaled_de_energy():
     off_top = ethane.to_topology()
     omm_top = off_top.to_openmm()
     system_no_scale = ff.create_openmm_system(topology=off_top)
-    existing_forces = [
-        system_no_scale.getForce(i)
-        for i in range(system_no_scale.getNumForces())
-        if isinstance(system_no_scale.getForce(i), openmm.NonbondedForce)
-    ]
-    existing_exclusions = set(
-        tuple(sorted(existing_force.getExceptionParameters(i)[0:2]))
-        for existing_force in existing_forces
-        for i in range(existing_force.getNumExceptions())
-    )
     energy_no_scale = evaluate_energy(
         system=system_no_scale, topology=omm_top, positions=ethane.conformers[0]
     )
