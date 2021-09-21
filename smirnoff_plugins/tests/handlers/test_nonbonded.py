@@ -1,7 +1,12 @@
 import pytest
+from openff.toolkit.topology import Molecule
+from openff.toolkit.typing.engines.smirnoff import ForceField
 from simtk import openmm, unit
 
-from smirnoff_plugins.utilities.openmm import evaluate_water_energy_at_distances
+from smirnoff_plugins.utilities.openmm import (
+    evaluate_energy,
+    evaluate_water_energy_at_distances,
+)
 
 
 @pytest.mark.parametrize(
@@ -62,6 +67,7 @@ def test_double_exp_energies(ideal_water_force_field):
     double_exp = ideal_water_force_field.get_parameter_handler("DoubleExponential")
     double_exp.alpha = alpha
     double_exp.beta = beta
+    double_exp.scale14 = 1
     double_exp.add_parameter(
         {
             "smirks": "[#1]-[#8X2H2+0:1]-[#1]",
@@ -82,6 +88,7 @@ def test_double_exp_energies(ideal_water_force_field):
     )
     # calculated by hand (kJ / mol), at r_min the energy should be epsilon
     ref_values = [457.0334854, -0.635968, -0.4893932627]
+    print(energies)
     for i, energy in enumerate(energies):
         assert energy == pytest.approx(ref_values[i])
 
@@ -127,3 +134,71 @@ def test_b68_energies(ideal_water_force_field):
     ref_values = [329.305, 1.303183, -0.686559]
     for i, energy in enumerate(energies):
         assert energy == pytest.approx(ref_values[i])
+
+
+def test_scaled_de_energy():
+    """For a molecule with 1-4 interactions make sure the scaling is correctly applied.
+    Note that only nonbonded parameters are non zero.
+    """
+
+    ff = ForceField(load_plugins=True)
+    ff.get_parameter_handler("Electrostatics")
+
+    ff.get_parameter_handler(
+        "ChargeIncrementModel",
+        {"version": "0.3", "partial_charge_method": "formal_charge"},
+    )
+    vdw_handler = ff.get_parameter_handler("vdW")
+    vdw_handler.add_parameter(
+        {
+            "smirks": "[*:1]",
+            "epsilon": 0.0 * unit.kilojoule_per_mole,
+            "sigma": 1.0 * unit.angstrom,
+        }
+    )
+    double_exp = ff.get_parameter_handler("DoubleExponential")
+    double_exp.alpha = 18.7
+    double_exp.beta = 3.3
+    double_exp.scale14 = 1
+    double_exp.add_parameter(
+        {
+            "smirks": "[#6X4:1]",
+            "r_min": 3.816 * unit.angstrom,
+            "epsilon": 0.1094 * unit.kilocalorie_per_mole,
+        }
+    )
+    double_exp.add_parameter(
+        {
+            "smirks": "[#1:1]-[#6X4]",
+            "r_min": 2.974 * unit.angstrom,
+            "epsilon": 0.0157 * unit.kilocalorie_per_mole,
+        }
+    )
+
+    ethane = Molecule.from_smiles("CC")
+    ethane.generate_conformers(n_conformers=1)
+    off_top = ethane.to_topology()
+    omm_top = off_top.to_openmm()
+    system_no_scale = ff.create_openmm_system(topology=off_top)
+    existing_forces = [
+        system_no_scale.getForce(i)
+        for i in range(system_no_scale.getNumForces())
+        if isinstance(system_no_scale.getForce(i), openmm.NonbondedForce)
+    ]
+    existing_exclusions = set(
+        tuple(sorted(existing_force.getExceptionParameters(i)[0:2]))
+        for existing_force in existing_forces
+        for i in range(existing_force.getNumExceptions())
+    )
+    energy_no_scale = evaluate_energy(
+        system=system_no_scale, topology=omm_top, positions=ethane.conformers[0]
+    )
+    # now scale 1-4 by half
+    double_exp.scale14 = 0.5
+    system_scaled = ff.create_openmm_system(topology=off_top)
+    energy_scaled = evaluate_energy(
+        system=system_scaled, topology=omm_top, positions=ethane.conformers[0]
+    )
+    assert double_exp.scale14 * energy_no_scale == pytest.approx(
+        energy_scaled, abs=1e-6
+    )

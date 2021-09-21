@@ -273,7 +273,8 @@ def evaluate_water_energy_at_distances(
         * unit.angstrom
         for x in distances
     ]
-
+    with open("system.xml", "w") as f:
+        f.write(openmm.XmlSerializer.serialize(omm_system))
     # Add the virtual sites to the OpenMM topology and positions.
     omm_topology = topology.to_openmm()
     omm_chain = [*omm_topology.chains()][-1]
@@ -314,3 +315,40 @@ def evaluate_water_energy_at_distances(
         )
 
     return energies
+
+
+def evaluate_energy(
+    system: openmm.System, topology: app.Topology, positions: unit.Quantity
+) -> float:
+    """
+    For the given openmm system build a simulation and evaluate the energies.
+
+    Parameters
+    ----------
+    system:
+        The openmm system that should be used to evaluate the energies.
+    topology:
+        The openmm topology that should be used to build the simulation object.
+    positions:
+        The positions that should be used when evaluating the energies.
+
+
+    Returns
+    -------
+        The energy in kcal/mol,
+    """
+
+    integrator = openmm.LangevinIntegrator(
+        300 * unit.kelvin,  # simulation temperature,
+        1.0 / unit.picosecond,  # friction
+        2.0 * unit.femtoseconds,  # simulation timestep
+    )
+
+    platform = openmm.Platform.getPlatformByName("CPU")
+
+    simulation = app.Simulation(topology, system, integrator, platform)
+    # assume the positions are already padded.
+    simulation.context.setPositions(positions)
+    simulation.context.computeVirtualSites()
+    state = simulation.context.getState(getEnergy=True)
+    return state.getPotentialEnergy().value_in_unit(unit.kilojoule_per_mole)
