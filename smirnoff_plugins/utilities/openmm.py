@@ -273,8 +273,6 @@ def evaluate_water_energy_at_distances(
         * unit.angstrom
         for x in distances
     ]
-    with open("system.xml", "w") as f:
-        f.write(openmm.XmlSerializer.serialize(omm_system))
     # Add the virtual sites to the OpenMM topology and positions.
     omm_topology = topology.to_openmm()
     omm_chain = [*omm_topology.chains()][-1]

@@ -73,8 +73,7 @@ class CustomNonbondedHandler(ParameterHandler, abc.ABC):
         for i, expression in enumerate(potential):
             if "=" not in expression:
                 # This is the final energy so modify
-                if "(" not in expression and ")" not in expression:
-                    expression = "(" + expression + ")"
+                expression = "(" + expression + ")"
                 expression += "*scale14"
                 potential[i] = expression
                 break
@@ -255,7 +254,7 @@ class CustomNonbondedHandler(ParameterHandler, abc.ABC):
             force.addExclusion(*missing_exclusion)
 
         # Add 1-4 scaled interactions only if the scale is not 1
-        if self.scale14 != 1:
+        if not numpy.isclose(self.scale14, 1.0):
             # build a custom bond force to hold the 1-4s
             scaled_force = openmm.CustomBondForce(self._get_scaled_potential_function())
 

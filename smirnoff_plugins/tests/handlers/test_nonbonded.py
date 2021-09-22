@@ -88,7 +88,6 @@ def test_double_exp_energies(ideal_water_force_field):
     )
     # calculated by hand (kJ / mol), at r_min the energy should be epsilon
     ref_values = [457.0334854, -0.635968, -0.4893932627]
-    print(energies)
     for i, energy in enumerate(energies):
         assert energy == pytest.approx(ref_values[i])
 
