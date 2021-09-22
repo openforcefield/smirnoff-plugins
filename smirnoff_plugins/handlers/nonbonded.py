@@ -58,6 +58,27 @@ class CustomNonbondedHandler(ParameterHandler, abc.ABC):
         """
         raise NotImplementedError()
 
+    @classmethod
+    def _get_scaled_potential_function(cls) -> str:
+        """Returns a modified version of the potential function which handles the 1-4 scaled interactions.
+        Note:
+            These are added to the system as a CustomBondForce see <https://github.com/openmm/openmm/issues/1901> for more info.
+
+        Returns
+        -------
+            A string of the modified potential to be used for 1-4 interactions.
+        """
+        potential = cls._get_potential_function()[0]
+        potential = potential.split(";")
+        for i, expression in enumerate(potential):
+            if "=" not in expression:
+                # This is the final energy so modify
+                expression = "(" + expression + ")"
+                expression += "*scale14"
+                potential[i] = expression
+                break
+        return ";".join(potential)
+
     def check_handler_compatibility(self, other_handler: ParameterHandler):
         """Checks whether this ParameterHandler encodes compatible physics as another
         ParameterHandler. This is called if a second handler is attempted to be
@@ -92,13 +113,11 @@ class CustomNonbondedHandler(ParameterHandler, abc.ABC):
         )
 
     @abc.abstractmethod
-    def _apply_parameter(
+    def _process_parameters(
         self,
-        force: openmm.CustomNonbondedForce,
-        atom_index: int,
         parameter_type: ParameterType,
-    ):
-        """Apply a parameter to the specified atom."""
+    ) -> Tuple[float, ...]:
+        """Process the parameters of the parameter type, by applying combination rule pre-processing."""
         raise NotImplementedError()
 
     @abc.abstractmethod
@@ -151,7 +170,7 @@ class CustomNonbondedHandler(ParameterHandler, abc.ABC):
                     # the separation at which the switch function starts
                     force.setSwitchingDistance(self.cutoff - self.switch_width)
 
-    def create_force(self, system, topology, **_):
+    def create_force(self, system, topology: Topology, **_):
 
         # Check to see if the system already contains a normal non-bonded force with
         # particles which have a non-zero epsilon.
@@ -207,7 +226,9 @@ class CustomNonbondedHandler(ParameterHandler, abc.ABC):
         matches = self.find_matches(topology)
 
         for atom_key, atom_match in matches.items():
-            self._apply_parameter(force, atom_key[0], atom_match.parameter_type)
+            force.setParticleParameters(
+                atom_key[0], self._process_parameters(atom_match.parameter_type)
+            )
 
         bonds = [
             [atom.topology_particle_index for atom in bond.atoms]
@@ -222,6 +243,7 @@ class CustomNonbondedHandler(ParameterHandler, abc.ABC):
             tuple(sorted(force.getExclusionParticles(i)))
             for i in range(force.getNumExclusions())
         )
+        # Note 14 exceptions have not been added yet and are missed
         existing_exclusions = set(
             tuple(sorted(existing_force.getExceptionParameters(i)[0:2]))
             for existing_force in existing_forces
@@ -230,6 +252,43 @@ class CustomNonbondedHandler(ParameterHandler, abc.ABC):
 
         for missing_exclusion in existing_exclusions - current_exclusions:
             force.addExclusion(*missing_exclusion)
+
+        # Add 1-4 scaled interactions only if the scale is not 1
+        if not numpy.isclose(self.scale14, 1.0):
+            # build a custom bond force to hold the 1-4s
+            scaled_force = openmm.CustomBondForce(self._get_scaled_potential_function())
+
+            for i in range(1, 3):
+                for symbol in potential_parameters:
+                    scaled_force.addPerBondParameter(symbol + str(i))
+
+            for parameter in global_parameters:
+                value = getattr(self, parameter)
+                scaled_force.addGlobalParameter(parameter, value)
+            # add the scale as a global
+            scaled_force.addGlobalParameter("scale14", self.scale14)
+
+            for parameter, value in self._pre_computed_terms().items():
+                scaled_force.addGlobalParameter(parameter, value)
+            # add the scaled 14 interaction and add an exclusion
+            for neighbors in topology.nth_degree_neighbors(n_degrees=3):
+                atom_index1, atom_index2 = (
+                    atom.topology_particle_index for atom in neighbors
+                )
+                force.addExclusion(atom_index1, atom_index2)
+                scaled_force.addBond(
+                    atom_index1,
+                    atom_index2,
+                    (
+                        *self._process_parameters(
+                            matches[(atom_index1,)].parameter_type
+                        ),
+                        *self._process_parameters(
+                            matches[(atom_index2,)].parameter_type
+                        ),
+                    ),
+                )
+            system.addForce(scaled_force)
 
         # Apply the nonbonded settings.
         self._apply_nonbonded_settings(topology, force)
@@ -306,28 +365,23 @@ class DampedBuckingham68(CustomNonbondedHandler):
 
         return potential_function, potential_parameters, global_parameters
 
-    def _apply_parameter(
+    def _process_parameters(
         self,
-        force: openmm.CustomNonbondedForce,
-        atom_index: int,
         parameter_type: B68Type,
-    ):
+    ) -> Tuple[float, ...]:
 
-        force.setParticleParameters(
-            atom_index,
-            (
-                numpy.sqrt(parameter_type.a.value_in_unit(unit.kilojoule_per_mole)),
-                numpy.sqrt(parameter_type.b.value_in_unit(unit.nanometer ** -1)),
-                numpy.sqrt(
-                    parameter_type.c6.value_in_unit(
-                        unit.kilojoule_per_mole * unit.nanometer ** 6
-                    )
-                ),
-                numpy.sqrt(
-                    parameter_type.c8.value_in_unit(
-                        unit.kilojoule_per_mole * unit.nanometer ** 8
-                    )
-                ),
+        return (
+            numpy.sqrt(parameter_type.a.value_in_unit(unit.kilojoule_per_mole)),
+            numpy.sqrt(parameter_type.b.value_in_unit(unit.nanometer ** -1)),
+            numpy.sqrt(
+                parameter_type.c6.value_in_unit(
+                    unit.kilojoule_per_mole * unit.nanometer ** 6
+                )
+            ),
+            numpy.sqrt(
+                parameter_type.c8.value_in_unit(
+                    unit.kilojoule_per_mole * unit.nanometer ** 8
+                )
             ),
         )
 
@@ -352,22 +406,15 @@ class DoubleExponential(CustomNonbondedHandler):
     _TAGNAME = "DoubleExponential"  # SMIRNOFF tag name to process
     _INFOTYPE = DEType  # info type to store
 
-    def _apply_parameter(
+    def _process_parameters(
         self,
-        force: openmm.CustomNonbondedForce,
-        atom_index: int,
         parameter_type: DEType,
-    ):
+    ) -> Tuple[float, ...]:
         # sqrt the epsilon during assignment
         # half r_min during assigment
-        force.setParticleParameters(
-            atom_index,
-            (
-                parameter_type.r_min.value_in_unit(unit.nanometers) / 2,
-                numpy.sqrt(
-                    parameter_type.epsilon.value_in_unit(unit.kilojoule_per_mole)
-                ),
-            ),
+        return (
+            parameter_type.r_min.value_in_unit(unit.nanometers) / 2,
+            numpy.sqrt(parameter_type.epsilon.value_in_unit(unit.kilojoule_per_mole)),
         )
 
     def _pre_computed_terms(self) -> Dict[str, float]:

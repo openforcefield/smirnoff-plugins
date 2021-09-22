@@ -139,7 +139,6 @@ def ideal_water_force_field() -> ForceField:
             "sigma": 0.0 * unit.nanometers,
         }
     )
-    ff.get_parameter_handler("Electrostatics")
     # add the library charges
     library_charge = ff.get_parameter_handler("LibraryCharges")
     library_charge.add_parameter(
