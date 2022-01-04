@@ -215,7 +215,9 @@ class CustomGBSAHandler(ParameterHandler):
 
     # This is where we define all the keywords that may be defined in the section header in the OFFXML
 
-    gb_model = ParameterAttribute(converter=_allow_only(["HCT", "OBC", "GBn", "GBn2"]))
+    gb_model = ParameterAttribute(
+        converter=_allow_only(["HCT", "OBC", "GBn", "GBn2", "MKG"])
+    )
 
     # Global parameters for effective radii (ignored in HCT and GBn2 models)
     alpha = ParameterAttribute(default=1.0, converter=float)
@@ -253,6 +255,12 @@ class CustomGBSAHandler(ParameterHandler):
         default=0.0 * unit.nanometer ** -1, unit=unit.nanometer ** -1
     )
 
+    # MKG model parameters
+    mkg_mag = ParameterAttribute(default=0.1, converter=float)
+    mkg_power = ParameterAttribute(default=2.5, converter=float)
+    mkg_width = ParameterAttribute(default=0.4, unit=unit.nanometer)
+    mkg_scale = ParameterAttribute(default=0.5, converter=float)
+
     # Tolerance when comparing float attributes for handler compatibility.
     _SCALETOL = 1e-5
 
@@ -278,8 +286,11 @@ class CustomGBSAHandler(ParameterHandler):
             "neck_cutoff",
             "solvent_dielectric",
             "solute_dielectric",
+            "mkg_mag",
+            "mkg_power",
+            "mkg_scale",
         ]
-        string_attrs_to_compare = ["sa_model"]
+        string_attrs_to_compare = ["sa_model", "mkg_width"]
         unit_attrs_to_compare = [
             "surface_area_penalty",
             "solvent_radius",
@@ -305,28 +316,36 @@ class CustomGBSAHandler(ParameterHandler):
         solvent_radius: unit.Quantity,
         offset_radius: unit.Quantity,
         kappa: unit.Quantity,
+        model: str,
+        mkg_mag: float,
+        mkg_power: float,
+        mkg_width: unit.Quantity,
+        mkg_scale: float,
     ):
         """Add the GBSA energy terms to the CustomGBForce. These are identical for all the Amber-based GB models."""
 
         # Base parameters
         # Coulomb constant 1/(4*PI*EPSILON0) = 138.935485 (kJ.mol.nm)/e^2 using EPS0 = 0.000573 e^2/(kJ.mol.nm)
-        params = "; solventDielectric=%.16g; soluteDielectric=%.16g; surface_area_penalty=%.16g; solvent_radius=%.16g; kappa=%.16g; offset_radius=%.16g; PI=%.16g; ONE_4PI_EPS0=138.935485;" % (
-            solvent_dielectric,
-            solute_dielectric,
-            surface_area_penalty.value_in_unit(
-                unit.kilojoule / unit.mole / unit.nanometer ** 2
-            ),
-            solvent_radius.value_in_unit(unit.nanometer),
-            kappa.value_in_unit(unit.nanometer ** -1),
-            offset_radius.value_in_unit(unit.nanometer),
-            np.pi,
+        params = (
+            "; solventDielectric=%.16g; soluteDielectric=%.16g; surface_area_penalty=%.16g; solvent_radius=%.16g; kappa=%.16g; offset_radius=%.16g; PI=%.16g; ONE_4PI_EPS0=138.935485;"
+            % (
+                solvent_dielectric,
+                solute_dielectric,
+                surface_area_penalty.value_in_unit(
+                    unit.kilojoule / unit.mole / unit.nanometer ** 2
+                ),
+                solvent_radius.value_in_unit(unit.nanometer),
+                kappa.value_in_unit(unit.nanometer ** -1),
+                offset_radius.value_in_unit(unit.nanometer),
+                np.pi,
+            )
         )
 
         # Set cutoff for periodic systems
         if cutoff is not None:
             params += "; cutoff=%.16g" % cutoff
 
-        # Assign Debye-Huckel screening
+        # Assign the Generalized Born equation for the self term
         if kappa.value_in_unit(unit.nanometer ** -1) > 0:
             force.addEnergyTerm(
                 "-0.5*ONE_4PI_EPS0*(1/soluteDielectric-exp(-kappa*B)/solventDielectric)*charge^2/B"
@@ -353,31 +372,46 @@ class CustomGBSAHandler(ParameterHandler):
         elif gbsa_model is not None:
             raise ValueError(f"Unknown surface area method: {gbsa_model}")
 
-        # Assign the Generalized Born equation
+        # Assign the Generalized Born equation for the cross term
         if cutoff is None:
             if kappa.value_in_unit(unit.nanometer ** -1) > 0:
                 force.addEnergyTerm(
                     "-ONE_4PI_EPS0*(1/soluteDielectric-exp(-kappa*f)/solventDielectric)*charge1*charge2/f;"
-                    "f=sqrt(r^2+B1*B2*exp(-r^2/(4*B1*B2)))" + params,
+                    + "f=sqrt(r^2 + B1*B2*exp(-r^2/(4*B1*B2)))"
+                    + params,
                     openmm.CustomGBForce.ParticlePairNoExclusions,
                 )
             else:
-                force.addEnergyTerm(
-                    "-ONE_4PI_EPS0*(1/soluteDielectric-1/solventDielectric)*charge1*charge2/f;"
-                    "f=sqrt(r^2+B1*B2*exp(-r^2/(4*B1*B2)))" + params,
-                    openmm.CustomGBForce.ParticlePairNoExclusions,
-                )
+                if model == "MKG":
+                    fgb_kernel = "F_gb=mag*r^power*exp(-(r/width)^2)+log(exp(scale*sqrt(B1*B2))+exp(scale*r))/scale;"
+                    fgb_kernel += f"mag={mkg_mag}; power={mkg_power}; width={mkg_width.value_in_unit(unit.nanometer)}; scale={mkg_scale}"
+
+                    force.addEnergyTerm(
+                        "-ONE_4PI_EPS0*(1/soluteDielectric-1/solventDielectric)*charge1*charge2/F_gb;"
+                        + fgb_kernel
+                        + params,
+                        openmm.CustomGBForce.ParticlePairNoExclusions,
+                    )
+                else:
+                    force.addEnergyTerm(
+                        "-ONE_4PI_EPS0*(1/soluteDielectric-1/solventDielectric)*charge1*charge2/f;"
+                        + "f=sqrt(r^2 + B1*B2*exp(-r^2/(4*B1*B2)))"
+                        + params,
+                        openmm.CustomGBForce.ParticlePairNoExclusions,
+                    )
         else:
             if kappa.value_in_unit(unit.nanometer ** -1) > 0:
                 force.addEnergyTerm(
                     f"-ONE_4PI_EPS0*(1/soluteDielectric-exp(-kappa*f)/solventDielectric)*charge1*charge2*(1/f-{1/cutoff});"
-                    "f=sqrt(r^2+B1*B2*exp(-r^2/(4*B1*B2)))" + params,
+                    + "f=sqrt(r^2 + B1*B2*exp(-r^2/(4*B1*B2)))"
+                    + params,
                     openmm.CustomGBForce.ParticlePairNoExclusions,
                 )
             else:
                 force.addEnergyTerm(
                     f"-ONE_4PI_EPS0*(1/soluteDielectric-1/solventDielectric)*charge1*charge2*(1/f-{1/cutoff});"
-                    "f=sqrt(r^2+B1*B2*exp(-r^2/(4*B1*B2)))" + params,
+                    + "f=sqrt(r^2 + B1*B2*exp(-r^2/(4*B1*B2)))"
+                    + params,
                     openmm.CustomGBForce.ParticlePairNoExclusions,
                 )
 
@@ -487,9 +521,7 @@ class CustomGBSAHandler(ParameterHandler):
             else "",
         ]
         gbsa_force.addComputedValue(
-            "I",
-            "".join(integral),
-            openmm.CustomGBForce.ParticlePairNoExclusions,
+            "I", "".join(integral), openmm.CustomGBForce.ParticlePairNoExclusions,
         )
 
         # Effective radius
@@ -504,9 +536,7 @@ class CustomGBSAHandler(ParameterHandler):
                 f"psi=I*or; radius=or+offset; offset={self.offset_radius.value_in_unit(unit.nanometer)}",
             ]
         gbsa_force.addComputedValue(
-            "B",
-            "".join(effective_radii),
-            openmm.CustomGBForce.SingleParticle,
+            "B", "".join(effective_radii), openmm.CustomGBForce.SingleParticle,
         )
 
         # Convert `salt_concentration` to Debye length, kappa
@@ -540,6 +570,11 @@ class CustomGBSAHandler(ParameterHandler):
             self.solvent_radius,
             self.offset_radius,
             self.kappa,
+            self.gb_model,
+            self.mkg_mag,
+            self.mkg_power,
+            self.mkg_width,
+            self.mkg_scale,
         )
 
         # Iterate over all defined GBSA types, allowing later matches to override earlier ones.

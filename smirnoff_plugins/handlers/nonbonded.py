@@ -113,10 +113,7 @@ class CustomNonbondedHandler(ParameterHandler, abc.ABC):
         )
 
     @abc.abstractmethod
-    def _process_parameters(
-        self,
-        parameter_type: ParameterType,
-    ) -> Tuple[float, ...]:
+    def _process_parameters(self, parameter_type: ParameterType,) -> Tuple[float, ...]:
         """Process the parameters of the parameter type, by applying combination rule pre-processing."""
         raise NotImplementedError()
 
@@ -365,10 +362,7 @@ class DampedBuckingham68(CustomNonbondedHandler):
 
         return potential_function, potential_parameters, global_parameters
 
-    def _process_parameters(
-        self,
-        parameter_type: B68Type,
-    ) -> Tuple[float, ...]:
+    def _process_parameters(self, parameter_type: B68Type,) -> Tuple[float, ...]:
 
         return (
             numpy.sqrt(parameter_type.a.value_in_unit(unit.kilojoule_per_mole)),
@@ -406,10 +400,7 @@ class DoubleExponential(CustomNonbondedHandler):
     _TAGNAME = "DoubleExponential"  # SMIRNOFF tag name to process
     _INFOTYPE = DEType  # info type to store
 
-    def _process_parameters(
-        self,
-        parameter_type: DEType,
-    ) -> Tuple[float, ...]:
+    def _process_parameters(self, parameter_type: DEType,) -> Tuple[float, ...]:
         # sqrt the epsilon during assignment
         # half r_min during assigment
         return (
