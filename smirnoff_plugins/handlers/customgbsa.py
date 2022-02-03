@@ -383,7 +383,7 @@ class CustomGBSAHandler(ParameterHandler):
                 )
             else:
                 if model == "MKG":
-                    fgb_kernel = "F_gb=mag*r^power*exp(-(r/width)^2)+log(exp(scale*sqrt(B1*B2))+exp(scale*r))/scale;"
+                    fgb_kernel = "F_gb=mag*(r^power)*exp(-(r/width)^2)+log(exp(scale*sqrt(B1*B2))+exp(scale*r))/scale;"
                     fgb_kernel += f"mag={mkg_mag}; power={mkg_power}; width={mkg_width.value_in_unit(unit.nanometer)}; scale={mkg_scale}"
 
                     force.addEnergyTerm(
