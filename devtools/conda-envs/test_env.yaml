@@ -8,7 +8,7 @@ dependencies:
   - pip
 
     # Core dependencies
-  - openff-toolkit
+  - openff-toolkit =0.10.4
   - packaging  # Missing OFF TK dependency.
   - openmm
 
