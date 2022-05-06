@@ -56,7 +56,7 @@ def buckingham_water_force_field() -> ForceField:
     virtual_site_handler = force_field.get_parameter_handler("VirtualSites")
     virtual_site_handler.add_parameter(
         {
-            "smirks": "[#1:1]-[#8X2H2+0:2]-[#1:3]",
+            "smirks": "[#1:2]-[#8X2H2+0:1]-[#1:3]",
             "type": "DivalentLonePair",
             "distance": -0.0106 * unit.nanometers,
             "outOfPlaneAngle": 0.0 * unit.degrees,
