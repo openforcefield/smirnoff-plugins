@@ -106,14 +106,14 @@ def test_b68_energies(ideal_water_force_field):
     buckingham_handler = ideal_water_force_field.get_parameter_handler(
         "DampedBuckingham68"
     )
-    buckingham_handler.gamma = gamma * unit.nanometer ** -1
+    buckingham_handler.gamma = gamma * unit.nanometer**-1
     buckingham_handler.add_parameter(
         {
             "smirks": "[#1:1]-[#8X2H2+0]-[#1]",
             "a": 0.0 * unit.kilojoule_per_mole,
             "b": 0.0 / unit.nanometer,
-            "c6": 0.0 * unit.kilojoule_per_mole * unit.nanometer ** 6,
-            "c8": 0.0 * unit.kilojoule_per_mole * unit.nanometer ** 8,
+            "c6": 0.0 * unit.kilojoule_per_mole * unit.nanometer**6,
+            "c8": 0.0 * unit.kilojoule_per_mole * unit.nanometer**8,
         }
     )
     buckingham_handler.add_parameter(
@@ -121,8 +121,8 @@ def test_b68_energies(ideal_water_force_field):
             "smirks": "[#1]-[#8X2H2+0:1]-[#1]",
             "a": a * unit.kilojoule_per_mole,
             "b": b / unit.nanometer,
-            "c6": c6 * unit.kilojoule_per_mole * unit.nanometer ** 6,
-            "c8": c8 * unit.kilojoule_per_mole * unit.nanometer ** 8,
+            "c6": c6 * unit.kilojoule_per_mole * unit.nanometer**6,
+            "c8": c8 * unit.kilojoule_per_mole * unit.nanometer**8,
         }
     )
 

@@ -56,7 +56,7 @@ def buckingham_water_force_field() -> ForceField:
     virtual_site_handler = force_field.get_parameter_handler("VirtualSites")
     virtual_site_handler.add_parameter(
         {
-            "smirks": "[#1:1]-[#8X2H2+0:2]-[#1:3]",
+            "smirks": "[#1:2]-[#8X2H2+0:1]-[#1:3]",
             "type": "DivalentLonePair",
             "distance": -0.0106 * unit.nanometers,
             "outOfPlaneAngle": 0.0 * unit.degrees,
@@ -75,8 +75,8 @@ def buckingham_water_force_field() -> ForceField:
             "smirks": "[#1:1]-[#8X2H2+0]-[#1]",
             "a": 0.0 * unit.kilojoule_per_mole,
             "b": 0.0 / unit.nanometer,
-            "c6": 0.0 * unit.kilojoule_per_mole * unit.nanometer ** 6,
-            "c8": 0.0 * unit.kilojoule_per_mole * unit.nanometer ** 8,
+            "c6": 0.0 * unit.kilojoule_per_mole * unit.nanometer**6,
+            "c8": 0.0 * unit.kilojoule_per_mole * unit.nanometer**8,
         }
     )
     buckingham_handler.add_parameter(
@@ -84,8 +84,8 @@ def buckingham_water_force_field() -> ForceField:
             "smirks": "[#1]-[#8X2H2+0:1]-[#1]",
             "a": 1600000.0 * unit.kilojoule_per_mole,
             "b": 42.00 / unit.nanometer,
-            "c6": 0.003 * unit.kilojoule_per_mole * unit.nanometer ** 6,
-            "c8": 0.00003 * unit.kilojoule_per_mole * unit.nanometer ** 8,
+            "c6": 0.003 * unit.kilojoule_per_mole * unit.nanometer**6,
+            "c8": 0.00003 * unit.kilojoule_per_mole * unit.nanometer**8,
         }
     )
     return force_field
