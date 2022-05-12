@@ -1,4 +1,6 @@
-from openff.toolkit.typing.engines.smirnoff.parameters import _NonbondedHandler
+import warnings
+
+from openff.toolkit.topology import Molecule, TopologyAtom, TopologyMolecule
 from openff.toolkit.typing.engines.smirnoff import (
     ElectrostaticsHandler,
     ParameterAttribute,
@@ -6,8 +8,8 @@ from openff.toolkit.typing.engines.smirnoff import (
     ParameterType,
     vdWHandler,
 )
-from openff.toolkit.topology import Molecule, TopologyMolecule, TopologyAtom
-import warnings
+from openff.toolkit.typing.engines.smirnoff.parameters import _NonbondedHandler
+
 
 class EspalomaHandler(_NonbondedHandler):
     """Handle SMIRNOFF ``<ToolkitAM1BCC>`` tags
@@ -19,7 +21,7 @@ class EspalomaHandler(_NonbondedHandler):
     _KWARGS = []  # Kwargs to catch when create_force is called
 
     def check_handler_compatibility(
-            self, other_handler, assume_missing_is_default=True
+        self, other_handler, assume_missing_is_default=True
     ):
         """
         Checks whether this ParameterHandler encodes compatible physics as another ParameterHandler. This is
@@ -36,8 +38,9 @@ class EspalomaHandler(_NonbondedHandler):
 
     def create_force(self, system, topology, **kwargs):
         import os
-        import torch
+
         import espaloma as esp
+        import torch
         from openff.toolkit.utils import get_data_file_path
 
         # grab pretrained model
@@ -52,15 +55,15 @@ class EspalomaHandler(_NonbondedHandler):
             if self.check_charges_assigned(ref_mol, topology):
                 continue
 
-
             # create an Espaloma Graph object to represent the molecule of interest
             molecule_graph = esp.Graph(Molecule(ref_mol))
 
             # apply a trained espaloma model to assign parameters
             espaloma_model = torch.load("espaloma_model.pt")
             espaloma_model(molecule_graph.heterograph)
-            from simtk import unit
             import numpy as np
+            from simtk import unit
+
             charges = unit.elementary_charge * molecule_graph.nodes["n1"].data[
                 "q"
             ].flatten().detach().cpu().numpy().astype(
@@ -101,4 +104,3 @@ class EspalomaHandler(_NonbondedHandler):
                     )
             # Finally, mark that charges were assigned for this reference molecule
             self.mark_charges_assigned(ref_mol, topology)
-
