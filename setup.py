@@ -39,7 +39,8 @@ setup(
     entry_points={
         "openff.toolkit.plugins.handlers": [
             "DampedBuckingham68 = smirnoff_plugins.handlers.nonbonded:DampedBuckingham68",
-            "DoubleExponential = smirnoff_plugins.handlers.nonbonded:DoubleExponential"
+            "DoubleExponential = smirnoff_plugins.handlers.nonbonded:DoubleExponential",
+            "CustomGBSAHandler = smirnoff_plugins.handlers.customgbsa:CustomGBSAHandler",
         ]
     },
 )
