@@ -385,6 +385,93 @@ class DampedBuckingham68(CustomNonbondedHandler):
             ),
         )
 
+class DampedExp6810(CustomNonbondedHandler):
+    """ Damped exponential-6-8-10 potential used in <https://doi.org/10.1021/acs.jctc.0c00837> """
+
+    forceAtZero = ParameterAttribute(default=49.6144931952, unit=unit.kilojoules_per_mole*unit.nanometer**-1)
+
+    class E6810Type(ParameterType):
+
+        _VALENCE_TYPE = "Atom"  # ChemicalEnvironment valence type expected for SMARTS
+        _ELEMENT_NAME = "Atom"
+
+        sigma = ParameterAttribute(default=None, unit=unit.nanometer)
+        beta = ParameterAttribute(default=None, unit=unit.nanometer**-1)
+        c6 = ParameterAttribute(
+            default=None, unit=unit.kilojoule_per_mole * unit.nanometer**6
+        )
+        c8 = ParameterAttribute(
+            default=None, unit=unit.kilojoule_per_mole * unit.nanometer**8
+        )
+        c10 = ParameterAttribute(
+            default=None, unit=unit.kilojoule_per_mole * unit.nanometer**10
+        )
+
+    _TAGNAME = "DampedExp6810"  # SMIRNOFF tag name to process
+    _INFOTYPE = E6810Type  # info type to store
+
+    def _pre_computed_terms(self) -> Dict[str, float]:
+        return {}
+
+    @classmethod
+    def _default_values(cls) -> Tuple[float, ...]:
+        return 0.0, 0.0, 0.0, 0.0, 0.0
+
+    @classmethod
+    def _get_potential_function(cls) -> Tuple[str, List[str], List[str]]:
+
+        potential_function = (
+            "repulsion - ttdamp6*c6*invR6 - ttdamp8*c8*invR8 - ttdamp10*c10*invR10;"
+            "repulsion = forceAtZero*invbeta*exp(-beta*(r-sigma));"
+            "ttdamp10 = 1.0 - expbr * ttdamp10Sum;"
+            "ttdamp8 = 1.0 - expbr * ttdamp8Sum;"
+            "ttdamp6 = 1.0 - expbr * ttdamp6Sum;"
+            "ttdamp10Sum = ttdamp8Sum + br9/362880 + br10/3628800;"
+            "ttdamp8Sum = ttdamp6Sum + br7/5040 + br8/40320;"
+            "ttdamp6Sum = 1.0 + br + br2/2 + br3/6 + br4/24 + br5/120 + br6/720;"
+            "expbr = exp(-br);"
+            "br10 = br5*br5;"
+            "br9 = br5*br4;"
+            "br8 = br4*br4;"
+            "br7 = br4*br3;"
+            "br6 = br3*br3;"
+            "br5 = br3*br2;"
+            "br4 = br2*br2;"
+            "br3 = br2*br;"
+            "br2 = br*br;"
+            "br = beta*r;"
+            "invR10 = invR6*invR4;"
+            "invR8 = invR4*invR4;"
+            "invR6 = invR4*invR2;"
+            "invR4 = invR2*invR2;"
+            "invR2 = invR*invR;"
+            "invR = 1.0/r;"
+            "invbeta = 1.0/beta;"
+            "c6 = sqrt(c61*c62);"
+            "c8 = sqrt(c81*c82);"
+            "c10 = sqrt(c101*c102);"
+            "beta = 2.0*beta1*beta2/(beta1+beta2);"
+            "sigma = 0.5*(sigma1+sigma2);"
+        )
+
+        potential_parameters = ["sigma", "beta", "c6", "c8", "c10"]
+
+        global_parameters = ["forceAtZero"]
+
+        return potential_function, potential_parameters, global_parameters
+
+    def _process_parameters(
+        self,
+        parameter_type: E6810Type,
+    ) -> Tuple[float, ...]:
+
+        return (
+            parameter_type.sigma.value_in_unit(unit.nanometer),
+            parameter_type.beta.value_in_unit(unit.nanometer**-1),
+            parameter_type.c6.value_in_unit(unit.kilojoule_per_mole*unit.nanometer**6),
+            parameter_type.c8.value_in_unit(unit.kilojoule_per_mole*unit.nanometer**8),
+            parameter_type.c10.value_in_unit(unit.kilojoule_per_mole*unit.nanometer**10),
+        )
 
 class DoubleExponential(CustomNonbondedHandler):
     """
