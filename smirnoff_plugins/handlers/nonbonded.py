@@ -450,6 +450,6 @@ class DoubleExponential(CustomNonbondedHandler):
 
         potential_parameters = ["r_min", "epsilon"]
 
-        global_parameters = ["alpha", "beta"]
+        global_parameters = ["alpha", "beta", "scale14"]
 
         return potential_function, potential_parameters, global_parameters
