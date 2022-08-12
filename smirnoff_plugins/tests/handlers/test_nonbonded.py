@@ -191,3 +191,44 @@ def test_scaled_de_energy():
     assert double_exp.scale14 * energy_no_scale == pytest.approx(
         energy_scaled, abs=1e-6
     )
+
+
+# TODO: Test that an error is raised if the MultipoleHAndler encounters a vsite in the topology
+
+
+def test_multipole_basic():
+    """
+    <SMIRNOFF version="0.3" aromaticity_model="OEAroModel_MDL">
+    <Author>Adam Hogan</Author>
+    <Date>2022-07-03</Date>
+    <Multipole version="0.3" polarizationType="Extrapolated" cutoff="9.0 * angstrom">
+    <Atom smirks="[#1:1]" alpha="0.301856 * angstrom**3"></Atom> <!-- H -->
+    <Atom smirks="[#6:1]" alpha="1.243042 * angstrom**3"></Atom> <!-- C -->
+    """
+    toluene = Molecule.from_mapped_smiles(
+        "[H:10][c:3]1[c:2]([c:1]([c:6]([c:5]([c:4]1[H:11])[H:12])[C:7]([H:13])([H:14])[H:15])[H:8])[H:9]"
+    )
+    ff = ForceField(load_plugins=True)
+    ff.get_parameter_handler("ToolkitAM1BCC")
+    mph = ff.get_parameter_handler("Multipole")
+    mph.add_parameter({"smirks": "[#1:1]", "alpha": "0.301856 * angstrom**3"})
+    mph.add_parameter({"smirks": "[#6:1]", "alpha": "1.243042 * angstrom**3"})
+
+    sys = ff.create_openmm_system(toluene.to_topology())
+
+    amoeba_forces = [
+        sys.getForce(i)
+        for i in range(sys.getNumForces())
+        if isinstance(sys.getForce(i), openmm.AmoebaMultipoleForce)
+    ]
+    assert len(amoeba_forces) == 1
+    amoeba_force = amoeba_forces[0]
+    assert amoeba_force.getNumMultipoles() == 15
+    c_alpha = 1.243042 * unit.angstrom**3
+    h_alpha = 0.301856 * unit.angstrom**3
+    expected_alphas = [c_alpha] * 7 + [h_alpha] * 8
+    for particle_idx in range(amoeba_force.getNumMultipoles()):
+        multipole_parameters = amoeba_force.getMultipoleParameters(particle_idx)
+        expected_alpha = expected_alphas[particle_idx].value_in_unit(unit.angstrom**3)
+        assigned_alpha = multipole_parameters[-1].value_in_unit(unit.angstrom**3)
+        assert assigned_alpha == expected_alpha
