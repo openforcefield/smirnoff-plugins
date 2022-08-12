@@ -40,7 +40,8 @@ setup(
         "openff.toolkit.plugins.handlers": [
             "DampedBuckingham68 = smirnoff_plugins.handlers.nonbonded:DampedBuckingham68",
             "DoubleExponential = smirnoff_plugins.handlers.nonbonded:DoubleExponential",
-            "DampedExp6810 = smirnoff_plugins.handlers.nonbonded:DampedExp6810"
+            "DampedExp6810 = smirnoff_plugins.handlers.nonbonded:DampedExp6810",
+            "Multipole = smirnoff_plugins.handlers.nonbonded:MultipoleHandler"
         ]
     },
 )
