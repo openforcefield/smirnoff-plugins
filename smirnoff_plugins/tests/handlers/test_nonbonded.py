@@ -193,7 +193,7 @@ def test_scaled_de_energy():
     )
 
 
-# TODO: Test that an error is raised if the MultipoleHAndler encounters a vsite in the topology
+# TODO: Test that an error is raised if the MultipoleHandler encounters a vsite in the topology
 
 
 def test_multipole_basic():
@@ -214,7 +214,8 @@ def test_multipole_basic():
     mph.add_parameter({"smirks": "[#1:1]", "alpha": "0.301856 * angstrom**3"})
     mph.add_parameter({"smirks": "[#6:1]", "alpha": "1.243042 * angstrom**3"})
 
-    sys = ff.create_openmm_system(toluene.to_topology())
+    top = toluene.to_topology()
+    sys = ff.create_openmm_system(top)
 
     amoeba_forces = [
         sys.getForce(i)
@@ -232,3 +233,17 @@ def test_multipole_basic():
         expected_alpha = expected_alphas[particle_idx].value_in_unit(unit.angstrom**3)
         assigned_alpha = multipole_parameters[-1].value_in_unit(unit.angstrom**3)
         assert assigned_alpha == expected_alpha
+        print()
+        print(particle_idx)
+        for degree, omm_kw in [(2, amoeba_force.Covalent12),
+                               (3, amoeba_force.Covalent13),
+                               (4, amoeba_force.Covalent14),
+                               #(2, amoeba_force.Covalent12), # We don't handle 15 yet
+                               ]:
+            amoeba_neighs = amoeba_force.getCovalentMap(particle_idx, omm_kw)
+            molecule_neighs = [at[0].topology_atom_index for at in top.nth_degree_neighbors(degree)]
+            assert set(amoeba_neighs) == set(molecule_neighs)
+        #print(amoeba_force.getCovalentMap(particle_idx, amoeba_force.Covalent12))
+        #print(amoeba_force.getCovalentMap(particle_idx, amoeba_force.Covalent13))
+        #print(amoeba_force.getCovalentMap(particle_idx, amoeba_force.Covalent14))
+        #print(amoeba_force.getCovalentMap(particle_idx, amoeba_force.Covalent15))
