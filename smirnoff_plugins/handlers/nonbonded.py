@@ -2,18 +2,15 @@ import abc
 from typing import Dict, List, Tuple
 
 import numpy
-from openff.toolkit.topology import (
-    Topology,
-    TopologyAtom,
-)
+from openff.toolkit.topology import Topology, TopologyAtom
 from openff.toolkit.typing.engines.smirnoff import (
+    ElectrostaticsHandler,
+    LibraryChargeHandler,
     ParameterAttribute,
     ParameterHandler,
     ParameterType,
-    vdWHandler,
-    ElectrostaticsHandler,
     ToolkitAM1BCCHandler,
-    LibraryChargeHandler,
+    vdWHandler,
 )
 from openff.toolkit.typing.engines.smirnoff.parameters import (
     IncompatibleParameterError,
@@ -391,10 +388,13 @@ class DampedBuckingham68(CustomNonbondedHandler):
             ),
         )
 
-class DampedExp6810(CustomNonbondedHandler):
-    """ Damped exponential-6-8-10 potential used in <https://doi.org/10.1021/acs.jctc.0c00837> """
 
-    forceAtZero = ParameterAttribute(default=49.6144931952, unit=unit.kilojoules_per_mole*unit.nanometer**-1)
+class DampedExp6810(CustomNonbondedHandler):
+    """Damped exponential-6-8-10 potential used in <https://doi.org/10.1021/acs.jctc.0c00837>"""
+
+    forceAtZero = ParameterAttribute(
+        default=49.6144931952, unit=unit.kilojoules_per_mole * unit.nanometer**-1
+    )
 
     class E6810Type(ParameterType):
 
@@ -474,10 +474,17 @@ class DampedExp6810(CustomNonbondedHandler):
         return (
             parameter_type.sigma.value_in_unit(unit.nanometer),
             parameter_type.beta.value_in_unit(unit.nanometer**-1),
-            parameter_type.c6.value_in_unit(unit.kilojoule_per_mole*unit.nanometer**6),
-            parameter_type.c8.value_in_unit(unit.kilojoule_per_mole*unit.nanometer**8),
-            parameter_type.c10.value_in_unit(unit.kilojoule_per_mole*unit.nanometer**10),
+            parameter_type.c6.value_in_unit(
+                unit.kilojoule_per_mole * unit.nanometer**6
+            ),
+            parameter_type.c8.value_in_unit(
+                unit.kilojoule_per_mole * unit.nanometer**8
+            ),
+            parameter_type.c10.value_in_unit(
+                unit.kilojoule_per_mole * unit.nanometer**10
+            ),
         )
+
 
 class DoubleExponential(CustomNonbondedHandler):
     """
@@ -549,7 +556,7 @@ class DoubleExponential(CustomNonbondedHandler):
 
 
 class MultipoleHandler(ParameterHandler):
-    """ Handler for OpenMM's AmoebaMultipoleForce """
+    """Handler for OpenMM's AmoebaMultipoleForce"""
 
     _TAGNAME = "Multipole"
     _OPENMMTYPE = openmm.AmoebaMultipoleForce
@@ -568,7 +575,7 @@ class MultipoleHandler(ParameterHandler):
     polarizationType = ParameterAttribute(
         default="Mutual", converter=_allow_only(["Mutual", "Direct", "Extrapolated"])
     )
-    ewaldErrorTolerance = ParameterAttribute(default=.0001, converter=float)
+    ewaldErrorTolerance = ParameterAttribute(default=0.0001, converter=float)
     thole = ParameterAttribute(default=0.39, converter=float)
     targetEpsilon = ParameterAttribute(default=0.00001, converter=float)
     maxIter = ParameterAttribute(default=60, converter=int)
@@ -613,18 +620,20 @@ class MultipoleHandler(ParameterHandler):
             len(existing_nonbondeds) < 2
         ), "multiple nonbonded forces are not yet correctly handled."
 
-        assert (
-            len(existing_nonbondeds) > 0
-        ), "can't find existing charges to copy from"
+        assert len(existing_nonbondeds) > 0, "can't find existing charges to copy from"
 
         existing_nonbonded = existing_nonbondeds[0]
 
-        methodMap = {"NoCutoff":openmm.AmoebaMultipoleForce.NoCutoff,
-                     "PME":openmm.AmoebaMultipoleForce.PME}
+        methodMap = {
+            "NoCutoff": openmm.AmoebaMultipoleForce.NoCutoff,
+            "PME": openmm.AmoebaMultipoleForce.PME,
+        }
         force.setNonbondedMethod(methodMap[self.method])
-        polarizationTypeMap = {"Mutual":openmm.AmoebaMultipoleForce.Mutual,
-                               "Direct":openmm.AmoebaMultipoleForce.Direct,
-                               "Extrapolated":openmm.AmoebaMultipoleForce.Extrapolated}
+        polarizationTypeMap = {
+            "Mutual": openmm.AmoebaMultipoleForce.Mutual,
+            "Direct": openmm.AmoebaMultipoleForce.Direct,
+            "Extrapolated": openmm.AmoebaMultipoleForce.Extrapolated,
+        }
         force.setPolarizationType(polarizationTypeMap[self.polarizationType])
         force.setCutoffDistance(self.cutoff)
         force.setEwaldErrorTolerance(self.ewaldErrorTolerance)
@@ -635,7 +644,20 @@ class MultipoleHandler(ParameterHandler):
         alphas = []
         for topology_molecule in topology.topology_molecules:
             for topology_particle in topology_molecule.particles:
-                force.addMultipole(0.0, (0., 0., 0.), (0., 0., 0., 0., 0., 0., 0., 0., 0.), 0, 0, 0, 0, 0., 0., 0.)
+                # TODO: Add assertion that topology_particle isn't a vsite (allowed in theory,
+                #  but we should keep the implementation scope small for now)
+                force.addMultipole(
+                    0.0,
+                    (0.0, 0.0, 0.0),
+                    (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+                    0,
+                    0,
+                    0,
+                    0,
+                    0.0,
+                    0.0,
+                    0.0,
+                )
                 alphas.append(0.0)
 
         # Iterate over all types, allowing later matches to override earlier ones.
@@ -653,9 +675,11 @@ class MultipoleHandler(ParameterHandler):
 
                 topology_particle_index = topology_particle.topology_particle_index
 
-                particle_charge, sigma, epsilon = existing_nonbonded.getParticleParameters(
-                    topology_particle_index
-                )
+                (
+                    particle_charge,
+                    sigma,
+                    epsilon,
+                ) = existing_nonbonded.getParticleParameters(topology_particle_index)
 
                 existing_nonbonded.setParticleParameters(
                     topology_particle_index, 0.0, sigma, epsilon
@@ -663,25 +687,83 @@ class MultipoleHandler(ParameterHandler):
 
                 # setMultipoleParameters(self, index, charge, molecularDipole, molecularQuadrupole, axisType, multipoleAtomZ, multipoleAtomX, multipoleAtomY, thole, dampingFactor, polarity)
                 force.setMultipoleParameters(
-                    topology_particle_index, particle_charge, (0., 0., 0.)*unit.elementary_charge*unit.angstrom, (0., 0., 0., 0., 0., 0., 0., 0., 0.)*unit.elementary_charge*unit.angstrom**2, openmm.AmoebaMultipoleForce.NoAxisType, -1, -1, -1, self.thole, alphas[topology_particle_index]**(1/6), alphas[topology_particle_index]
+                    topology_particle_index,
+                    particle_charge,
+                    (0.0, 0.0, 0.0) * unit.elementary_charge * unit.angstrom,
+                    (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+                    * unit.elementary_charge
+                    * unit.angstrom**2,
+                    openmm.AmoebaMultipoleForce.NoAxisType,
+                    -1,
+                    -1,
+                    -1,
+                    self.thole,
+                    alphas[topology_particle_index] ** (1 / 6),
+                    alphas[topology_particle_index],
                 )
 
-                bonded2 = [a.topology_particle_index for a in topology_molecule.particles if topology.is_bonded(a, topology_particle)]
+                bonded2 = [
+                    a.topology_particle_index
+                    for a in topology_molecule.particles
+                    if topology.is_bonded(a, topology_particle)
+                ]
 
-                force.setCovalentMap(topology_particle_index, openmm.AmoebaMultipoleForce.Covalent12, bonded2)
+                force.setCovalentMap(
+                    topology_particle_index,
+                    openmm.AmoebaMultipoleForce.Covalent12,
+                    bonded2,
+                )
 
-                bonded3 = [a.topology_particle_index for a in topology_molecule.particles if (a.topology_particle_index != topology_particle_index and a.topology_particle_index not in bonded2 and any([topology.is_bonded(a.topology_particle_index, b) for b in bonded2]))]
+                bonded3 = [
+                    a.topology_particle_index
+                    for a in topology_molecule.particles
+                    if (
+                        a.topology_particle_index != topology_particle_index
+                        and a.topology_particle_index not in bonded2
+                        and any(
+                            [
+                                topology.is_bonded(a.topology_particle_index, b)
+                                for b in bonded2
+                            ]
+                        )
+                    )
+                ]
 
-                force.setCovalentMap(topology_particle_index, openmm.AmoebaMultipoleForce.Covalent13, bonded3)
+                force.setCovalentMap(
+                    topology_particle_index,
+                    openmm.AmoebaMultipoleForce.Covalent13,
+                    bonded3,
+                )
 
-                bonded4 = [a.topology_particle_index for a in topology_molecule.particles if (a.topology_particle_index != topology_particle_index and a.topology_particle_index not in bonded2 and a.topology_particle_index not in bonded3 and any([topology.is_bonded(a.topology_particle_index, b) for b in bonded3]))]
+                bonded4 = [
+                    a.topology_particle_index
+                    for a in topology_molecule.particles
+                    if (
+                        a.topology_particle_index != topology_particle_index
+                        and a.topology_particle_index not in bonded2
+                        and a.topology_particle_index not in bonded3
+                        and any(
+                            [
+                                topology.is_bonded(a.topology_particle_index, b)
+                                for b in bonded3
+                            ]
+                        )
+                    )
+                ]
 
-                force.setCovalentMap(topology_particle_index, openmm.AmoebaMultipoleForce.Covalent14, bonded4)
+                force.setCovalentMap(
+                    topology_particle_index,
+                    openmm.AmoebaMultipoleForce.Covalent14,
+                    bonded4,
+                )
 
-                #bonded5 = [a.topology_particle_index for a in topology_molecule.particles if (a.topology_particle_index != topology_particle_index and a.topology_particle_index not in bonded2 and a.topology_particle_index not in bonded3 and a.topology_particle_index not in bonded4 and any([topology.is_bonded(a.topology_particle_index, b) for b in bonded4]))]
+                # bonded5 = [a.topology_particle_index for a in topology_molecule.particles if (a.topology_particle_index != topology_particle_index and a.topology_particle_index not in bonded2 and a.topology_particle_index not in bonded3 and a.topology_particle_index not in bonded4 and any([topology.is_bonded(a.topology_particle_index, b) for b in bonded4]))]
 
-                #force.setCovalentMap(topology_particle_index, openmm.AmoebaMultipoleForce.Covalent15, bonded5)
+                # force.setCovalentMap(topology_particle_index, openmm.AmoebaMultipoleForce.Covalent15, bonded5)
 
-                force.setCovalentMap(topology_particle_index, openmm.AmoebaMultipoleForce.PolarizationCovalent11, bonded2+bonded3+bonded4)
-                #force.setCovalentMap(topology_particle_index, openmm.AmoebaMultipoleForce.PolarizationCovalent12, bonded5)
-
+                force.setCovalentMap(
+                    topology_particle_index,
+                    openmm.AmoebaMultipoleForce.PolarizationCovalent11,
+                    bonded2 + bonded3 + bonded4,
+                )
+                # force.setCovalentMap(topology_particle_index, openmm.AmoebaMultipoleForce.PolarizationCovalent12, bonded5)
