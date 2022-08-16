@@ -1,5 +1,5 @@
 import pytest
-from openff.toolkit.topology import Molecule
+from openff.toolkit.topology import Topology, Molecule
 from openff.toolkit.typing.engines.smirnoff import ForceField
 from simtk import openmm, unit
 
@@ -193,7 +193,7 @@ def test_scaled_de_energy():
     )
 
 
-# TODO: Test that an error is raised if the MultipoleHAndler encounters a vsite in the topology
+# TODO: Test that an error is raised if the MultipoleHandler encounters a vsite in the topology
 
 
 def test_multipole_basic():
@@ -202,8 +202,8 @@ def test_multipole_basic():
     <Author>Adam Hogan</Author>
     <Date>2022-07-03</Date>
     <Multipole version="0.3" polarizationType="Extrapolated" cutoff="9.0 * angstrom">
-    <Atom smirks="[#1:1]" alpha="0.301856 * angstrom**3"></Atom> <!-- H -->
-    <Atom smirks="[#6:1]" alpha="1.243042 * angstrom**3"></Atom> <!-- C -->
+    <Atom smirks="[#1:1]" polarity="0.301856 * angstrom**3"></Atom> <!-- H -->
+    <Atom smirks="[#6:1]" polarity="1.243042 * angstrom**3"></Atom> <!-- C -->
     """
     toluene = Molecule.from_mapped_smiles(
         "[H:10][c:3]1[c:2]([c:1]([c:6]([c:5]([c:4]1[H:11])[H:12])[C:7]([H:13])([H:14])[H:15])[H:8])[H:9]"
@@ -211,10 +211,11 @@ def test_multipole_basic():
     ff = ForceField(load_plugins=True)
     ff.get_parameter_handler("ToolkitAM1BCC")
     mph = ff.get_parameter_handler("Multipole")
-    mph.add_parameter({"smirks": "[#1:1]", "alpha": "0.301856 * angstrom**3"})
-    mph.add_parameter({"smirks": "[#6:1]", "alpha": "1.243042 * angstrom**3"})
+    mph.add_parameter({"smirks": "[#1:1]", "polarity": "0.301856 * angstrom**3"})
+    mph.add_parameter({"smirks": "[#6:1]", "polarity": "1.243042 * angstrom**3"})
 
-    sys = ff.create_openmm_system(toluene.to_topology())
+    top = Topology.from_molecules([toluene]*2)
+    sys = ff.create_openmm_system(top)
 
     amoeba_forces = [
         sys.getForce(i)
@@ -223,12 +224,24 @@ def test_multipole_basic():
     ]
     assert len(amoeba_forces) == 1
     amoeba_force = amoeba_forces[0]
-    assert amoeba_force.getNumMultipoles() == 15
-    c_alpha = 1.243042 * unit.angstrom**3
-    h_alpha = 0.301856 * unit.angstrom**3
-    expected_alphas = [c_alpha] * 7 + [h_alpha] * 8
+    assert amoeba_force.getNumMultipoles() == 30
+    c_polarity = 1.243042 * unit.angstrom**3
+    h_polarity = 0.301856 * unit.angstrom**3
+    expected_polarities = [c_polarity] * 7 + [h_polarity] * 8 + [c_polarity] * 7 + [h_polarity] * 8
     for particle_idx in range(amoeba_force.getNumMultipoles()):
         multipole_parameters = amoeba_force.getMultipoleParameters(particle_idx)
-        expected_alpha = expected_alphas[particle_idx].value_in_unit(unit.angstrom**3)
-        assigned_alpha = multipole_parameters[-1].value_in_unit(unit.angstrom**3)
-        assert assigned_alpha == expected_alpha
+        expected_polarity = expected_polarities[particle_idx].value_in_unit(unit.angstrom**3)
+        assigned_polarity = multipole_parameters[-1].value_in_unit(unit.angstrom**3)
+        assert assigned_polarity == expected_polarity
+        for degree, omm_kw in [(1, amoeba_force.Covalent12),
+                               (2, amoeba_force.Covalent13),
+                               (3, amoeba_force.Covalent14),
+                               ]:
+            amoeba_neighs = amoeba_force.getCovalentMap(particle_idx, omm_kw)
+            molecule_neighs = []
+            for pair in top.nth_degree_neighbors(degree):
+                if pair[0].topology_atom_index == particle_idx:
+                    molecule_neighs.append(pair[1].topology_atom_index)
+                if pair[1].topology_atom_index == particle_idx:
+                    molecule_neighs.append(pair[0].topology_atom_index)
+            assert set(amoeba_neighs) == set(molecule_neighs)
