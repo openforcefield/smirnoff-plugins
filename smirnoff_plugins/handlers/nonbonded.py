@@ -2,7 +2,7 @@ import abc
 from typing import Dict, List, Tuple
 
 import numpy
-from openff.toolkit.topology import Topology
+from openff.toolkit.topology import Topology, TopologyVirtualSite
 from openff.toolkit.typing.engines.smirnoff import (
     ElectrostaticsHandler,
     LibraryChargeHandler,
@@ -585,7 +585,7 @@ class MultipoleHandler(ParameterHandler):
         _VALENCE_TYPE = "Atom"  # ChemicalEnvironment valence type expected for SMARTS
         _ELEMENT_NAME = "Atom"
 
-        alpha = ParameterAttribute(default=0.0, unit=unit.angstroms**3)
+        polarity = ParameterAttribute(default=0.0, unit=unit.angstroms**3)
 
     _INFOTYPE = MPolType
 
@@ -641,11 +641,12 @@ class MultipoleHandler(ParameterHandler):
         force.setMutualInducedMaxIterations(self.maxIter)
         force.setExtrapolationCoefficients([-0.154, 0.017, 0.658, 0.474])
 
-        alphas = []
+        polarities = []
         for topology_molecule in topology.topology_molecules:
             for topology_particle in topology_molecule.particles:
                 # TODO: Add assertion that topology_particle isn't a vsite (allowed in theory,
                 #  but we should keep the implementation scope small for now)
+                assert type(topology_particle) is not TopologyVirtualSite
                 force.addMultipole(
                     0.0,
                     (0.0, 0.0, 0.0),
@@ -658,7 +659,7 @@ class MultipoleHandler(ParameterHandler):
                     0.0,
                     0.0,
                 )
-                alphas.append(0.0)
+                polarities.append(0.0)
 
         # Iterate over all types, allowing later matches to override earlier ones.
         atom_matches = self.find_matches(topology)
@@ -667,7 +668,7 @@ class MultipoleHandler(ParameterHandler):
         for atom_key, atom_match in atom_matches.items():
             atom_idx = atom_key[0]
             mpoltype = atom_match.parameter_type
-            alphas[atom_idx] = mpoltype.alpha
+            polarities[atom_idx] = mpoltype.polarity
 
         for topology_molecule in topology.topology_molecules:
 
@@ -698,8 +699,8 @@ class MultipoleHandler(ParameterHandler):
                     -1,
                     -1,
                     self.thole,
-                    alphas[topology_particle_index] ** (1 / 6),
-                    alphas[topology_particle_index],
+                    polarities[topology_particle_index] ** (1 / 6),
+                    polarities[topology_particle_index],
                 )
 
         #for topology_molecule in topology.topology_molecules:
@@ -761,7 +762,7 @@ class MultipoleHandler(ParameterHandler):
                 for topology_molecule in topology._reference_molecule_to_topology_molecules[
                     ref_mol
                 ]:
-                    for topology_particle in topology_molecule.topology_particles:
+                    for topology_particle in topology_molecule.particles:
 
                         topology_particle_index = topology_particle.topology_particle_index
                         ref_mol_particle_index = (
