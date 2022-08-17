@@ -3,6 +3,7 @@ from typing import Dict, List, Tuple
 
 import numpy
 from openff.toolkit.topology import Topology, TopologyVirtualSite
+from openff.toolkit.topology.molecule import Molecule
 from openff.toolkit.typing.engines.smirnoff import (
     ElectrostaticsHandler,
     LibraryChargeHandler,
@@ -747,7 +748,6 @@ class MultipoleHandler(ParameterHandler):
         for ref_mol in topology.reference_molecules:
             for ref_atom in ref_mol.atoms:
                 bonded2 = [a.molecule_particle_index for a in ref_atom.bonded_atoms]
-                bonded2 = numpy.array(bonded2)
 
                 bonded3 = []
                 for first_neighbor in ref_atom.bonded_atoms:
@@ -760,7 +760,6 @@ class MultipoleHandler(ParameterHandler):
                         ):
                             continue
                         bonded3.append(second_neighbor.molecule_atom_index)
-                bonded3 = numpy.array(bonded3)
 
                 bonded4 = []
                 for first_neighbor in ref_atom.bonded_atoms:
@@ -776,7 +775,6 @@ class MultipoleHandler(ParameterHandler):
                             ):
                                 continue
                             bonded4.append(third_neighbor.molecule_atom_index)
-                bonded4 = numpy.array(bonded4)
 
                 for (
                     topology_molecule
@@ -792,27 +790,35 @@ class MultipoleHandler(ParameterHandler):
                         if ref_mol_particle_index != ref_atom.molecule_particle_index:
                             continue
 
-                        particle_index_offset = (
-                            topology_particle_index - ref_mol_particle_index
-                        )
+                        atom_map = {}
+                        for other_topology_particle in topology_molecule.particles:
+                            atom_map[
+                                other_topology_particle.atom.molecule_particle_index
+                            ] = other_topology_particle.topology_particle_index
+
+                        mapped_bonded2 = [atom_map[a] for a in bonded2]
+                        mapped_bonded3 = [atom_map[a] for a in bonded3]
+                        mapped_bonded4 = [atom_map[a] for a in bonded4]
 
                         force.setCovalentMap(
                             topology_particle_index,
                             openmm.AmoebaMultipoleForce.Covalent12,
-                            bonded2 + particle_index_offset,
+                            mapped_bonded2,
                         )
                         force.setCovalentMap(
                             topology_particle_index,
                             openmm.AmoebaMultipoleForce.Covalent13,
-                            bonded3 + particle_index_offset,
+                            mapped_bonded3,
                         )
                         force.setCovalentMap(
                             topology_particle_index,
                             openmm.AmoebaMultipoleForce.Covalent14,
-                            bonded4 + particle_index_offset,
+                            mapped_bonded4,
                         )
                         force.setCovalentMap(
                             topology_particle_index,
                             openmm.AmoebaMultipoleForce.PolarizationCovalent11,
-                            numpy.concatenate((bonded2, bonded3, bonded4)),
+                            numpy.concatenate(
+                                (mapped_bonded2, mapped_bonded3, mapped_bonded4)
+                            ),
                         )
