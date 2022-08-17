@@ -250,3 +250,100 @@ def test_multipole_basic():
                 if pair[1].topology_atom_index == particle_idx:
                     molecule_neighs.append(pair[0].topology_atom_index)
             assert set(amoeba_neighs) == set(molecule_neighs)
+
+
+def test_dampedexp6810():
+    """
+    <SMIRNOFF version="0.3" aromaticity_model="OEAroModel_MDL">
+    <Author>Adam Hogan</Author>
+    <Date>2022-07-03</Date>
+    <DampedExp6810 version="0.3" cutoff="9.0 * angstrom">
+    <Atom smirks="[#1:1]" sigma="2.097458 * angstrom" beta="3.967801 * angstrom**-1"
+        c6="1.101211e-04 * kilojoule_per_mole * nanometer**6" c8="0.000000e+00 * kilojoule_per_mole * nanometer**8"
+        c10="0.000000e+00 * kilojoule_per_mole * nanometer**10"></Atom> <!-- H -->
+    <Atom smirks="[#6:1]" sigma="3.476471 * angstrom" beta="3.247751 * angstrom**-1"
+        c6="1.617447e-03 * kilojoule_per_mole * nanometer**6" c8="1.394968e-04 * kilojoule_per_mole * nanometer**8"
+        c10="1.473786e-05 * kilojoule_per_mole * nanometer**10"></Atom> <!-- C -->
+    """
+    toluene = Molecule.from_mapped_smiles(
+        "[H:10][c:3]1[c:2]([c:1]([c:6]([c:5]([c:4]1[H:11])[H:12])[C:7]([H:13])([H:14])[H:15])[H:8])[H:9]"
+    )
+    ff = ForceField(load_plugins=True)
+    ff.get_parameter_handler("ToolkitAM1BCC")
+    handler = ff.get_parameter_handler("DampedExp6810")
+    handler.add_parameter(
+        {
+            "smirks": "[#1:1]",
+            "sigma": "2.097458 * angstrom",
+            "beta": "3.967801 * angstrom**-1",
+            "c6": "1.101211e-04 * kilojoule_per_mole * nanometer**6",
+            "c8": "0.000000e+00 * kilojoule_per_mole * nanometer**8",
+            "c10": "0.000000e+00 * kilojoule_per_mole * nanometer**10",
+        }
+    )
+    handler.add_parameter(
+        {
+            "smirks": "[#6:1]",
+            "sigma": "3.476471 * angstrom",
+            "beta": "3.247751 * angstrom**-1",
+            "c6": "1.617447e-03 * kilojoule_per_mole * nanometer**6",
+            "c8": "1.394968e-04 * kilojoule_per_mole * nanometer**8",
+            "c10": "1.473786e-05 * kilojoule_per_mole * nanometer**10",
+        }
+    )
+
+    top = Topology.from_molecules([toluene])
+    sys = ff.create_openmm_system(top)
+
+    custom_nonbonded_forces = [
+        sys.getForce(i)
+        for i in range(sys.getNumForces())
+        if isinstance(sys.getForce(i), openmm.CustomNonbondedForce)
+    ]
+
+    assert len(custom_nonbonded_forces) == 1
+
+    force = custom_nonbonded_forces[0]
+
+    assert force.getNumParticles() == 15
+
+    expected_sigmas = [3.476471 * unit.angstrom] * 7 + [2.097458 * unit.angstrom] * 8
+    expected_betas = [3.247751 * unit.angstrom**-1] * 7 + [
+        3.967801 * unit.angstrom**-1
+    ] * 8
+    expected_c6s = [
+        1.617447e-03 * unit.kilojoule_per_mole * unit.nanometer**6
+    ] * 7 + [1.101211e-04 * unit.kilojoule_per_mole * unit.nanometer**6] * 8
+    expected_c8s = [
+        1.394968e-04 * unit.kilojoule_per_mole * unit.nanometer**8
+    ] * 7 + [0.000000e00 * unit.kilojoule_per_mole * unit.nanometer**8] * 8
+    expected_c10s = [
+        1.473786e-05 * unit.kilojoule_per_mole * unit.nanometer**10
+    ] * 7 + [0.000000e00 * unit.kilojoule_per_mole * unit.nanometer**10] * 8
+
+    for particle_idx in range(force.getNumParticles()):
+        params = force.getParticleParameters(particle_idx)
+        assigned_sigma = params[0]
+        expected_sigma = expected_sigmas[particle_idx].value_in_unit(unit.nanometers)
+        assigned_beta = params[1]
+        expected_beta = expected_betas[particle_idx].value_in_unit(
+            unit.nanometers**-1
+        )
+        assigned_c6 = params[2]
+        expected_c6 = expected_c6s[particle_idx].value_in_unit(
+            unit.kilojoule_per_mole * unit.nanometer**6
+        )
+        assigned_c8 = params[3]
+        expected_c8 = expected_c8s[particle_idx].value_in_unit(
+            unit.kilojoule_per_mole * unit.nanometer**8
+        )
+        assigned_c10 = params[4]
+        expected_c10 = expected_c10s[particle_idx].value_in_unit(
+            unit.kilojoule_per_mole * unit.nanometer**10
+        )
+
+        assert assigned_sigma == expected_sigma
+        assert assigned_beta == expected_beta
+        assert assigned_c6 == expected_c6
+        assert assigned_c8 == expected_c8
+        assert assigned_c10 == expected_c10
