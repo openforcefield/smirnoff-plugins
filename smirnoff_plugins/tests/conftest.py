@@ -8,6 +8,11 @@ from simtk import unit
 
 
 @pytest.fixture()
+def water() -> Molecule:
+    return Molecule.from_smiles("O")
+
+
+@pytest.fixture()
 def buckingham_water_force_field() -> ForceField:
     """Create a buckingham water model Forcefield object."""
 

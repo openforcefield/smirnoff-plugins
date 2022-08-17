@@ -1,4 +1,6 @@
 import abc
+import itertools
+from collections import defaultdict
 from typing import Dict, List, Tuple
 
 import numpy
@@ -180,6 +182,8 @@ class CustomNonbondedHandler(ParameterHandler, abc.ABC):
             if isinstance(system.getForce(i), openmm.NonbondedForce)
         ]
 
+        # call generate_exclusions early
+
         assert (
             len(existing_forces) < 2
         ), "multiple nonbonded forces are not yet correctly handled."
@@ -235,10 +239,64 @@ class CustomNonbondedHandler(ParameterHandler, abc.ABC):
             for bond in topology.topology_bonds
         ]
 
+        # add bonds between the v-site and all atoms bonded to the parent to get the correct exclusions
+        # also collect the vsites which share a parent
+        # taken from <https://github.com/openforcefield/openff-toolkit/blob/5887e1f1cb8408ea7548650d19d12acdaed9cc7e/openff/toolkit/typing/engines/smirnoff/forcefield.py#L1340>
+        vsite_parent_exclusions = []
+        for topology_molecule in topology.topology_molecules:
+
+            top_mol_particle_start_index = topology_molecule.atom_start_topology_index
+
+            parent_to_v_site_indices = defaultdict(list)
+
+            for topology_v_sites in topology_molecule.virtual_sites:
+                for topology_v_site in topology_v_sites.particles:
+                    v_site_index = topology_v_site.topology_particle_index
+                    parent_index = topology_v_site.topology_parent_atom_index
+
+                    parent_to_v_site_indices[parent_index].append(v_site_index)
+
+                    # Make sure the v-site doesn't interact with the parent. This
+                    # assumes a v-site policy of 'parents'
+                    vsite_parent_exclusions.append(
+                        tuple(sorted((parent_index, v_site_index)))
+                    )
+
+            # make sure v-sites on the same parent do not interact
+            vsite_parent_exclusions.extend(
+                [
+                    pair
+                    for grouped_v_sites in parent_to_v_site_indices.values()
+                    for pair in itertools.combinations(grouped_v_sites, r=2)
+                ]
+            )
+
+            for topology_bond in topology_molecule.bonds:
+                top_index_1 = topology_molecule._ref_to_top_index[
+                    topology_bond.bond.atom1_index
+                ]
+                top_index_2 = topology_molecule._ref_to_top_index[
+                    topology_bond.bond.atom2_index
+                ]
+
+                top_index_1 += top_mol_particle_start_index
+                top_index_2 += top_mol_particle_start_index
+
+                bonds.append([top_index_1, top_index_2])
+
+                # Add a 'bond' between each v-site and every atom that the 'parent' of
+                # the v-site is bonded to so that correct 'parent' policy exceptions are
+                # generated. See https://github.com/openmm/openmm/issues/2045
+                for v_site_index in parent_to_v_site_indices[top_index_1]:
+                    bonds.append([v_site_index, top_index_2])
+                for v_site_index in parent_to_v_site_indices[top_index_2]:
+                    bonds.append([v_site_index, top_index_1])
+
         force.createExclusionsFromBonds(bonds=bonds, bondCutoff=2)
 
         # If a nonbonded force already exists then make sure to include its specified
         # inclusions. This is to ensure the V-site exclusions are correctly included.
+        # Note: is this still needed now we have to find v-site exclusions our self
         current_exclusions = set(
             tuple(sorted(force.getExclusionParticles(i)))
             for i in range(force.getNumExclusions())
@@ -249,8 +307,12 @@ class CustomNonbondedHandler(ParameterHandler, abc.ABC):
             for existing_force in existing_forces
             for i in range(existing_force.getNumExceptions())
         )
-
         for missing_exclusion in existing_exclusions - current_exclusions:
+            force.addExclusion(*missing_exclusion)
+        # add any exclusions between sites on the same parent
+        for missing_exclusion in set(vsite_parent_exclusions).difference(
+            current_exclusions
+        ):
             force.addExclusion(*missing_exclusion)
 
         # Add 1-4 scaled interactions only if the scale is not 1
