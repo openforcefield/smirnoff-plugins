@@ -3,6 +3,7 @@ from typing import Dict, List, Tuple
 
 import numpy
 from openff.toolkit.topology import Topology, TopologyVirtualSite
+from openff.toolkit.topology.molecule import Molecule
 from openff.toolkit.typing.engines.smirnoff import (
     ElectrostaticsHandler,
     LibraryChargeHandler,
