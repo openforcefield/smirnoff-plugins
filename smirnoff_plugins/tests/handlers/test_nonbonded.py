@@ -1,5 +1,5 @@
 import pytest
-from openff.toolkit.topology import Topology, Molecule
+from openff.toolkit.topology import Molecule, Topology
 from openff.toolkit.typing.engines.smirnoff import ForceField
 from simtk import openmm, unit
 
@@ -214,7 +214,7 @@ def test_multipole_basic():
     mph.add_parameter({"smirks": "[#1:1]", "polarity": "0.301856 * angstrom**3"})
     mph.add_parameter({"smirks": "[#6:1]", "polarity": "1.243042 * angstrom**3"})
 
-    top = Topology.from_molecules([toluene]*2)
+    top = Topology.from_molecules([toluene] * 2)
     sys = ff.create_openmm_system(top)
 
     amoeba_forces = [
@@ -227,16 +227,21 @@ def test_multipole_basic():
     assert amoeba_force.getNumMultipoles() == 30
     c_polarity = 1.243042 * unit.angstrom**3
     h_polarity = 0.301856 * unit.angstrom**3
-    expected_polarities = [c_polarity] * 7 + [h_polarity] * 8 + [c_polarity] * 7 + [h_polarity] * 8
+    expected_polarities = (
+        [c_polarity] * 7 + [h_polarity] * 8 + [c_polarity] * 7 + [h_polarity] * 8
+    )
     for particle_idx in range(amoeba_force.getNumMultipoles()):
         multipole_parameters = amoeba_force.getMultipoleParameters(particle_idx)
-        expected_polarity = expected_polarities[particle_idx].value_in_unit(unit.angstrom**3)
+        expected_polarity = expected_polarities[particle_idx].value_in_unit(
+            unit.angstrom**3
+        )
         assigned_polarity = multipole_parameters[-1].value_in_unit(unit.angstrom**3)
         assert assigned_polarity == expected_polarity
-        for degree, omm_kw in [(1, amoeba_force.Covalent12),
-                               (2, amoeba_force.Covalent13),
-                               (3, amoeba_force.Covalent14),
-                               ]:
+        for degree, omm_kw in [
+            (1, amoeba_force.Covalent12),
+            (2, amoeba_force.Covalent13),
+            (3, amoeba_force.Covalent14),
+        ]:
             amoeba_neighs = amoeba_force.getCovalentMap(particle_idx, omm_kw)
             molecule_neighs = []
             for pair in top.nth_degree_neighbors(degree):
