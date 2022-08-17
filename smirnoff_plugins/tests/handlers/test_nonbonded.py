@@ -231,7 +231,7 @@ def test_multipole_basic():
     c_polarity = 1.243042 * unit.angstrom**3
     h_polarity = 0.301856 * unit.angstrom**3
     expected_polarities = (
-        [c_polarity] * 7 + [h_polarity] * 8 + [c_polarity] * 7 + [h_polarity] * 8
+        [c_polarity] * 7 + [h_polarity] * 8 + [h_polarity] * 8 + [c_polarity] * 7
     )
     for particle_idx in range(amoeba_force.getNumMultipoles()):
         multipole_parameters = amoeba_force.getMultipoleParameters(particle_idx)
