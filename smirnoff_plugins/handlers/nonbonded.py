@@ -744,75 +744,83 @@ class MultipoleHandler(ParameterHandler):
                 )
 
         # Generate exclusions, using reference molecules approach
+        ref_bonded12 = []
+        ref_bonded13 = []
+        ref_bonded14 = []
         for ref_mol in topology.reference_molecules:
             for ref_atom in ref_mol.atoms:
-                bonded2 = [a.molecule_particle_index for a in ref_atom.bonded_atoms]
-                bonded2 = numpy.array(bonded2)
+                ref_atom_index = ref_atom.molecule_atom_index
+                ref_bonded12 += [(ref_atom_index, a.molecule_particle_index) for a in ref_atom.bonded_atoms]
+                #bonded2 = numpy.array(bonded2)
 
-                bonded3 = []
+                #bonded3 = []
                 for first_neighbor in ref_atom.bonded_atoms:
                     for second_neighbor in first_neighbor.bonded_atoms:
-                        if second_neighbor.molecule_atom_index in bonded2:
+                        pair_tuple = (ref_atom_index, second_neighbor.molecule_atom_index)
+                        if pair_tuple in ref_bonded12:
                             continue
                         if (
                             second_neighbor.molecule_atom_index
-                            == ref_atom.molecule_particle_index
+                            == ref_atom_index
                         ):
                             continue
-                        bonded3.append(second_neighbor.molecule_atom_index)
-                bonded3 = numpy.array(bonded3)
+                        ref_bonded13.append(pair_tuple)
+                #bonded3 = numpy.array(bonded3)
 
                 bonded4 = []
                 for first_neighbor in ref_atom.bonded_atoms:
                     for second_neighbor in first_neighbor.bonded_atoms:
                         for third_neighbor in second_neighbor.bonded_atoms:
-                            if third_neighbor.molecule_atom_index in bonded2:
+                            pair_tuple = (ref_atom_index, second_neighbor.molecule_atom_index)
+
+                            if pair_tuple in ref_bonded12:
                                 continue
-                            if third_neighbor.molecule_atom_index in bonded3:
+                            if pair_tuple in ref_bonded13:
                                 continue
                             if (
                                 third_neighbor.molecule_atom_index
-                                == ref_atom.molecule_particle_index
+                                == ref_atom_index
                             ):
                                 continue
-                            bonded4.append(third_neighbor.molecule_atom_index)
-                bonded4 = numpy.array(bonded4)
+                            #bonded4.append(third_neighbor.molecule_atom_index)
+                            ref_bonded14.append(pair_tuple)
+                #bonded4 = numpy.array(bonded4)
 
-                for (
-                    topology_molecule
-                ) in topology._reference_molecule_to_topology_molecules[ref_mol]:
-                    for topology_particle in topology_molecule.particles:
+            for topology_molecule in topology._reference_molecule_to_topology_molecules[ref_mol]:
+                ref_at_idx_2_top_at_idx = {topology_atom.atom.molecule_atom_index: topology_atom.topology_atom_index for
+                                           topology_atom in topology_molecule.atoms}
+                #for topology_atom in topology_molecule.atoms:
+                    #topology_particle_index = (
+                    #    topology_particle.topology_particle_index
+                    #)
+                    #ref_mol_particle_index = (
+                    #    topology_particle.atom.molecule_particle_index
+                    #)
+                    #if ref_mol_particle_index != ref_atom.molecule_particle_index:
+                    #    1/0
+                    #    continue
 
-                        topology_particle_index = (
-                            topology_particle.topology_particle_index
-                        )
-                        ref_mol_particle_index = (
-                            topology_particle.atom.molecule_particle_index
-                        )
-                        if ref_mol_particle_index != ref_atom.molecule_particle_index:
-                            continue
+                    #particle_index_offset = (
+                    #    topology_particle_index - ref_mol_particle_index
+                    #)
 
-                        particle_index_offset = (
-                            topology_particle_index - ref_mol_particle_index
-                        )
-
-                        force.setCovalentMap(
-                            topology_particle_index,
-                            openmm.AmoebaMultipoleForce.Covalent12,
-                            bonded2 + particle_index_offset,
-                        )
-                        force.setCovalentMap(
-                            topology_particle_index,
-                            openmm.AmoebaMultipoleForce.Covalent13,
-                            bonded3 + particle_index_offset,
-                        )
-                        force.setCovalentMap(
-                            topology_particle_index,
-                            openmm.AmoebaMultipoleForce.Covalent14,
-                            bonded4 + particle_index_offset,
-                        )
-                        force.setCovalentMap(
-                            topology_particle_index,
-                            openmm.AmoebaMultipoleForce.PolarizationCovalent11,
-                            numpy.concatenate((bonded2, bonded3, bonded4)),
-                        )
+                    force.setCovalentMap(
+                        topology_particle_index,
+                        openmm.AmoebaMultipoleForce.Covalent12,
+                        bonded2 + particle_index_offset,
+                    )
+                    force.setCovalentMap(
+                        topology_particle_index,
+                        openmm.AmoebaMultipoleForce.Covalent13,
+                        bonded3 + particle_index_offset,
+                    )
+                    force.setCovalentMap(
+                        topology_particle_index,
+                        openmm.AmoebaMultipoleForce.Covalent14,
+                        bonded4 + particle_index_offset,
+                    )
+                    force.setCovalentMap(
+                        topology_particle_index,
+                        openmm.AmoebaMultipoleForce.PolarizationCovalent11,
+                        numpy.concatenate((bonded2, bonded3, bonded4)),
+                    )
