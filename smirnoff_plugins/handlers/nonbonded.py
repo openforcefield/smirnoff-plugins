@@ -390,7 +390,12 @@ class DampedBuckingham68(CustomNonbondedHandler):
 
 
 class DampedExp6810(CustomNonbondedHandler):
-    """Damped exponential-6-8-10 potential used in <https://doi.org/10.1021/acs.jctc.0c00837>"""
+    """
+    Damped exponential-6-8-10 potential used in <https://doi.org/10.1021/acs.jctc.0c00837>
+
+    Essentially a Buckingham-6-8-10 potential with mixing rules from
+    <https://journals.aps.org/pra/abstract/10.1103/PhysRevA.5.1708>
+    """
 
     forceAtZero = ParameterAttribute(
         default=49.6144931952, unit=unit.kilojoules_per_mole * unit.nanometer**-1
@@ -556,7 +561,27 @@ class DoubleExponential(CustomNonbondedHandler):
 
 
 class MultipoleHandler(ParameterHandler):
-    """Handler for OpenMM's AmoebaMultipoleForce"""
+    """
+    Handler for OpenMM's AmoebaMultipoleForce
+
+    At the moment this code grabs the partial charges from the NonbondedForce after all other handlers are loaded.
+    Support is only provided for the partial charge and induced dipole portion of AmoebaMultipoleForce, all permanent
+    dipoles and quadrupoles are set to zero.
+
+    Exclusions in this Force work differently than other Forces, a list of 1-2, 1-3, 1-4, and 1-5 neighbors are added
+    to each particle via the setCovalentMap function. Covalent12, Covalent13, Covalent14, and Covalent15 are lists of
+    covalently bonded neighbors separated by 1, 2, 3, and 4 bonds respectively. PolarizationCovalent11 is a list
+    all atoms in a "group", all atoms in the "group" do not have permanent multipole-induced dipole interactions
+    (induced-induced mutual polarization still occurs between all atoms). The scale factors are as follows:
+
+    Covalent12 0.0
+    Covalent13 0.0
+    Covalent14 0.4
+    Covalent15 0.8
+
+    Note that Covalent15 is not set in this code, setting Covalent15 would result in inconsistent exclusions between
+    this force and all other forces and cause an OpenMM error.
+    """
 
     _TAGNAME = "Multipole"
     _OPENMMTYPE = openmm.AmoebaMultipoleForce
@@ -568,6 +593,7 @@ class MultipoleHandler(ParameterHandler):
         LibraryChargeHandler,
     ]
 
+    # Default Options
     cutoff = ParameterAttribute(default=9.0 * unit.angstrom, unit=unit.angstrom)
     method = ParameterAttribute(
         default="PME", converter=_allow_only(["NoCutoff", "PME"])
@@ -594,6 +620,7 @@ class MultipoleHandler(ParameterHandler):
 
     def create_force(self, system, topology, **kwargs):
 
+        # Sanity checks
         existing_multipole = [
             system.getForce(i)
             for i in range(system.getNumForces())
@@ -624,6 +651,7 @@ class MultipoleHandler(ParameterHandler):
 
         existing_nonbonded = existing_nonbondeds[0]
 
+        # Set options
         methodMap = {
             "NoCutoff": openmm.AmoebaMultipoleForce.NoCutoff,
             "PME": openmm.AmoebaMultipoleForce.PME,
@@ -641,11 +669,11 @@ class MultipoleHandler(ParameterHandler):
         force.setMutualInducedMaxIterations(self.maxIter)
         force.setExtrapolationCoefficients([-0.154, 0.017, 0.658, 0.474])
 
+        # Call addMultiple for all particles in the system and create zero'ed array of polarities
         polarities = []
         for topology_molecule in topology.topology_molecules:
             for topology_particle in topology_molecule.particles:
-                # TODO: Add assertion that topology_particle isn't a vsite (allowed in theory,
-                #  but we should keep the implementation scope small for now)
+                # allowed in theory, but we should keep the implementation scope small for now
                 assert type(topology_particle) is not TopologyVirtualSite
                 force.addMultipole(
                     0.0,
@@ -664,12 +692,13 @@ class MultipoleHandler(ParameterHandler):
         # Iterate over all types, allowing later matches to override earlier ones.
         atom_matches = self.find_matches(topology)
 
-        # Set the particle polarizability terms.
+        # Set the particle polarity terms
         for atom_key, atom_match in atom_matches.items():
             atom_idx = atom_key[0]
             mpoltype = atom_match.parameter_type
             polarities[atom_idx] = mpoltype.polarity
 
+        # Grab partial charges from NonbondedForce and zero out the NonbondedForce charges
         for topology_molecule in topology.topology_molecules:
 
             for topology_particle in topology_molecule.particles:
@@ -686,7 +715,18 @@ class MultipoleHandler(ParameterHandler):
                     topology_particle_index, 0.0, sigma, epsilon
                 )
 
-                # setMultipoleParameters(self, index, charge, molecularDipole, molecularQuadrupole, axisType, multipoleAtomZ, multipoleAtomX, multipoleAtomY, thole, dampingFactor, polarity)
+                # setMultipoleParameters(self,
+                #                        index,
+                #                        charge,
+                #                        molecularDipole,
+                #                        molecularQuadrupole,
+                #                        axisType,
+                #                        multipoleAtomZ,
+                #                        multipoleAtomX,
+                #                        multipoleAtomY,
+                #                        thole,
+                #                        dampingFactor,
+                #                        polarity)
                 force.setMultipoleParameters(
                     topology_particle_index,
                     particle_charge,
@@ -703,6 +743,7 @@ class MultipoleHandler(ParameterHandler):
                     polarities[topology_particle_index],
                 )
 
+        # Generate exclusions, using reference molecules approach
         for ref_mol in topology.reference_molecules:
             for ref_atom in ref_mol.atoms:
                 bonded2 = [a.molecule_particle_index for a in ref_atom.bonded_atoms]
