@@ -282,8 +282,6 @@ class CustomNonbondedHandler(ParameterHandler, abc.ABC):
                 top_index_1 += top_mol_particle_start_index
                 top_index_2 += top_mol_particle_start_index
 
-                bonds.append([top_index_1, top_index_2])
-
                 # Add a 'bond' between each v-site and every atom that the 'parent' of
                 # the v-site is bonded to so that correct 'parent' policy exceptions are
                 # generated. See https://github.com/openmm/openmm/issues/2045

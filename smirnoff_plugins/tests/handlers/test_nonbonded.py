@@ -9,10 +9,10 @@ from smirnoff_plugins.utilities.openmm import (
 )
 
 
-def test_vsite_exclusions(buckingham_water_force_field, water):
+def test_vsite_exclusions(buckingham_water_force_field, water_box_topology):
     """Make sure the exclusions/exceptions for vsites match in the Nonbonded and Custom Nonbonded force"""
 
-    system = buckingham_water_force_field.create_openmm_system(water.to_topology())
+    system = buckingham_water_force_field.create_openmm_system(water_box_topology)
     # check we have the same number of exclusions and exceptions
     nonbonded_force = [
         force
