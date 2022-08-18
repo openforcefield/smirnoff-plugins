@@ -581,6 +581,9 @@ class MultipoleHandler(ParameterHandler):
 
     Note that Covalent15 is not set in this code, setting Covalent15 would result in inconsistent exclusions between
     this force and all other forces and cause an OpenMM error.
+
+    Supported options cutoff, (nonbonded) method, polarization type, ewald error tolerance, thole, target epsilon,
+    and max iter are directly passed through to the OpenMM force.
     """
 
     _TAGNAME = "Multipole"
@@ -669,7 +672,7 @@ class MultipoleHandler(ParameterHandler):
         force.setMutualInducedMaxIterations(self.maxIter)
         force.setExtrapolationCoefficients([-0.154, 0.017, 0.658, 0.474])
 
-        # Call addMultiple for all particles in the system and create zero'ed array of polarities
+        # Call addMultipole for all particles in the system and create zero'ed array of polarities
         polarities = []
         for topology_molecule in topology.topology_molecules:
             for topology_particle in topology_molecule.particles:
