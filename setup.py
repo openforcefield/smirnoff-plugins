@@ -41,7 +41,8 @@ setup(
             "DampedBuckingham68 = smirnoff_plugins.handlers.nonbonded:DampedBuckingham68",
             "DoubleExponential = smirnoff_plugins.handlers.nonbonded:DoubleExponential",
             "DampedExp6810 = smirnoff_plugins.handlers.nonbonded:DampedExp6810",
-            "Multipole = smirnoff_plugins.handlers.nonbonded:MultipoleHandler"
+            "Multipole = smirnoff_plugins.handlers.nonbonded:MultipoleHandler",
+            "AxilrodTeller = smirnoff_plugins.handlers.manybody:AxilrodTeller",
         ]
     },
 )
