@@ -101,7 +101,7 @@ class CustomManyBodyHandler(ParameterHandler, abc.ABC):
             global_parameters,
         ) = self._get_potential_function()
 
-        force = self._OPENMMTYPE(potential_function)
+        force = self._OPENMMTYPE(self.particlesPerSet, potential_function)
 
         for symbol in potential_parameters:
             force.addPerParticleParameter(symbol)
@@ -123,7 +123,7 @@ class CustomManyBodyHandler(ParameterHandler, abc.ABC):
 
         for atom_key, atom_match in matches.items():
             force.setParticleParameters(
-                atom_key[0], self._process_parameters(atom_match.parameter_type)
+                atom_key[0], self._process_parameters(atom_match.parameter_type), 0
             )
 
         bonds = [

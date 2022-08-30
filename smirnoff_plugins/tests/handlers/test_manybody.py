@@ -20,8 +20,8 @@ def test_axilrod_basic():
     ff = ForceField(load_plugins=True)
     ff.get_parameter_handler("ToolkitAM1BCC")
     ath = ff.get_parameter_handler("AxilrodTeller")
-    ath.add_parameter({"smirks": "[#1:1]", "c9": "1.0 * unit.kilojoule_per_mole * unit.nanometer**9"})
-    ath.add_parameter({"smirks": "[#6:1]", "c9": "1.0 * unit.kilojoule_per_mole * unit.nanometer**9"})
+    ath.add_parameter({"smirks": "[#1:1]", "c9": "1.0 * kilojoule_per_mole * nanometer**9"})
+    ath.add_parameter({"smirks": "[#6:1]", "c9": "1.0 * kilojoule_per_mole * nanometer**9"})
 
     sys = ff.create_openmm_system(top)
 
