@@ -30,7 +30,10 @@ class CustomManyBodyHandler(ParameterHandler, abc.ABC):
     method = ParameterAttribute(
         default="CutoffPeriodic", converter=_allow_only(["CutoffPeriodic", "NoCutoff"])
     )
-    mode = ParameterAttribute(default="SinglePermutation", converter=_allow_only(["SinglePermutation", "UniqueCentralParticle"]))
+    mode = ParameterAttribute(
+        default="SinglePermutation",
+        converter=_allow_only(["SinglePermutation", "UniqueCentralParticle"]),
+    )
     bondCutoff = ParameterAttribute(default=3, converter=int)
     particlesPerSet = ParameterAttribute(default=3, converter=int)
 
@@ -147,7 +150,10 @@ class AxilrodTeller(CustomManyBodyHandler):
     method = ParameterAttribute(
         default="CutoffPeriodic", converter=_allow_only(["CutoffPeriodic", "NoCutoff"])
     )
-    mode = ParameterAttribute(default="SinglePermutation", converter=_allow_only(["SinglePermutation", "UniqueCentralParticle"]))
+    mode = ParameterAttribute(
+        default="SinglePermutation",
+        converter=_allow_only(["SinglePermutation", "UniqueCentralParticle"]),
+    )
     bondCutoff = ParameterAttribute(default=3, converter=int)
     particlesPerSet = ParameterAttribute(default=3, converter=int)
 
@@ -165,7 +171,7 @@ class AxilrodTeller(CustomManyBodyHandler):
 
     @classmethod
     def _default_values(cls) -> Tuple[float, ...]:
-        return 0.0,
+        return (0.0,)
 
     @classmethod
     def _get_potential_function(cls) -> Tuple[str, List[str], List[str]]:
@@ -194,9 +200,10 @@ class AxilrodTeller(CustomManyBodyHandler):
             ),
         )
 
-'''
+
+"""
 3,
 
 
 openmm.CustomManyParticleForce.SinglePermutation
-'''
+"""
