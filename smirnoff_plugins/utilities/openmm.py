@@ -5,10 +5,11 @@ import time
 from typing import List, Literal, Optional, Tuple
 
 import numpy
-from openff.toolkit.topology import Molecule, Topology, TopologyAtom
+from openff.toolkit.topology import Molecule, Topology
 from openff.toolkit.typing.engines.smirnoff import ForceField
-from simtk import openmm, unit
-from simtk.openmm import app
+import openmm
+import openmm.app
+from openff.units import unit
 
 from smirnoff_plugins.utilities import temporary_cd
 
@@ -164,9 +165,6 @@ def simulate(
 
     for particle in topology.topology_particles:
 
-        if isinstance(particle, TopologyAtom):
-            continue
-
         omm_topology.addAtom(
             particle.virtual_site.name, app.Element.getByMass(0), omm_residue
         )
@@ -217,7 +215,7 @@ def water_box(n_molecules: int) -> Tuple[Topology, unit.Quantity]:
         numpy.vstack(
             [
                 (
-                    molecule.conformers[0].value_in_unit(unit.angstrom)
+                    molecule.conformers[0].m_as(unit.angstrom)
                     + numpy.array([[x, y, z]]) * 2.5
                 )
                 for x in range(math.ceil(n_molecules ** (1 / 3)))
@@ -265,8 +263,8 @@ def evaluate_water_energy_at_distances(
     positions = [
         numpy.vstack(
             [
-                water.conformers[0].value_in_unit(unit.angstrom),
-                water.conformers[0].value_in_unit(unit.angstrom)
+                water.conformers[0].m_as(unit.angstrom),
+                water.conformers[0].m_as(unit.angstrom)
                 + numpy.array([x, 0, 0]),
             ]
         )
@@ -279,9 +277,6 @@ def evaluate_water_energy_at_distances(
     omm_residue = omm_topology.addResidue("", chain=omm_chain)
 
     for particle in topology.topology_particles:
-
-        if isinstance(particle, TopologyAtom):
-            continue
 
         omm_topology.addAtom(
             particle.virtual_site.name, app.Element.getByMass(0), omm_residue
@@ -309,7 +304,7 @@ def evaluate_water_energy_at_distances(
         simulation.context.computeVirtualSites()
         state = simulation.context.getState(getEnergy=True)
         energies.append(
-            state.getPotentialEnergy().value_in_unit(unit.kilojoule_per_mole)
+            state.getPotentialEnergy().m_as(unit.kilojoule_per_mole)
         )
 
     return energies
@@ -349,4 +344,4 @@ def evaluate_energy(
     simulation.context.setPositions(positions)
     simulation.context.computeVirtualSites()
     state = simulation.context.getState(getEnergy=True)
-    return state.getPotentialEnergy().value_in_unit(unit.kilojoule_per_mole)
+    return state.getPotentialEnergy().m_as(unit.kilojoule_per_mole)

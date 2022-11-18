@@ -1,7 +1,8 @@
 import pytest
 from openff.toolkit.topology import Molecule
 from openff.toolkit.typing.engines.smirnoff import ForceField
-from simtk import openmm, unit
+import openmm
+from openff.units import unit
 
 from smirnoff_plugins.utilities.openmm import (
     evaluate_energy,

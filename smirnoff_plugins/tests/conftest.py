@@ -4,7 +4,7 @@ import numpy
 import pytest
 from openff.toolkit.topology import Molecule, Topology
 from openff.toolkit.typing.engines.smirnoff import ForceField, ParameterList
-from simtk import unit
+from openff.units import unit
 
 
 @pytest.fixture()
@@ -101,8 +101,9 @@ def water_box_topology() -> Topology:
     topology: Topology = Topology.from_molecules([mol] * n_molecules)
 
     # Create some coordinates (without the v-sites) and estimate box vectors.
-    topology.box_vectors = (
-        numpy.eye(3) * math.ceil(n_molecules ** (1 / 3) + 2) * 2.5 * unit.angstrom
+    topology.box_vectors = unit.Quantity(
+        numpy.eye(3) * math.ceil(n_molecules ** (1 / 3) + 2) * 2.5,
+        unit.angstrom,
     )
 
     return topology
