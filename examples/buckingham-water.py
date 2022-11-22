@@ -61,7 +61,7 @@ def build_force_field() -> ForceField:
     virtual_site_handler = force_field.get_parameter_handler("VirtualSites")
     virtual_site_handler.add_parameter(
         {
-            "smirks": "[#1:1]-[#8X2H2+0:2]-[#1:3]",
+            "smirks": "[#1:2]-[#8X2H2+0:1]-[#1:3]",
             "type": "DivalentLonePair",
             "distance": -0.0106 * unit.nanometers,
             "outOfPlaneAngle": 0.0 * unit.degrees,
@@ -74,15 +74,20 @@ def build_force_field() -> ForceField:
     virtual_site_handler._parameters = ParameterList(virtual_site_handler._parameters)
 
     # Finally add the custom buckingham charge handler.
-    buckingham_handler = force_field.get_parameter_handler("DampedBuckingham68")
+    buckingham_handler = force_field.get_parameter_handler(
+        "DampedBuckingham68",
+        {
+            "version": "0.3",
+            "gamma": unit.Quantity(35.8967 / unit.nanometer),
+        },
+    )
     buckingham_handler.add_parameter(
         {
             "smirks": "[#1:1]-[#8X2H2+0]-[#1]",
             "a": 0.0 * unit.kilojoule_per_mole,
             "b": 0.0 / unit.nanometer,
-            "c6": 0.0 * unit.kilojoule_per_mole * unit.nanometer ** 6,
-            "c8": 0.0 * unit.kilojoule_per_mole * unit.nanometer ** 8,
-            "gamma": 0.0 / unit.nanometer,
+            "c6": 0.0 * unit.kilojoule_per_mole * unit.nanometer**6,
+            "c8": 0.0 * unit.kilojoule_per_mole * unit.nanometer**8,
         }
     )
     buckingham_handler.add_parameter(
@@ -90,9 +95,8 @@ def build_force_field() -> ForceField:
             "smirks": "[#1]-[#8X2H2+0:1]-[#1]",
             "a": 1600000.0 * unit.kilojoule_per_mole,
             "b": 42.00 / unit.nanometer,
-            "c6": 0.003 * unit.kilojoule_per_mole * unit.nanometer ** 6,
-            "c8": 0.00003 * unit.kilojoule_per_mole * unit.nanometer ** 8,
-            "gamma": 35.8967 / unit.nanometer,
+            "c6": 0.003 * unit.kilojoule_per_mole * unit.nanometer**6,
+            "c8": 0.00003 * unit.kilojoule_per_mole * unit.nanometer**8,
         }
     )
 
@@ -106,7 +110,7 @@ def main():
     force_field.to_file("buckingham-force-field.offxml")
 
     # Create a topology containing water molecules.
-    molecule: Molecule = Molecule.from_smiles("O")
+    molecule: Molecule = Molecule.from_mapped_smiles("[H:2][O:1][H:3]")
     molecule.generate_conformers(n_conformers=1)
 
     n_molecules = 256
@@ -139,7 +143,7 @@ def main():
         topology,
         positions,
         None if n_molecules == 1 else topology.box_vectors,
-        100000,
+        2000,
         300.0 * unit.kelvin,
         None if n_molecules == 1 else 1.0 * unit.atmosphere,
         platform="Reference" if n_molecules == 1 else "OpenCL",
