@@ -64,9 +64,22 @@ def __simulate(
         2.0 * unit.femtoseconds,  # simulation timestep
     )
 
-    platform = openmm.Platform.getPlatformByName(platform)
-
-    simulation = app.Simulation(omm_topology, omm_system, integrator, platform)
+    try:
+        simulation = app.Simulation(
+            omm_topology,
+            omm_system,
+            integrator,
+            openmm.Platform.getPlatformByName(platform),
+        )
+    except openmm.OpenMMException:
+        logger.debug(
+            f"Failed to use platform {platform}, trying again and letting OpenMM select platform."
+        )
+        simulation = app.Simulation(
+            omm_topology,
+            omm_system,
+            integrator,
+        )
 
     if box_vectors is not None:
         simulation.context.setPeriodicBoxVectors(
