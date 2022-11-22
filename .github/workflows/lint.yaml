@@ -32,12 +32,12 @@ jobs:
 
       - name: Run isort
         run: |
-          isort --recursive --check-only smirnoff_plugins
+          isort --check-only smirnoff_plugins examples
 
       - name: Run black
         run: |
-          black smirnoff_plugins --check
+          black --check smirnoff_plugins examples
 
       - name: Run flake8
         run: |
-          flake8 smirnoff_plugins
+          flake8 smirnoff_plugins examples
