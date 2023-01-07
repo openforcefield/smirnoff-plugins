@@ -113,7 +113,10 @@ class CustomNonbondedHandler(ParameterHandler, abc.ABC):
         )
 
     @abc.abstractmethod
-    def _process_parameters(self, parameter_type: ParameterType,) -> Tuple[float, ...]:
+    def _process_parameters(
+        self,
+        parameter_type: ParameterType,
+    ) -> Tuple[float, ...]:
         """Process the parameters of the parameter type, by applying combination rule pre-processing."""
         raise NotImplementedError()
 
@@ -298,7 +301,7 @@ class CustomNonbondedHandler(ParameterHandler, abc.ABC):
 class DampedBuckingham68(CustomNonbondedHandler):
     """The B68 potential."""
 
-    gamma = ParameterAttribute(default=35.8967, unit=unit.nanometer ** -1)
+    gamma = ParameterAttribute(default=35.8967, unit=unit.nanometer**-1)
 
     class B68Type(ParameterType):
 
@@ -306,19 +309,19 @@ class DampedBuckingham68(CustomNonbondedHandler):
         _ELEMENT_NAME = "Atom"
 
         a = ParameterAttribute(default=None, unit=unit.kilojoule_per_mole)
-        b = ParameterAttribute(default=None, unit=unit.nanometer ** -1)
+        b = ParameterAttribute(default=None, unit=unit.nanometer**-1)
         c6 = ParameterAttribute(
-            default=None, unit=unit.kilojoule_per_mole * unit.nanometer ** 6
+            default=None, unit=unit.kilojoule_per_mole * unit.nanometer**6
         )
         c8 = ParameterAttribute(
-            default=None, unit=unit.kilojoule_per_mole * unit.nanometer ** 8
+            default=None, unit=unit.kilojoule_per_mole * unit.nanometer**8
         )
 
     _TAGNAME = "DampedBuckingham68"  # SMIRNOFF tag name to process
     _INFOTYPE = B68Type  # info type to store
 
     def _pre_computed_terms(self) -> Dict[str, float]:
-        d2 = self.gamma ** 2 * 0.5
+        d2 = self.gamma**2 * 0.5
         d3 = d2 * self.gamma * 0.3333333333
         d4 = d3 * self.gamma * 0.25
         d5 = d4 * self.gamma * 0.2
@@ -362,19 +365,22 @@ class DampedBuckingham68(CustomNonbondedHandler):
 
         return potential_function, potential_parameters, global_parameters
 
-    def _process_parameters(self, parameter_type: B68Type,) -> Tuple[float, ...]:
+    def _process_parameters(
+        self,
+        parameter_type: B68Type,
+    ) -> Tuple[float, ...]:
 
         return (
             numpy.sqrt(parameter_type.a.value_in_unit(unit.kilojoule_per_mole)),
-            numpy.sqrt(parameter_type.b.value_in_unit(unit.nanometer ** -1)),
+            numpy.sqrt(parameter_type.b.value_in_unit(unit.nanometer**-1)),
             numpy.sqrt(
                 parameter_type.c6.value_in_unit(
-                    unit.kilojoule_per_mole * unit.nanometer ** 6
+                    unit.kilojoule_per_mole * unit.nanometer**6
                 )
             ),
             numpy.sqrt(
                 parameter_type.c8.value_in_unit(
-                    unit.kilojoule_per_mole * unit.nanometer ** 8
+                    unit.kilojoule_per_mole * unit.nanometer**8
                 )
             ),
         )
@@ -400,7 +406,10 @@ class DoubleExponential(CustomNonbondedHandler):
     _TAGNAME = "DoubleExponential"  # SMIRNOFF tag name to process
     _INFOTYPE = DEType  # info type to store
 
-    def _process_parameters(self, parameter_type: DEType,) -> Tuple[float, ...]:
+    def _process_parameters(
+        self,
+        parameter_type: DEType,
+    ) -> Tuple[float, ...]:
         # sqrt the epsilon during assignment
         # half r_min during assigment
         return (
