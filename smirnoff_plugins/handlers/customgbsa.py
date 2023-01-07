@@ -237,10 +237,10 @@ class CustomGBSAHandler(ParameterHandler):
 
     # This value is fed into the non-polar term: 4*PI*surface_area_penalty*(radius+solvent_radius)^2*(radius/B)^6
     surface_area_penalty = ParameterAttribute(
-        #default=5.4 * unit.calorie / unit.mole / unit.angstrom ** 2,
-        #unit=unit.calorie / unit.mole / unit.angstrom ** 2,
-        default=5.4 * unit.calorie/(unit.angstrom**2*unit.mole),
-        unit=unit.calorie/(unit.angstrom**2*unit.mole),
+        # default=5.4 * unit.calorie / unit.mole / unit.angstrom ** 2,
+        # unit=unit.calorie / unit.mole / unit.angstrom ** 2,
+        default=5.4 * unit.calorie / (unit.angstrom**2 * unit.mole),
+        unit=unit.calorie / (unit.angstrom**2 * unit.mole),
     )
 
     # Solvent probe radius and offset radius
@@ -254,7 +254,7 @@ class CustomGBSAHandler(ParameterHandler):
     )
     temperature = ParameterAttribute(default=300 * unit.kelvin, unit=unit.kelvin)
     kappa = ParameterAttribute(
-        default=0.0 * unit.nanometer ** -1, unit=unit.nanometer ** -1
+        default=0.0 * unit.nanometer**-1, unit=unit.nanometer**-1
     )
 
     # MKG model parameters
@@ -334,10 +334,10 @@ class CustomGBSAHandler(ParameterHandler):
                 solvent_dielectric,
                 solute_dielectric,
                 surface_area_penalty.value_in_unit(
-                    unit.kilojoule / unit.mole / unit.nanometer ** 2
+                    unit.kilojoule / unit.mole / unit.nanometer**2
                 ),
                 solvent_radius.value_in_unit(unit.nanometer),
-                kappa.value_in_unit(unit.nanometer ** -1),
+                kappa.value_in_unit(unit.nanometer**-1),
                 offset_radius.value_in_unit(unit.nanometer),
                 np.pi,
             )
@@ -348,13 +348,13 @@ class CustomGBSAHandler(ParameterHandler):
             params += "; cutoff=%.16g" % cutoff
 
         # Assign the Generalized Born equation for the self term
-        if kappa.value_in_unit(unit.nanometer ** -1) > 0:
+        if kappa.value_in_unit(unit.nanometer**-1) > 0:
             force.addEnergyTerm(
                 "-0.5*ONE_4PI_EPS0*(1/soluteDielectric-exp(-kappa*B)/solventDielectric)*charge^2/B"
                 + params,
                 openmm.CustomGBForce.SingleParticle,
             )
-        elif kappa.value_in_unit(unit.nanometer ** -1) < 0:
+        elif kappa.value_in_unit(unit.nanometer**-1) < 0:
             # Do kappa check here to avoid repeating code everywhere
             raise ValueError("kappa/ionic strength must be >= 0")
         else:
@@ -376,7 +376,7 @@ class CustomGBSAHandler(ParameterHandler):
 
         # Assign the Generalized Born equation for the cross term
         if cutoff is None:
-            if kappa.value_in_unit(unit.nanometer ** -1) > 0:
+            if kappa.value_in_unit(unit.nanometer**-1) > 0:
                 force.addEnergyTerm(
                     "-ONE_4PI_EPS0*(1/soluteDielectric-exp(-kappa*f)/solventDielectric)*charge1*charge2/f;"
                     + "f=sqrt(r^2 + B1*B2*exp(-r^2/(4*B1*B2)))"
@@ -402,7 +402,7 @@ class CustomGBSAHandler(ParameterHandler):
                         openmm.CustomGBForce.ParticlePairNoExclusions,
                     )
         else:
-            if kappa.value_in_unit(unit.nanometer ** -1) > 0:
+            if kappa.value_in_unit(unit.nanometer**-1) > 0:
                 force.addEnergyTerm(
                     f"-ONE_4PI_EPS0*(1/soluteDielectric-exp(-kappa*f)/solventDielectric)*charge1*charge2*(1/f-{1/cutoff});"
                     + "f=sqrt(r^2 + B1*B2*exp(-r^2/(4*B1*B2)))"
@@ -523,7 +523,9 @@ class CustomGBSAHandler(ParameterHandler):
             else "",
         ]
         gbsa_force.addComputedValue(
-            "I", "".join(integral), openmm.CustomGBForce.ParticlePairNoExclusions,
+            "I",
+            "".join(integral),
+            openmm.CustomGBForce.ParticlePairNoExclusions,
         )
 
         # Effective radius
@@ -538,12 +540,14 @@ class CustomGBSAHandler(ParameterHandler):
                 f"psi=I*or; radius=or+offset; offset={self.offset_radius.value_in_unit(unit.nanometer)}",
             ]
         gbsa_force.addComputedValue(
-            "B", "".join(effective_radii), openmm.CustomGBForce.SingleParticle,
+            "B",
+            "".join(effective_radii),
+            openmm.CustomGBForce.SingleParticle,
         )
 
         # Convert `salt_concentration` to Debye length, kappa
         if (
-            self.kappa.value_in_unit(unit.nanometer ** -1) == 0.0
+            self.kappa.value_in_unit(unit.nanometer**-1) == 0.0
             and self.salt_concentration.value_in_unit(unit.moles / unit.liter) != 0.0
         ):
             # The constant is 1 / sqrt( epsilon_0 * kB / (2 * NA * q^2 * 1000) )
@@ -559,7 +563,7 @@ class CustomGBSAHandler(ParameterHandler):
             # to convert to 1/nm from 1/angstroms
             kappa *= 7.3
 
-            self.kappa = kappa * unit.nanometer ** -1
+            self.kappa = kappa * unit.nanometer**-1
 
         # Create energy terms
         self._create_gbsa_energy_terms(
