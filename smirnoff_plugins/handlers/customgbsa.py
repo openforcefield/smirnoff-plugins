@@ -237,8 +237,10 @@ class CustomGBSAHandler(ParameterHandler):
 
     # This value is fed into the non-polar term: 4*PI*surface_area_penalty*(radius+solvent_radius)^2*(radius/B)^6
     surface_area_penalty = ParameterAttribute(
-        default=5.4 * unit.calorie / unit.mole / unit.angstrom ** 2,
-        unit=unit.calorie / unit.mole / unit.angstrom ** 2,
+        #default=5.4 * unit.calorie / unit.mole / unit.angstrom ** 2,
+        #unit=unit.calorie / unit.mole / unit.angstrom ** 2,
+        default=5.4 * unit.calorie/(unit.angstrom**2*unit.mole),
+        unit=unit.calorie/(unit.angstrom**2*unit.mole),
     )
 
     # Solvent probe radius and offset radius
@@ -258,7 +260,7 @@ class CustomGBSAHandler(ParameterHandler):
     # MKG model parameters
     mkg_mag = ParameterAttribute(default=0.1, converter=float)
     mkg_power = ParameterAttribute(default=2.5, converter=float)
-    mkg_width = ParameterAttribute(default=0.4, unit=unit.nanometer)
+    mkg_width2 = ParameterAttribute(default=0.4, unit=unit.nanometer**2)
     mkg_scale = ParameterAttribute(default=0.5, converter=float)
 
     # Tolerance when comparing float attributes for handler compatibility.
@@ -290,7 +292,7 @@ class CustomGBSAHandler(ParameterHandler):
             "mkg_power",
             "mkg_scale",
         ]
-        string_attrs_to_compare = ["sa_model", "mkg_width"]
+        string_attrs_to_compare = ["sa_model", "mkg_width2"]
         unit_attrs_to_compare = [
             "surface_area_penalty",
             "solvent_radius",
@@ -319,7 +321,7 @@ class CustomGBSAHandler(ParameterHandler):
         model: str,
         mkg_mag: float,
         mkg_power: float,
-        mkg_width: unit.Quantity,
+        mkg_width2: unit.Quantity,
         mkg_scale: float,
     ):
         """Add the GBSA energy terms to the CustomGBForce. These are identical for all the Amber-based GB models."""
@@ -383,8 +385,8 @@ class CustomGBSAHandler(ParameterHandler):
                 )
             else:
                 if model == "MKG":
-                    fgb_kernel = "F_gb=mag*(r^power)*exp(-r^2/width)+log(exp(scale*sqrt(B1*B2))+exp(scale*r))/scale;"
-                    fgb_kernel += f"mag={mkg_mag}; power={mkg_power}; width={mkg_width.value_in_unit(unit.nanometer)}; scale={mkg_scale}"
+                    fgb_kernel = "F_gb=mag*(r^power)*exp(-r^2/width2)+log(exp(scale*sqrt(B1*B2))+exp(scale*r))/scale;"
+                    fgb_kernel += f"mag={mkg_mag}; power={mkg_power}; width2={mkg_width2.value_in_unit(unit.nanometer**2)}; scale={mkg_scale}"
 
                     force.addEnergyTerm(
                         "-ONE_4PI_EPS0*(1/soluteDielectric-1/solventDielectric)*charge1*charge2/F_gb;"
@@ -573,7 +575,7 @@ class CustomGBSAHandler(ParameterHandler):
             self.gb_model,
             self.mkg_mag,
             self.mkg_power,
-            self.mkg_width,
+            self.mkg_width2,
             self.mkg_scale,
         )
 
