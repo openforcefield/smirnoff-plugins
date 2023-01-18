@@ -258,7 +258,7 @@ class CustomGBSAHandler(ParameterHandler):
     )
 
     # MKG model parameters
-    mkg_magnitude = ParameterAttribute(default=0.1, converter=unit.nanometer)
+    mkg_magnitude = ParameterAttribute(default=0.0, converter=unit.nanometer)
     mkg_mean = ParameterAttribute(default=0.5, converter=unit.nanometer)
     mkg_width2 = ParameterAttribute(default=0.4, unit=unit.nanometer**2)
 
@@ -288,12 +288,15 @@ class CustomGBSAHandler(ParameterHandler):
             "solvent_dielectric",
             "solute_dielectric",
         ]
-        string_attrs_to_compare = ["sa_model", "mkg_magnitude", "mkg_mean", "mkg_width2"]
+        string_attrs_to_compare = ["sa_model"]
         unit_attrs_to_compare = [
             "surface_area_penalty",
             "solvent_radius",
             "offset_radius",
             "kappa",
+            "mkg_magnitude",
+            "mkg_mean",
+            "mkg_width2",
         ]
 
         self._check_attributes_are_equal(
