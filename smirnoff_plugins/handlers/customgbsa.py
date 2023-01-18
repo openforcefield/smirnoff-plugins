@@ -384,7 +384,7 @@ class CustomGBSAHandler(ParameterHandler):
                 )
             else:
                 if model == "MKG":
-                    fgb_kernel = "F_gb=sqrt(r^2 + B1*B2*exp(-r^2/(4*B1*B2))) + A*exp(-(r-mu)^2/s2);"
+                    fgb_kernel = "F_gb=sqrt(r^2 + B1*B2*exp(-r^2/(4*B1*B2))) + A*exp(-(r-mu)^2/(2*s2));"
                     fgb_kernel += f"A={mkg_magnitude.value_in_unit(unit.nanometer)}; "
                     fgb_kernel += f"mu={mkg_mean.value_in_unit(unit.nanometer)}; "
                     fgb_kernel += f"s2={mkg_width2.value_in_unit(unit.nanometer**2)}"
