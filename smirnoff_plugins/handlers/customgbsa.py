@@ -258,8 +258,8 @@ class CustomGBSAHandler(ParameterHandler):
     )
 
     # MKG model parameters
-    mkg_magnitude = ParameterAttribute(default=0.0, converter=unit.nanometer)
-    mkg_mean = ParameterAttribute(default=0.5, converter=unit.nanometer)
+    mkg_magnitude = ParameterAttribute(default=0.0, unit=unit.nanometer)
+    mkg_mean = ParameterAttribute(default=0.5, unit=unit.nanometer)
     mkg_width2 = ParameterAttribute(default=0.4, unit=unit.nanometer**2)
 
     # Tolerance when comparing float attributes for handler compatibility.
