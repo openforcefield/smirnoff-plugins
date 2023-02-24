@@ -33,18 +33,9 @@ def buckingham_water_force_field() -> ForceField:
     vdw_handler = force_field.get_parameter_handler("vdW")
     vdw_handler.add_parameter(
         {
-            "smirks": "[#1:1]-[#8X2H2+0]-[#1]",
+            "smirks": "[*:1]",
             "epsilon": 0.0 * unit.kilojoule_per_mole,
             "sigma": 1.0 * unit.angstrom,
-        }
-    )
-    vdw_handler.add_parameter(
-        {
-            "smirks": "[#1]-[#8X2H2+0:1]-[#1]",
-            "epsilon": 0.0 * unit.kilojoules_per_mole,
-            "sigma": 0.0 * unit.nanometers,
-            # "epsilon": 0.680946 * unit.kilojoules_per_mole,
-            # "sigma": 0.316435 * unit.nanometers,
         }
     )
 
@@ -132,16 +123,9 @@ def ideal_water_force_field() -> ForceField:
     vdw_handler = ff.get_parameter_handler("vdW")
     vdw_handler.add_parameter(
         {
-            "smirks": "[#1:1]-[#8X2H2+0]-[#1]",
+            "smirks": "[*:1]",
             "epsilon": 0.0 * unit.kilojoule_per_mole,
             "sigma": 1.0 * unit.angstrom,
-        }
-    )
-    vdw_handler.add_parameter(
-        {
-            "smirks": "[#1]-[#8X2H2+0:1]-[#1]",
-            "epsilon": 0.0 * unit.kilojoules_per_mole,
-            "sigma": 0.0 * unit.nanometers,
         }
     )
     # add the library charges
