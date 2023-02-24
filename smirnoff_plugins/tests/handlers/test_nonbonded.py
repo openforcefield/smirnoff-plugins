@@ -148,9 +148,9 @@ def test_b68_energies(ideal_water_force_field):
         force_field=ideal_water_force_field, distances=[2, 3, 4]
     )
     # calculated by hand (kJ / mol)
-    ref_values = [329.305, 1.303183, -0.686559]
+    ref_values = [329.30542, 1.303183, -0.686559]
     for i, energy in enumerate(energies):
-        assert energy == pytest.approx(ref_values[i])
+        assert energy == pytest.approx(ref_values[i], abs=1e-5)
 
 
 def test_scaled_de_energy():

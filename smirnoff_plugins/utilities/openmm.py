@@ -176,7 +176,6 @@ def simulate(
     omm_residue = omm_topology.addResidue("", chain=omm_chain)
 
     for particle in topology.topology_particles:
-
         if isinstance(particle, TopologyAtom):
             continue
 
@@ -189,7 +188,6 @@ def simulate(
     )
 
     with temporary_cd(output_directory):
-
         __simulate(
             positions=positions * unit.angstrom,
             box_vectors=box_vectors,
@@ -292,7 +290,6 @@ def evaluate_water_energy_at_distances(
     omm_residue = omm_topology.addResidue("", chain=omm_chain)
 
     for particle in topology.topology_particles:
-
         if isinstance(particle, TopologyAtom):
             continue
 

@@ -27,7 +27,6 @@ def test_temporary_cd():
 
     # Move to the parent directory
     with temporary_cd(os.pardir):
-
         current_directory = os.getcwd()
         expected_directory = os.path.abspath(
             os.path.join(original_directory, os.pardir)

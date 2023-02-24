@@ -25,15 +25,12 @@ def temporary_cd(directory_path: Optional[str] = None):
     old_directory = os.getcwd()
 
     try:
-
         if directory_path is None:
-
             with TemporaryDirectory() as new_directory:
                 os.chdir(new_directory)
                 yield
 
         else:
-
             os.chdir(directory_path)
             yield
 
