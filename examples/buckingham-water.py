@@ -104,7 +104,6 @@ def build_force_field() -> ForceField:
 
 
 def main():
-
     # Build the custom force field and save it so we can inspect it later.
     force_field = build_force_field()
     force_field.to_file("buckingham-force-field.offxml")
