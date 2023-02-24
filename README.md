@@ -1,7 +1,6 @@
 # SMIRNOFF Plugins
 
 [![tests](https://github.com/openforcefield/smirnoff-plugins/workflows/CI/badge.svg?branch=main)](https://github.com/openforcefield/smirnoff-plugins/actions?query=workflow%3ACI)
-[![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/openforcefield/smirnoff-plugins.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/openforcefield/smirnoff-plugins/context:python)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 This framework provides parameter handlers that enable using custom force field functional forms in [SMIRNOFF](
