@@ -61,16 +61,9 @@ from simtk import unit
 vdw_handler = force_field.get_parameter_handler("vdW")
 vdw_handler.add_parameter(
     {
-        "smirks": "[#1:1]-[#8X2H2+0]-[#1]",
+        "smirks": "[*:1]",
         "epsilon": 0.0 * unit.kilojoule_per_mole,
         "sigma": 1.0 * unit.angstrom,
-    }
-)
-vdw_handler.add_parameter(
-    {
-        "smirks": "[#1]-[#8X2H2+0:1]-[#1]",
-        "epsilon": 0.0 * unit.kilojoules_per_mole,
-        "sigma": 0.0 * unit.nanometers,
     }
 )
 ```
@@ -99,13 +92,13 @@ from openff.toolkit.typing.engines.smirnoff import ParameterList
 virtual_site_handler = force_field.get_parameter_handler("VirtualSites")
 virtual_site_handler.add_parameter(
     {
-        "smirks": "[#1:1]-[#8X2H2+0:2]-[#1:3]",
+        "smirks": "[#1:2]-[#8X2H2+0:1]-[#1:3]",
         "type": "DivalentLonePair",
         "distance": -0.0106 * unit.nanometers,
         "outOfPlaneAngle": 0.0 * unit.degrees,
         "match": "once",
-        "charge_increment1": 1.0552 * 0.5 * unit.elementary_charge,
-        "charge_increment2": 0.0 * unit.elementary_charge,
+        "charge_increment2": 1.0552 * 0.5 * unit.elementary_charge,
+        "charge_increment1": 0.0 * unit.elementary_charge,
         "charge_increment3": 1.0552 * 0.5 * unit.elementary_charge,
     }
 )

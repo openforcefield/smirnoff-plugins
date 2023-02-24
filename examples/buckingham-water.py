@@ -6,7 +6,7 @@ import math
 import numpy
 from openff.toolkit.topology import Molecule, Topology
 from openff.toolkit.typing.engines.smirnoff import ForceField, ParameterList
-from simtk import unit
+from openmm import unit
 
 from smirnoff_plugins.utilities.openmm import simulate
 
@@ -33,18 +33,9 @@ def build_force_field() -> ForceField:
     vdw_handler = force_field.get_parameter_handler("vdW")
     vdw_handler.add_parameter(
         {
-            "smirks": "[#1:1]-[#8X2H2+0]-[#1]",
+            "smirks": "[*:1]",
             "epsilon": 0.0 * unit.kilojoule_per_mole,
             "sigma": 1.0 * unit.angstrom,
-        }
-    )
-    vdw_handler.add_parameter(
-        {
-            "smirks": "[#1]-[#8X2H2+0:1]-[#1]",
-            "epsilon": 0.0 * unit.kilojoules_per_mole,
-            "sigma": 0.0 * unit.nanometers,
-            # "epsilon": 0.680946 * unit.kilojoules_per_mole,
-            # "sigma": 0.316435 * unit.nanometers,
         }
     )
 
@@ -66,8 +57,8 @@ def build_force_field() -> ForceField:
             "distance": -0.0106 * unit.nanometers,
             "outOfPlaneAngle": 0.0 * unit.degrees,
             "match": "once",
-            "charge_increment1": 1.0552 * 0.5 * unit.elementary_charge,
-            "charge_increment2": 0.0 * unit.elementary_charge,
+            "charge_increment2": 1.0552 * 0.5 * unit.elementary_charge,
+            "charge_increment1": 0.0 * unit.elementary_charge,
             "charge_increment3": 1.0552 * 0.5 * unit.elementary_charge,
         }
     )
