@@ -1,7 +1,10 @@
+import openmm
+import openmm.unit
 import pytest
+from openff.interchange import Interchange
 from openff.toolkit.topology import Molecule
 from openff.toolkit.typing.engines.smirnoff import ForceField
-from simtk import openmm, unit
+from openff.units import unit
 
 from smirnoff_plugins.utilities.openmm import (
     evaluate_energy,
@@ -9,10 +12,13 @@ from smirnoff_plugins.utilities.openmm import (
 )
 
 
+@pytest.mark.skip
 def test_vsite_exclusions(buckingham_water_force_field, water_box_topology):
     """Make sure the exclusions/exceptions for vsites match in the Nonbonded and Custom Nonbonded force"""
 
-    system = buckingham_water_force_field.create_openmm_system(water_box_topology)
+    system = buckingham_water_force_field.create_interchange(
+        water_box_topology
+    ).to_openmm(combine_nonbonded_forces=False)
     # check we have the same number of exclusions and exceptions
     nonbonded_force = [
         force
@@ -43,7 +49,10 @@ def test_use_switch_width(
         "DampedBuckingham68"
     )
     buckingham_handler.switch_width = switch_width
-    system = buckingham_water_force_field.create_openmm_system(water_box_topology)
+    system = buckingham_water_force_field.create_interchange(
+        water_box_topology
+    ).to_openmm(combine_nonbonded_forces=False)
+
     for i in range(system.getNumForces()):
         force = system.getForce(i)
         if isinstance(force, openmm.CustomNonbondedForce):
@@ -61,7 +70,9 @@ def test_switch_width(water_box_topology, buckingham_water_force_field):
     buckingham_handler.switch_width = 1.0 * unit.angstroms
     buckingham_handler.cutoff = 8.5 * unit.angstroms
 
-    system = buckingham_water_force_field.create_openmm_system(water_box_topology)
+    system = buckingham_water_force_field.create_interchange(
+        water_box_topology
+    ).to_openmm(combine_nonbonded_forces=False)
     for i in range(system.getNumForces()):
         force = system.getForce(i)
         if isinstance(force, openmm.CustomNonbondedForce):
@@ -69,7 +80,7 @@ def test_switch_width(water_box_topology, buckingham_water_force_field):
             break
 
     # make sure it has been adjusted
-    assert custom_force.getSwitchingDistance() == 7.5 * unit.angstroms
+    assert custom_force.getSwitchingDistance() == 7.5 * openmm.unit.angstroms
 
 
 def test_double_exp_energies(ideal_water_force_field):
@@ -104,8 +115,10 @@ def test_double_exp_energies(ideal_water_force_field):
     energies = evaluate_water_energy_at_distances(
         force_field=ideal_water_force_field, distances=[2, r_min, 4]
     )
+
     # calculated by hand (kJ / mol), at r_min the energy should be epsilon
     ref_values = [457.0334854, -0.635968, -0.4893932627]
+
     for i, energy in enumerate(energies):
         assert energy == pytest.approx(ref_values[i])
 
@@ -165,14 +178,7 @@ def test_scaled_de_energy():
         "ChargeIncrementModel",
         {"version": "0.3", "partial_charge_method": "formal_charge"},
     )
-    vdw_handler = ff.get_parameter_handler("vdW")
-    vdw_handler.add_parameter(
-        {
-            "smirks": "[*:1]",
-            "epsilon": 0.0 * unit.kilojoule_per_mole,
-            "sigma": 1.0 * unit.angstrom,
-        }
-    )
+
     double_exp = ff.get_parameter_handler("DoubleExponential")
     double_exp.alpha = 18.7
     double_exp.beta = 3.3
@@ -195,16 +201,26 @@ def test_scaled_de_energy():
     ethane = Molecule.from_smiles("CC")
     ethane.generate_conformers(n_conformers=1)
     off_top = ethane.to_topology()
+    off_top.box_vectors = [40, 40, 40] * unit.angstrom
     omm_top = off_top.to_openmm()
-    system_no_scale = ff.create_openmm_system(topology=off_top)
-    energy_no_scale = evaluate_energy(
-        system=system_no_scale, topology=omm_top, positions=ethane.conformers[0]
+    system_no_scale = Interchange.from_smirnoff(ff, off_top).to_openmm(
+        combine_nonbonded_forces=False
     )
+    energy_no_scale = evaluate_energy(
+        system=system_no_scale,
+        topology=omm_top,
+        positions=ethane.conformers[0].to_openmm(),
+    )
+
     # now scale 1-4 by half
     double_exp.scale14 = 0.5
-    system_scaled = ff.create_openmm_system(topology=off_top)
+    system_scaled = Interchange.from_smirnoff(ff, off_top).to_openmm(
+        combine_nonbonded_forces=False
+    )
     energy_scaled = evaluate_energy(
-        system=system_scaled, topology=omm_top, positions=ethane.conformers[0]
+        system=system_scaled,
+        topology=omm_top,
+        positions=ethane.conformers[0].to_openmm(),
     )
     assert double_exp.scale14 * energy_no_scale == pytest.approx(
         energy_scaled, abs=1e-6

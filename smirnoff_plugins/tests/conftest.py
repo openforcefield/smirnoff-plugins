@@ -4,12 +4,12 @@ import numpy
 import pytest
 from openff.toolkit.topology import Molecule, Topology
 from openff.toolkit.typing.engines.smirnoff import ForceField, ParameterList
-from simtk import unit
+from openff.units import unit
 
 
 @pytest.fixture()
 def water() -> Molecule:
-    return Molecule.from_smiles("O")
+    return Molecule.from_mapped_smiles("[O:1]([H:2])[H:3]")
 
 
 @pytest.fixture()
@@ -27,16 +27,6 @@ def buckingham_water_force_field() -> ForceField:
     # Keep the H-O-H angle fixed at 104.52 degrees.
     constraint_handler.add_parameter(
         {"smirks": "[#1:1]-[#8X2H2+0]-[#1:2]", "distance": 1.5139 * unit.angstrom}
-    )
-
-    # Add a default vdW handler which is currently required by the OFF TK.
-    vdw_handler = force_field.get_parameter_handler("vdW")
-    vdw_handler.add_parameter(
-        {
-            "smirks": "[*:1]",
-            "epsilon": 0.0 * unit.kilojoule_per_mole,
-            "sigma": 1.0 * unit.angstrom,
-        }
     )
 
     # Add a charge handler to zero the charges on water. The charges will be
@@ -96,9 +86,10 @@ def water_box_topology() -> Topology:
 
     topology: Topology = Topology.from_molecules([mol] * n_molecules)
 
-    # Create some coordinates (without the v-sites) and estimate box vectors.
-    topology.box_vectors = (
-        numpy.eye(3) * math.ceil(n_molecules ** (1 / 3) + 2) * 2.5 * unit.angstrom
+    # Estimate box vectors.
+    topology.box_vectors = unit.Quantity(
+        numpy.eye(3) * math.ceil(n_molecules ** (1 / 3) + 2) * 2.5,
+        unit.angstrom,
     )
 
     return topology
@@ -112,6 +103,8 @@ def ideal_water_force_field() -> ForceField:
     """
     ff = ForceField(load_plugins=True)
 
+    ff.get_parameter_handler("Electrostatics")
+
     constraint_handler = ff.get_parameter_handler("Constraints")
     constraint_handler.add_parameter(
         {"smirks": "[#1:1]-[#8X2H2+0:2]-[#1]", "distance": 0.9572 * unit.angstrom}
@@ -119,15 +112,7 @@ def ideal_water_force_field() -> ForceField:
     constraint_handler.add_parameter(
         {"smirks": "[#1:1]-[#8X2H2+0]-[#1:2]", "distance": 1.5139 * unit.angstrom}
     )
-    # add a dummy vdW term
-    vdw_handler = ff.get_parameter_handler("vdW")
-    vdw_handler.add_parameter(
-        {
-            "smirks": "[*:1]",
-            "epsilon": 0.0 * unit.kilojoule_per_mole,
-            "sigma": 1.0 * unit.angstrom,
-        }
-    )
+
     # add the library charges
     library_charge = ff.get_parameter_handler("LibraryCharges")
     library_charge.add_parameter(
