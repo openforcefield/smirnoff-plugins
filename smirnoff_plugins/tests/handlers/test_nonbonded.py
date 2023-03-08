@@ -12,7 +12,6 @@ from smirnoff_plugins.utilities.openmm import (
 )
 
 
-@pytest.mark.skip
 def test_vsite_exclusions(buckingham_water_force_field, water_box_topology):
     """Make sure the exclusions/exceptions for vsites match in the Nonbonded and Custom Nonbonded force"""
 
