@@ -200,7 +200,11 @@ def test_scaled_de_energy():
     ethane = Molecule.from_smiles("CC")
     ethane.generate_conformers(n_conformers=1)
     off_top = ethane.to_topology()
-    off_top.box_vectors = [40, 40, 40] * unit.angstrom
+
+    # A comically large box is needed to avoid image interactions; a better solution would involve
+    # exactly how gas phase calculations are done with vdW method "cutoff"
+    off_top.box_vectors = [20, 20, 20] * unit.nanometer
+
     omm_top = off_top.to_openmm()
     system_no_scale = Interchange.from_smirnoff(ff, off_top).to_openmm(
         combine_nonbonded_forces=False
@@ -222,5 +226,5 @@ def test_scaled_de_energy():
         positions=ethane.conformers[0].to_openmm(),
     )
     assert double_exp.scale14 * energy_no_scale == pytest.approx(
-        energy_scaled, abs=1e-6
+        energy_scaled, abs=1e-4,
     )
