@@ -97,7 +97,7 @@ def water_box_topology() -> Topology:
 
 @pytest.fixture()
 def ideal_water_force_field() -> ForceField:
-    """Returns a force field that will assign constraints, a vdW handler and
+    """Returns a force field that will assign constraints and
     a library charge handler to a three site water molecule with all LJ
     ``epsilon=0.0`` and all ``q=0.0``.
     """

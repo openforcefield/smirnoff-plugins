@@ -12,7 +12,7 @@ dependencies:
   - numpy
   - openmm
   - openff-toolkit >=0.12.1
-  - openff-interchange >=0.3.0beta1
+  - openff-interchange >=0.3.0beta2
   - openff-utilities
   - openff-models
 
@@ -20,5 +20,3 @@ dependencies:
   - pytest
   - pytest-cov
   - codecov
-  - pip:
-    - git+https://github.com/openforcefield/openff-interchange.git@plugin-fixes
