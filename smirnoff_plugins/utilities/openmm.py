@@ -12,6 +12,7 @@ from openff.interchange import Interchange
 from openff.interchange.interop.openmm._positions import to_openmm_positions
 from openff.toolkit import ForceField, Molecule, Topology
 from openff.units import unit
+from openff.units.openmm import ensure_quantity
 from openff.utilities import temporary_cd
 
 logger = logging.getLogger(__name__)
@@ -167,8 +168,12 @@ def simulate(
 
     openmm_system: openmm.System = interchange.to_openmm(combine_nonbonded_forces=False)
     openmm_topology: openmm.app.Topology = interchange.to_openmm_topology()
-    openmm_positions: openmm.unit.Quantity = to_openmm_positions(
-        interchange, include_virtual_sites=True
+    openmm_positions: openmm.unit.Quantity = ensure_quantity(
+        to_openmm_positions(
+            interchange,
+            include_virtual_sites=True,
+        ),
+        "openmm",
     )
 
     if output_directory is not None:
@@ -262,7 +267,13 @@ def evaluate_water_energy_at_distances(
     interchange = Interchange.from_smirnoff(force_field, topology)
     openmm_system = interchange.to_openmm(combine_nonbonded_forces=False)
     openmm_topology = interchange.to_openmm_topology()
-    openmm_positions = to_openmm_positions(interchange, include_virtual_sites=True)
+    openmm_positions: openmm.unit.Quantity = ensure_quantity(
+        to_openmm_positions(
+            interchange,
+            include_virtual_sites=True,
+        ),
+        "openmm",
+    )
 
     integrator = openmm.LangevinIntegrator(
         300 * openmm.unit.kelvin,
@@ -279,17 +290,25 @@ def evaluate_water_energy_at_distances(
     n_positions_per_water = int(openmm_positions.shape[0] / 2)
 
     energies = []
-    for i, distance in enumerate(distances):
-        displacement = distance * openmm.unit.angstrom
-
-        new_positions = numpy.vstack(
-            [
-                openmm_positions[:n_positions_per_water, :],
-                openmm_positions[n_positions_per_water:, :] + displacement,
-            ]
+    for distance in distances:
+        new_positions = openmm.unit.Quantity(
+            numpy.vstack(
+                [
+                    openmm_positions[:n_positions_per_water, :].value_in_unit(
+                        openmm.unit.angstrom
+                    ),
+                    openmm_positions[n_positions_per_water:, :].value_in_unit(
+                        openmm.unit.angstrom
+                    )
+                    + distance,
+                ]
+            ),
+            openmm.unit.angstrom,
         )
 
-        simulation.context.setPositions(new_positions)
+        simulation.context.setPositions(
+            new_positions.value_in_unit(openmm.unit.nanometer)
+        )
         simulation.context.computeVirtualSites()
         state = simulation.context.getState(getEnergy=True)
         energies.append(

@@ -226,5 +226,6 @@ def test_scaled_de_energy():
         positions=ethane.conformers[0].to_openmm(),
     )
     assert double_exp.scale14 * energy_no_scale == pytest.approx(
-        energy_scaled, abs=1e-4,
+        energy_scaled,
+        abs=1e-4,
     )
