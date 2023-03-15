@@ -94,6 +94,7 @@ def test_double_exp_energies(ideal_water_force_field):
     # Add the DE block
     double_exp = ideal_water_force_field.get_parameter_handler("DoubleExponential")
     double_exp.cutoff = 20 * unit.angstrom
+    double_exp.switch_width = 0 * unit.angstrom
     double_exp.alpha = alpha
     double_exp.beta = beta
     double_exp.scale14 = 1
