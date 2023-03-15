@@ -261,7 +261,7 @@ def evaluate_water_energy_at_distances(
     # might not be a way to combine PME electrostatics and cutoff vdw
     # (NonbondedForce and CustomNonbondedForce, respectively),
     # so use an arbitrarily large box to mimic gas phase
-    topology.box_vectors = unit.Quantity(numpy.eye(3) * 10, unit.nanometer)
+    topology.box_vectors = unit.Quantity(numpy.eye(3) * 20, unit.nanometer)
 
     # make the openmm system
     interchange = Interchange.from_smirnoff(force_field, topology)
@@ -300,7 +300,8 @@ def evaluate_water_energy_at_distances(
                     openmm_positions[n_positions_per_water:, :].value_in_unit(
                         openmm.unit.angstrom
                     )
-                    + distance,
+                    # only translate the second water in x
+                    + numpy.array([distance, 0, 0]),
                 ]
             ),
             openmm.unit.angstrom,
