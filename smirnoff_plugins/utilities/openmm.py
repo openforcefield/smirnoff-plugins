@@ -64,7 +64,7 @@ def __simulate(
     integrator = openmm.LangevinIntegrator(
         temperature,
         1.0 / openmm.unit.picosecond,
-        2.0 * openmm.unit.femtoseconds,
+        0.5 * openmm.unit.femtoseconds,
     )
 
     try:
@@ -163,11 +163,17 @@ def simulate(
         pressure is not None and box_vectors is not None
     ), "box vectors must be provided when the pressure is specified."
 
-    topology.box_vectors = box_vectors
+    topology.box_vectors = ensure_quantity(box_vectors, "openff")
 
-    interchange = Interchange.from_smirnoff(force_field=force_field, topology=topology, positions=positions)
+    interchange = Interchange.from_smirnoff(
+        force_field=force_field,
+        topology=topology,
+        positions=ensure_quantity(positions, "openff"),
+    )
 
     openmm_system: openmm.System = interchange.to_openmm(combine_nonbonded_forces=False)
+    with open("test.xml", "w") as file:
+        file.write(openmm.XmlSerializer.serialize(openmm_system))
     openmm_topology: openmm.app.Topology = interchange.to_openmm_topology()
     openmm_positions: openmm.unit.Quantity = ensure_quantity(
         to_openmm_positions(
@@ -183,7 +189,7 @@ def simulate(
     with temporary_cd(output_directory):
         __simulate(
             positions=openmm_positions,
-            box_vectors=box_vectors,
+            box_vectors=ensure_quantity(box_vectors, "openmm"),
             omm_topology=openmm_topology,
             omm_system=openmm_system,
             n_steps=n_steps,
@@ -287,7 +293,7 @@ def evaluate_water_energy_at_distances(
     integrator = openmm.LangevinIntegrator(
         300 * openmm.unit.kelvin,
         1.0 / openmm.unit.picosecond,
-        2.0 * openmm.unit.femtoseconds,
+        0.01 * openmm.unit.femtoseconds,
     )
 
     platform = openmm.Platform.getPlatformByName("CPU")

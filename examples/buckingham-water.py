@@ -4,10 +4,10 @@ interactions."""
 import math
 
 import numpy
+import openmm.unit
 from openff.toolkit.topology import Molecule, Topology
 from openff.toolkit.typing.engines.smirnoff import ForceField, ParameterList
 from openff.units import unit
-import openmm.unit
 
 from smirnoff_plugins.utilities.openmm import simulate
 
@@ -30,16 +30,6 @@ def build_force_field() -> ForceField:
         {"smirks": "[#1:1]-[#8X2H2+0]-[#1:2]", "distance": 1.5139 * unit.angstrom}
     )
 
-    # # Add a default vdW handler which is currently required by the OFF TK.
-    # vdw_handler = force_field.get_parameter_handler("vdW")
-    # vdw_handler.add_parameter(
-    #     {
-    #         "smirks": "[*:1]",
-    #         "epsilon": 0.0 * unit.kilojoule_per_mole,
-    #         "sigma": 1.0 * unit.angstrom,
-    #     }
-    # )
-
     # Add a charge handler to zero the charges on water. The charges will be
     # applied by the virtual site handler instead.
     force_field.get_parameter_handler("Electrostatics")
@@ -58,8 +48,8 @@ def build_force_field() -> ForceField:
             "distance": -0.0106 * unit.nanometers,
             "outOfPlaneAngle": 0.0 * unit.degrees,
             "match": "once",
-            "charge_increment2": 1.0552 * 0.5 * unit.elementary_charge,
             "charge_increment1": 0.0 * unit.elementary_charge,
+            "charge_increment2": 1.0552 * 0.5 * unit.elementary_charge,
             "charge_increment3": 1.0552 * 0.5 * unit.elementary_charge,
         }
     )
@@ -106,37 +96,42 @@ def main():
 
     n_molecules = 256
 
+    conformer = molecule.conformers[0].m_as(unit.angstrom)
+
+    # Remove the conformers from the molecule to work around an Interchange bug,
+    # otherwise the hand-crafted positions defined later would be ignored.
+    # https://github.com/openforcefield/openff-interchange/issues/616
+    molecule._conformers = None
+
     topology: Topology = Topology.from_molecules([molecule] * n_molecules)
 
     # Create some coordinates (without the v-sites) and estimate box vectors.
-    topology.box_vectors = (
-        numpy.eye(3) * math.ceil(n_molecules ** (1 / 3) + 2) * 2.5 * unit.angstrom
+    topology.box_vectors = unit.Quantity(
+        numpy.eye(3) * math.ceil(n_molecules ** (1 / 3) + 2) * 2.5,
+        unit.angstrom,
     )
 
-    positions = (
+    positions = openmm.unit.Quantity(
         numpy.vstack(
             [
-                (
-                    molecule.conformers[0].m_as(unit.angstrom)
-                    + numpy.array([[x, y, z]]) * 2.5
-                )
+                (conformer + numpy.array([[x, y, z]]) * 2.5)
                 for x in range(math.ceil(n_molecules ** (1 / 3)))
                 for y in range(math.ceil(n_molecules ** (1 / 3)))
                 for z in range(math.ceil(n_molecules ** (1 / 3)))
             ]
-        )[: topology.n_topology_atoms, :]
-        * unit.angstrom
+        ),
+        openmm.unit.angstrom,
     )
 
     # Simulate the water box.
     simulate(
-        force_field,
-        topology,
-        positions,
-        None if n_molecules == 1 else topology.box_vectors,
-        2000,
-        300.0 * openmm.unit.kelvin,
-        None if n_molecules == 1 else 1.0 * openmm.unit.atmosphere,
+        force_field=force_field,
+        topology=topology,
+        positions=positions,
+        box_vectors=None if n_molecules == 1 else topology.box_vectors.to_openmm(),
+        n_steps=2000,
+        temperature=300.0,
+        pressure=None if n_molecules == 1 else 1.0 * openmm.unit.atmosphere,
         platform="Reference" if n_molecules == 1 else "OpenCL",
         output_directory="simulation-output",
     )
