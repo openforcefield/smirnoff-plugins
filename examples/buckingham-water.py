@@ -6,7 +6,8 @@ import math
 import numpy
 from openff.toolkit.topology import Molecule, Topology
 from openff.toolkit.typing.engines.smirnoff import ForceField, ParameterList
-from openmm import unit
+from openff.units import unit
+import openmm.unit
 
 from smirnoff_plugins.utilities.openmm import simulate
 
@@ -29,15 +30,15 @@ def build_force_field() -> ForceField:
         {"smirks": "[#1:1]-[#8X2H2+0]-[#1:2]", "distance": 1.5139 * unit.angstrom}
     )
 
-    # Add a default vdW handler which is currently required by the OFF TK.
-    vdw_handler = force_field.get_parameter_handler("vdW")
-    vdw_handler.add_parameter(
-        {
-            "smirks": "[*:1]",
-            "epsilon": 0.0 * unit.kilojoule_per_mole,
-            "sigma": 1.0 * unit.angstrom,
-        }
-    )
+    # # Add a default vdW handler which is currently required by the OFF TK.
+    # vdw_handler = force_field.get_parameter_handler("vdW")
+    # vdw_handler.add_parameter(
+    #     {
+    #         "smirks": "[*:1]",
+    #         "epsilon": 0.0 * unit.kilojoule_per_mole,
+    #         "sigma": 1.0 * unit.angstrom,
+    #     }
+    # )
 
     # Add a charge handler to zero the charges on water. The charges will be
     # applied by the virtual site handler instead.
@@ -116,7 +117,7 @@ def main():
         numpy.vstack(
             [
                 (
-                    molecule.conformers[0].value_in_unit(unit.angstrom)
+                    molecule.conformers[0].m_as(unit.angstrom)
                     + numpy.array([[x, y, z]]) * 2.5
                 )
                 for x in range(math.ceil(n_molecules ** (1 / 3)))
@@ -134,8 +135,8 @@ def main():
         positions,
         None if n_molecules == 1 else topology.box_vectors,
         2000,
-        300.0 * unit.kelvin,
-        None if n_molecules == 1 else 1.0 * unit.atmosphere,
+        300.0 * openmm.unit.kelvin,
+        None if n_molecules == 1 else 1.0 * openmm.unit.atmosphere,
         platform="Reference" if n_molecules == 1 else "OpenCL",
         output_directory="simulation-output",
     )

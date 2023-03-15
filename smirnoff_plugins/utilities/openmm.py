@@ -85,8 +85,9 @@ def __simulate(
         )
 
     if box_vectors is not None:
+        box_vectors = ensure_quantity(box_vectors, "openmm")
         simulation.context.setPeriodicBoxVectors(
-            box_vectors[0, :], box_vectors[1, :], box_vectors[2, :]
+            box_vectors[0], box_vectors[1], box_vectors[2]
         )
 
     simulation.context.setPositions(positions)
@@ -164,7 +165,7 @@ def simulate(
 
     topology.box_vectors = box_vectors
 
-    interchange = Interchange.from_smirnoff(force_field, topology)
+    interchange = Interchange.from_smirnoff(force_field=force_field, topology=topology, positions=positions)
 
     openmm_system: openmm.System = interchange.to_openmm(combine_nonbonded_forces=False)
     openmm_topology: openmm.app.Topology = interchange.to_openmm_topology()
