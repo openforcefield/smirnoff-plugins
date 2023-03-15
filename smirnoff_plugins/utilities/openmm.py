@@ -266,6 +266,14 @@ def evaluate_water_energy_at_distances(
     # make the openmm system
     interchange = Interchange.from_smirnoff(force_field, topology)
     openmm_system = interchange.to_openmm(combine_nonbonded_forces=False)
+    # workaround interchange by setting nonbonded method to NoCutoff
+    forces = {force.__class__.__name__: force for force in openmm_system.getForces()}
+    vdw_force: openmm.CustomNonbondedForce = forces["CustomNonbondedForce"]
+    vdw_force.setNonbondedMethod(openmm.NonbondedForce.NoCutoff)
+    vdw_force.setUseSwitchingFunction(False)
+    vdw_force.setUseLongRangeCorrection(False)
+    nonbond: openmm.NonbondedForce = forces["NonbondedForce"]
+    nonbond.setNonbondedMethod(openmm.NonbondedForce.NoCutoff)
     openmm_topology = interchange.to_openmm_topology()
     openmm_positions: openmm.unit.Quantity = ensure_quantity(
         to_openmm_positions(
@@ -347,7 +355,7 @@ def evaluate_energy(
         2.0 * openmm.unit.femtoseconds,  # simulation timestep
     )
 
-    platform = openmm.Platform.getPlatformByName("CPU")
+    platform = openmm.Platform.getPlatformByName("Reference")
 
     simulation = openmm.app.Simulation(topology, system, integrator, platform)
     # assume the positions are already padded.
