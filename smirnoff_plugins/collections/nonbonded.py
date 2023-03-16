@@ -1,16 +1,14 @@
 import math
-from typing import Dict, Iterable, List, Literal, Type
+from typing import Dict, Iterable, Literal, Type, TypeVar
 
-from openff.interchange.components.potentials import Potential
 from openff.interchange.exceptions import InvalidParameterHandlerError
-from openff.interchange.smirnoff._base import T
-from openff.interchange.smirnoff._nonbonded import _SMIRNOFFNonbondedCollection
+from openff.interchange.smirnoff._nonbonded import (
+    SMIRNOFFvdWCollection,
+    _SMIRNOFFNonbondedCollection,
+)
 from openff.models.types import FloatQuantity
 from openff.toolkit import Topology
-from openff.toolkit.typing.engines.smirnoff.parameters import (
-    ParameterHandler,
-    VirtualSiteHandler,
-)
+from openff.toolkit.typing.engines.smirnoff.parameters import ParameterHandler
 from openff.units import unit
 
 from smirnoff_plugins.handlers.nonbonded import (
@@ -18,15 +16,71 @@ from smirnoff_plugins.handlers.nonbonded import (
     DoubleExponentialHandler,
 )
 
+T = TypeVar("T", bound="_NonbondedPlugin")
 
-class SMIRNOFFDampedBuckingham68Collection(_SMIRNOFFNonbondedCollection):
-    """Handler storing damped Buckingham potentials."""
 
-    type: Literal["DampedBuckingham68"] = "DampedBuckingham68"
+class _NonbondedPlugin(_SMIRNOFFNonbondedCollection):
 
     is_plugin: bool = True
-
     acts_as: str = "vdW"
+
+    method: str = "cutoff"
+    mixing_rule: str = ""
+    switch_width: FloatQuantity["angstrom"] = unit.Quantity(1.0, unit.angstrom)  # noqa
+
+    @classmethod
+    def check_openmm_requirements(cls: Type[T], combine_nonbonded_forces: bool):
+        """SMIRNOFF plugins using non-LJ functional forms cannot combine forces."""
+        assert combine_nonbonded_forces is False
+
+    @classmethod
+    def global_parameters(cls: Type[T]) -> Iterable[str]:
+        """Return an iterable of global parameters, i.e. not per-potential parameters."""
+        return tuple()
+
+    # This method could be copy-pasted intead of monkey-patched. It's defined in the default
+    # vdW class (SMIRNOFFvdWCollection), not the base non-bonded class
+    # (_SMIRNOFF_NonbondedCollection) so it's not brought in by _NonbondedPlugin.
+    store_potentials = SMIRNOFFvdWCollection.store_potentials
+
+    @classmethod
+    def create(  # type: ignore[override]
+        cls: Type[T],
+        parameter_handler: ParameterHandler,
+        topology: Topology,
+    ) -> T:
+        if type(parameter_handler) not in cls.allowed_parameter_handlers():
+            raise InvalidParameterHandlerError(
+                f"Found parameter handler type {type(parameter_handler)}, which is not "
+                f"supported by potential type {type(cls)}",
+            )
+
+        # The presence of global parameters on a subclass can modify which args must be passed to
+        # the constructor - not sure if there's a cleaner way that shoving everything into a dict
+        _args = {
+            "scale_13": parameter_handler.scale13,
+            "scale_14": parameter_handler.scale14,
+            "scale_15": parameter_handler.scale15,
+            "cutoff": parameter_handler.cutoff,
+            "method": parameter_handler.method.lower(),
+            "switch_width": parameter_handler.switch_width,
+        }
+
+        for global_parameter in cls.global_parameters():
+            _args[global_parameter] = getattr(parameter_handler, global_parameter)
+
+        handler = cls(**_args)
+
+        handler.store_matches(parameter_handler=parameter_handler, topology=topology)
+        handler.store_potentials(parameter_handler=parameter_handler)
+
+        return handler
+
+
+class SMIRNOFFDampedBuckingham68Collection(_NonbondedPlugin):
+    """Collection storing damped Buckingham potentials."""
+
+    type: Literal["DampedBuckingham68"] = "DampedBuckingham68"
 
     expression: str = (
         "buckinghamRepulsion-c6E*c6-c8E*c8;"
@@ -50,25 +104,17 @@ class SMIRNOFFDampedBuckingham68Collection(_SMIRNOFFNonbondedCollection):
         "mdr=-gamma*r;"
     )
 
-    method: str = "cutoff"
-
-    mixing_rule: str = ""
-
-    switch_width: FloatQuantity["angstrom"] = unit.Quantity(  # noqa
-        0.333, unit.angstrom
-    )
-
     gamma: FloatQuantity["nanometer ** -1"]  # noqa
 
     @classmethod
     def allowed_parameter_handlers(cls) -> Iterable[Type[ParameterHandler]]:
-        """Return a list of allowed types of ParameterHandler classes."""
-        return [DampedBuckingham68Handler]
+        """Return an interable of allowed types of ParameterHandler classes."""
+        return (DampedBuckingham68Handler,)
 
     @classmethod
     def supported_parameters(cls) -> Iterable[str]:
-        """Return a list of supported parameter attributes."""
-        return ["smirks", "id", "a", "b", "c6", "c8"]
+        """Return an interable of supported parameter attributes."""
+        return "smirks", "id", "a", "b", "c6", "c8"
 
     @classmethod
     def default_parameter_values(cls) -> Iterable[float]:
@@ -78,12 +124,12 @@ class SMIRNOFFDampedBuckingham68Collection(_SMIRNOFFNonbondedCollection):
     @classmethod
     def potential_parameters(cls) -> Iterable[str]:
         """Return a subset of `supported_parameters` that are meant to be included in potentials."""
-        return ["a", "b", "c6", "c8"]
+        return "a", "b", "c6", "c8"
 
     @classmethod
     def global_parameters(cls) -> Iterable[str]:
-        """Return a list of global parameters, i.e. not per-potential parameters."""
-        return ["gamma"]
+        """Return an iterable of global parameters, i.e. not per-potential parameters."""
+        return ("gamma",)
 
     def pre_computed_terms(self) -> Dict[str, unit.Quantity]:
         """Return a dictionary of pre-computed terms for use in the expression."""
@@ -113,81 +159,11 @@ class SMIRNOFFDampedBuckingham68Collection(_SMIRNOFFNonbondedCollection):
             for name in self.potential_parameters()
         }
 
-    @classmethod
-    def check_openmm_requirements(cls, combine_nonbonded_forces: bool):
-        """Run through a list of assertions about what is compatible when exporting this to OpenMM."""
-        assert combine_nonbonded_forces is False
 
-    def store_potentials(self, parameter_handler: DampedBuckingham68Handler):
-        """
-        Populate self.potentials with key-val pairs of [TopologyKey, PotentialKey].
-        """
-        self.method = parameter_handler.method.lower()
-        self.cutoff = parameter_handler.cutoff
-
-        for potential_key in self.slot_map.values():
-            smirks = potential_key.id
-            force_field_parameters = parameter_handler.parameters[smirks]
-
-            potential = Potential(
-                parameters={
-                    parameter: getattr(force_field_parameters, parameter)
-                    for parameter in self.potential_parameters()
-                },
-            )
-
-            self.potentials[potential_key] = potential
-
-    @classmethod
-    def create(  # type: ignore[override]
-        cls: Type[T],
-        parameter_handler: DampedBuckingham68Handler,
-        topology: Topology,
-    ) -> T:
-        if type(parameter_handler) not in cls.allowed_parameter_handlers():
-            raise InvalidParameterHandlerError(
-                f"Found parameter handler type {type(parameter_handler)}, which is not "
-                f"supported by potential type {type(cls)}",
-            )
-
-        handler = cls(
-            gamma=parameter_handler.gamma,
-            scale_13=parameter_handler.scale13,
-            scale_14=parameter_handler.scale14,
-            scale_15=parameter_handler.scale15,
-            cutoff=parameter_handler.cutoff,
-            method=parameter_handler.method.lower(),
-            switch_width=parameter_handler.switch_width,
-        )
-        handler.store_matches(parameter_handler=parameter_handler, topology=topology)
-        handler.store_potentials(parameter_handler=parameter_handler)
-
-        return handler
-
-    @classmethod
-    def parameter_handler_precedence(cls) -> List[str]:
-        """
-        Return the order in which parameter handlers take precedence when computing charges.
-        """
-        return ["vdw", "VirtualSites"]
-
-    def create_virtual_sites(
-        self,
-        parameter_handler: VirtualSiteHandler,
-        topology: Topology,
-    ):
-        """create() but with virtual sites."""
-        raise NotImplementedError()
-
-
-class SMIRNOFFDoubleExponentialCollection(_SMIRNOFFNonbondedCollection):
+class SMIRNOFFDoubleExponentialCollection(_NonbondedPlugin):
     """Handler storing vdW potentials as produced by a SMIRNOFF force field."""
 
     type: Literal["DoubleExponential"] = "DoubleExponential"
-
-    is_plugin: bool = True
-
-    acts_as: str = "vdW"
 
     expression: str = (
         "CombinedEpsilon*RepulsionFactor*RepulsionExp-CombinedEpsilon*AttractionFactor*AttractionExp;"
@@ -198,24 +174,18 @@ class SMIRNOFFDoubleExponentialCollection(_SMIRNOFFNonbondedCollection):
         "CombinedR=r_min1+r_min2;"
     )
 
-    method: str = "cutoff"
-
-    mixing_rule: str = ""
-
-    switch_width: FloatQuantity["angstrom"] = unit.Quantity(1.0, unit.angstrom)  # noqa
-
     alpha: FloatQuantity["dimensionless"]  # noqa
     beta: FloatQuantity["dimensionless"]  # noqa
 
     @classmethod
     def allowed_parameter_handlers(cls) -> Iterable[Type[ParameterHandler]]:
-        """Return a list of allowed types of ParameterHandler classes."""
-        return [DoubleExponentialHandler]
+        """Return an iterable of allowed types of ParameterHandler classes."""
+        return (DoubleExponentialHandler,)
 
     @classmethod
     def supported_parameters(cls) -> Iterable[str]:
-        """Return a list of supported parameter attributes."""
-        return ["smirks", "id", "r_min", "epsilon"]
+        """Return an iterable of supported parameter attributes."""
+        return "smirks", "id", "r_min", "epsilon"
 
     @classmethod
     def default_parameter_values(cls) -> Iterable[float]:
@@ -225,12 +195,12 @@ class SMIRNOFFDoubleExponentialCollection(_SMIRNOFFNonbondedCollection):
     @classmethod
     def potential_parameters(cls) -> Iterable[str]:
         """Return a subset of `supported_parameters` that are meant to be included in potentials."""
-        return ["r_min", "epsilon"]
+        return "r_min", "epsilon"
 
     @classmethod
     def global_parameters(cls) -> Iterable[str]:
-        """Return a list of global parameters, i.e. not per-potential parameters."""
-        return ["alpha", "beta"]
+        """Return an iterable of global parameters, i.e. not per-potential parameters."""
+        return "alpha", "beta"
 
     def pre_computed_terms(self) -> Dict[str, float]:
         """Return a dictionary of pre-computed terms for use in the expression."""
@@ -256,70 +226,3 @@ class SMIRNOFFDoubleExponentialCollection(_SMIRNOFFNonbondedCollection):
                 original_parameters["epsilon"].m_as(_units["epsilon"]),
             ),
         }
-
-    @classmethod
-    def check_openmm_requirements(cls, combine_nonbonded_forces: bool):
-        """Run through a list of assertions about what is compatible when exporting this to OpenMM."""
-        assert combine_nonbonded_forces is False
-
-    def store_potentials(self, parameter_handler: DoubleExponentialHandler):
-        """
-        Populate self.potentials with key-val pairs of [TopologyKey, PotentialKey].
-        """
-        self.method = parameter_handler.method.lower()
-        self.cutoff = parameter_handler.cutoff
-
-        for potential_key in self.slot_map.values():
-            smirks = potential_key.id
-            force_field_parameters = parameter_handler.parameters[smirks]
-
-            potential = Potential(
-                parameters={
-                    parameter: getattr(force_field_parameters, parameter)
-                    for parameter in self.potential_parameters()
-                },
-            )
-
-            self.potentials[potential_key] = potential
-
-    @classmethod
-    def create(  # type: ignore[override]
-        cls: Type[T],
-        parameter_handler: DoubleExponentialHandler,
-        topology: Topology,
-    ) -> T:
-        if type(parameter_handler) not in cls.allowed_parameter_handlers():
-            raise InvalidParameterHandlerError(
-                f"Found parameter handler type {type(parameter_handler)}, which is not "
-                f"supported by potential type {type(cls)}",
-            )
-
-        handler = cls(
-            alpha=parameter_handler.alpha,
-            beta=parameter_handler.beta,
-            scale_13=parameter_handler.scale13,
-            scale_14=parameter_handler.scale14,
-            scale_15=parameter_handler.scale15,
-            cutoff=parameter_handler.cutoff,
-            method=parameter_handler.method.lower(),
-            switch_width=parameter_handler.switch_width,
-        )
-        handler.store_matches(parameter_handler=parameter_handler, topology=topology)
-        handler.store_potentials(parameter_handler=parameter_handler)
-
-        return handler
-
-    @classmethod
-    def parameter_handler_precedence(cls) -> List[str]:
-        """
-        Return the order in which parameter handlers take precedence when computing charges.
-        """
-        return ["vdw", "VirtualSites"]
-
-    def create_virtual_sites(
-        self,
-        parameter_handler: VirtualSiteHandler,
-        topology: Topology,
-    ):
-        """create() but with virtual sites."""
-        raise NotImplementedError()
