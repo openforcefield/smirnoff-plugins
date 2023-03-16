@@ -265,9 +265,10 @@ def evaluate_water_energy_at_distances(
     water.generate_conformers(n_conformers=1)
     topology = Topology.from_molecules([water, water])
 
-    # might not be a way to combine PME electrostatics and cutoff vdw
-    # (NonbondedForce and CustomNonbondedForce, respectively),
-    # so use an arbitrarily large box to mimic gas phase
+    # Interchange doesn't think there's a way to combine PME electrostatics and cutoff vdw
+    # (NonbondedForce and CustomNonbondedForce, respectively) without modifying the vdw force
+    # to use NoCutoff, which as of today (2022-03-16) is still under discussion. For now, just
+    # use an arbitrarily large box to mimic gas phase, even though this is modified below.
     topology.box_vectors = unit.Quantity(numpy.eye(3) * 20, unit.nanometer)
 
     # make the openmm system
