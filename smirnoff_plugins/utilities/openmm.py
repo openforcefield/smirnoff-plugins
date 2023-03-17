@@ -5,24 +5,27 @@ import time
 from typing import List, Literal, Optional, Tuple
 
 import numpy
-from openff.toolkit.topology import Molecule, Topology, TopologyAtom
-from openff.toolkit.typing.engines.smirnoff import ForceField
-from simtk import openmm, unit
-from simtk.openmm import app
-
-from smirnoff_plugins.utilities import temporary_cd
+import openmm
+import openmm.app
+import openmm.unit
+from openff.interchange import Interchange
+from openff.interchange.interop.openmm._positions import to_openmm_positions
+from openff.toolkit import ForceField, Molecule, Topology
+from openff.units import unit
+from openff.units.openmm import ensure_quantity
+from openff.utilities import temporary_cd
 
 logger = logging.getLogger(__name__)
 
 
 def __simulate(
-    positions: unit.Quantity,
-    box_vectors: Optional[unit.Quantity],
-    omm_topology: app.Topology,
+    positions: openmm.unit.Quantity,
+    box_vectors: Optional[openmm.unit.Quantity],
+    omm_topology: openmm.app.Topology,
     omm_system: openmm.System,
     n_steps: int,
-    temperature: unit.Quantity,
-    pressure: Optional[unit.Quantity],
+    temperature: openmm.unit.Quantity,
+    pressure: Optional[openmm.unit.Quantity],
     platform: Literal["Reference", "OpenCL", "CUDA", "CPU"] = "Reference",
 ):
     """
@@ -50,7 +53,7 @@ def __simulate(
     """A helper function for simulating a system with OpenMM."""
 
     with open("input.pdb", "w") as file:
-        app.PDBFile.writeFile(omm_topology, positions, file)
+        openmm.app.PDBFile.writeFile(omm_topology, positions, file)
 
     with open("system.xml", "w") as file:
         file.write(openmm.XmlSerializer.serialize(omm_system))
@@ -59,13 +62,13 @@ def __simulate(
         omm_system.addForce(openmm.MonteCarloBarostat(pressure, temperature, 25))
 
     integrator = openmm.LangevinIntegrator(
-        temperature,  # simulation temperature,
-        1.0 / unit.picosecond,  # friction
-        2.0 * unit.femtoseconds,  # simulation timestep
+        temperature,
+        1.0 / openmm.unit.picosecond,
+        0.5 * openmm.unit.femtoseconds,
     )
 
     try:
-        simulation = app.Simulation(
+        simulation = openmm.app.Simulation(
             omm_topology,
             omm_system,
             integrator,
@@ -75,15 +78,16 @@ def __simulate(
         logger.debug(
             f"Failed to use platform {platform}, trying again and letting OpenMM select platform."
         )
-        simulation = app.Simulation(
+        simulation = openmm.app.Simulation(
             omm_topology,
             omm_system,
             integrator,
         )
 
     if box_vectors is not None:
+        box_vectors = ensure_quantity(box_vectors, "openmm")
         simulation.context.setPeriodicBoxVectors(
-            box_vectors[0, :], box_vectors[1, :], box_vectors[2, :]
+            box_vectors[0], box_vectors[1], box_vectors[2]
         )
 
     simulation.context.setPositions(positions)
@@ -92,7 +96,7 @@ def __simulate(
     simulation.minimizeEnergy()
 
     # Randomize the velocities from a Boltzmann distribution at a given temperature.
-    simulation.context.setVelocitiesToTemperature(temperature * unit.kelvin)
+    simulation.context.setVelocitiesToTemperature(temperature * openmm.unit.kelvin)
 
     # Configure the information in the output files.
     pdb_reporter = openmm.app.DCDReporter("trajectory.dcd", int(0.05 * n_steps))
@@ -122,11 +126,11 @@ def __simulate(
 def simulate(
     force_field: ForceField,
     topology: Topology,
-    positions: unit.Quantity,
-    box_vectors: Optional[unit.Quantity],
+    positions: openmm.unit.Quantity,
+    box_vectors: Optional[openmm.unit.Quantity],
     n_steps: int,
-    temperature: unit.Quantity,
-    pressure: Optional[unit.Quantity],
+    temperature: openmm.unit.Quantity,
+    pressure: Optional[openmm.unit.Quantity],
     platform: Literal["Reference", "OpenCL", "CUDA", "CPU"] = "Reference",
     output_directory: Optional[str] = None,
 ):
@@ -159,40 +163,35 @@ def simulate(
         pressure is not None and box_vectors is not None
     ), "box vectors must be provided when the pressure is specified."
 
-    topology.box_vectors = box_vectors
+    topology.box_vectors = ensure_quantity(box_vectors, "openff")
 
-    # Create an OpenMM system by applying the parameters to the topology.
-    omm_system, topology = force_field.create_openmm_system(
-        topology, return_topology=True
+    interchange = Interchange.from_smirnoff(
+        force_field=force_field,
+        topology=topology,
+        positions=ensure_quantity(positions, "openff"),
+    )
+
+    openmm_system: openmm.System = interchange.to_openmm(combine_nonbonded_forces=False)
+    with open("test.xml", "w") as file:
+        file.write(openmm.XmlSerializer.serialize(openmm_system))
+    openmm_topology: openmm.app.Topology = interchange.to_openmm_topology()
+    openmm_positions: openmm.unit.Quantity = ensure_quantity(
+        to_openmm_positions(
+            interchange,
+            include_virtual_sites=True,
+        ),
+        "openmm",
     )
 
     if output_directory is not None:
         os.makedirs(output_directory, exist_ok=True)
 
-    # Add the virtual sites to the OpenMM topology and positions.
-    omm_topology = topology.to_openmm()
-
-    omm_chain = [*omm_topology.chains()][0]
-    omm_residue = omm_topology.addResidue("", chain=omm_chain)
-
-    for particle in topology.topology_particles:
-        if isinstance(particle, TopologyAtom):
-            continue
-
-        omm_topology.addAtom(
-            particle.virtual_site.name, app.Element.getByMass(0), omm_residue
-        )
-
-    positions = numpy.vstack(
-        [positions, numpy.zeros((topology.n_topology_virtual_sites, 3))]
-    )
-
     with temporary_cd(output_directory):
         __simulate(
-            positions=positions * unit.angstrom,
-            box_vectors=box_vectors,
-            omm_topology=omm_topology,
-            omm_system=omm_system,
+            positions=openmm_positions,
+            box_vectors=ensure_quantity(box_vectors, "openmm"),
+            omm_topology=openmm_topology,
+            omm_system=openmm_system,
             n_steps=n_steps,
             temperature=temperature,
             pressure=pressure,
@@ -200,7 +199,7 @@ def simulate(
         )
 
 
-def water_box(n_molecules: int) -> Tuple[Topology, unit.Quantity]:
+def water_box(n_molecules: int) -> Tuple[Topology, openmm.unit.Quantity]:
     """
     Build a water box with the requested number of water molecules.
 
@@ -213,8 +212,6 @@ def water_box(n_molecules: int) -> Tuple[Topology, unit.Quantity]:
     -------
         The openff.toolkit Topology of the system and the position array wrapped with units.
     """
-
-    # Create a topology containing water molecules.
     molecule = Molecule.from_smiles("O")
     molecule.generate_conformers(n_conformers=1)
 
@@ -228,7 +225,7 @@ def water_box(n_molecules: int) -> Tuple[Topology, unit.Quantity]:
         numpy.vstack(
             [
                 (
-                    molecule.conformers[0].value_in_unit(unit.angstrom)
+                    molecule.conformers[0].value_in_unit(openmm.unit.angstrom)
                     + numpy.array([[x, y, z]]) * 2.5
                 )
                 for x in range(math.ceil(n_molecules ** (1 / 3)))
@@ -240,7 +237,7 @@ def water_box(n_molecules: int) -> Tuple[Topology, unit.Quantity]:
     )
 
     with open("input.pdb", "w") as file:
-        app.PDBFile.writeFile(topology.to_openmm(), positions, file)
+        openmm.app.PDBFile.writeFile(topology.to_openmm(), positions, file)
 
     return topology, positions
 
@@ -268,65 +265,80 @@ def evaluate_water_energy_at_distances(
     water.generate_conformers(n_conformers=1)
     topology = Topology.from_molecules([water, water])
 
+    # Interchange doesn't think there's a way to combine PME electrostatics and cutoff vdw
+    # (NonbondedForce and CustomNonbondedForce, respectively) without modifying the vdw force
+    # to use NoCutoff, which as of today (2022-03-16) is still under discussion. For now, just
+    # use an arbitrarily large box to mimic gas phase, even though this is modified below.
+    topology.box_vectors = unit.Quantity(numpy.eye(3) * 20, unit.nanometer)
+
     # make the openmm system
-    omm_system, topology = force_field.create_openmm_system(
-        topology, return_topology=True
+    interchange = Interchange.from_smirnoff(force_field, topology)
+    openmm_system = interchange.to_openmm(combine_nonbonded_forces=False)
+    # workaround interchange by setting nonbonded method to NoCutoff
+    forces = {force.__class__.__name__: force for force in openmm_system.getForces()}
+    vdw_force: openmm.CustomNonbondedForce = forces["CustomNonbondedForce"]
+    vdw_force.setNonbondedMethod(openmm.NonbondedForce.NoCutoff)
+    vdw_force.setUseSwitchingFunction(False)
+    vdw_force.setUseLongRangeCorrection(False)
+    nonbond: openmm.NonbondedForce = forces["NonbondedForce"]
+    nonbond.setNonbondedMethod(openmm.NonbondedForce.NoCutoff)
+    openmm_topology = interchange.to_openmm_topology()
+    openmm_positions: openmm.unit.Quantity = ensure_quantity(
+        to_openmm_positions(
+            interchange,
+            include_virtual_sites=True,
+        ),
+        "openmm",
     )
-    # generate positions at the requested distance
-    positions = [
-        numpy.vstack(
-            [
-                water.conformers[0].value_in_unit(unit.angstrom),
-                water.conformers[0].value_in_unit(unit.angstrom)
-                + numpy.array([x, 0, 0]),
-            ]
-        )
-        * unit.angstrom
-        for x in distances
-    ]
-    # Add the virtual sites to the OpenMM topology and positions.
-    omm_topology = topology.to_openmm()
-    omm_chain = [*omm_topology.chains()][-1]
-    omm_residue = omm_topology.addResidue("", chain=omm_chain)
-
-    for particle in topology.topology_particles:
-        if isinstance(particle, TopologyAtom):
-            continue
-
-        omm_topology.addAtom(
-            particle.virtual_site.name, app.Element.getByMass(0), omm_residue
-        )
-
-    positions = [
-        numpy.vstack([p, numpy.zeros((topology.n_topology_virtual_sites, 3))])
-        * unit.angstrom
-        for p in positions
-    ]
 
     integrator = openmm.LangevinIntegrator(
-        300 * unit.kelvin,  # simulation temperature,
-        1.0 / unit.picosecond,  # friction
-        2.0 * unit.femtoseconds,  # simulation timestep
+        300 * openmm.unit.kelvin,
+        1.0 / openmm.unit.picosecond,
+        0.01 * openmm.unit.femtoseconds,
     )
 
     platform = openmm.Platform.getPlatformByName("CPU")
 
-    simulation = app.Simulation(omm_topology, omm_system, integrator, platform)
+    simulation = openmm.app.Simulation(
+        openmm_topology, openmm_system, integrator, platform
+    )
+
+    n_positions_per_water = int(openmm_positions.shape[0] / 2)
 
     energies = []
-    for i, p in enumerate(positions):
-        simulation.context.setPositions(p)
+    for distance in distances:
+        new_positions = openmm.unit.Quantity(
+            numpy.vstack(
+                [
+                    openmm_positions[:n_positions_per_water, :].value_in_unit(
+                        openmm.unit.angstrom
+                    ),
+                    openmm_positions[n_positions_per_water:, :].value_in_unit(
+                        openmm.unit.angstrom
+                    )
+                    # only translate the second water in x
+                    + numpy.array([distance, 0, 0]),
+                ]
+            ),
+            openmm.unit.angstrom,
+        )
+
+        simulation.context.setPositions(
+            new_positions.value_in_unit(openmm.unit.nanometer)
+        )
         simulation.context.computeVirtualSites()
         state = simulation.context.getState(getEnergy=True)
         energies.append(
-            state.getPotentialEnergy().value_in_unit(unit.kilojoule_per_mole)
+            state.getPotentialEnergy().value_in_unit(openmm.unit.kilojoule_per_mole)
         )
 
     return energies
 
 
 def evaluate_energy(
-    system: openmm.System, topology: app.Topology, positions: unit.Quantity
+    system: openmm.System,
+    topology: openmm.app.Topology,
+    positions: openmm.unit.Quantity,
 ) -> float:
     """
     For the given openmm system build a simulation and evaluate the energies.
@@ -345,18 +357,17 @@ def evaluate_energy(
     -------
         The energy in kcal/mol,
     """
-
     integrator = openmm.LangevinIntegrator(
-        300 * unit.kelvin,  # simulation temperature,
-        1.0 / unit.picosecond,  # friction
-        2.0 * unit.femtoseconds,  # simulation timestep
+        300 * openmm.unit.kelvin,  # simulation temperature,
+        1.0 / openmm.unit.picosecond,  # friction
+        2.0 * openmm.unit.femtoseconds,  # simulation timestep
     )
 
-    platform = openmm.Platform.getPlatformByName("CPU")
+    platform = openmm.Platform.getPlatformByName("Reference")
 
-    simulation = app.Simulation(topology, system, integrator, platform)
+    simulation = openmm.app.Simulation(topology, system, integrator, platform)
     # assume the positions are already padded.
     simulation.context.setPositions(positions)
     simulation.context.computeVirtualSites()
     state = simulation.context.getState(getEnergy=True)
-    return state.getPotentialEnergy().value_in_unit(unit.kilojoule_per_mole)
+    return state.getPotentialEnergy().value_in_unit(openmm.unit.kilojoule_per_mole)

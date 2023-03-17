@@ -1,6 +1,7 @@
 name: smirnoff-plugins-test
 channels:
   - conda-forge
+  - conda-forge/label/openff-interchange_rc
 
 dependencies:
     # Base depends
@@ -8,9 +9,12 @@ dependencies:
   - pip
 
     # Core dependencies
-  - openff-toolkit >=0.10.6,<0.11.0
-  - packaging  # Missing OFF TK dependency.
+  - numpy
   - openmm
+  - openff-toolkit >=0.12.1
+  - openff-interchange >=0.3.0beta2
+  - openff-utilities
+  - openff-models
 
     # Testing
   - pytest
