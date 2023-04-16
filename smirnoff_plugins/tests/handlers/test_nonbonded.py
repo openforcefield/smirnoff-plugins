@@ -231,3 +231,16 @@ def test_scaled_de_energy():
         energy_scaled,
         abs=1e-4,
     )
+
+
+def test_dampedexp6810_assignment():
+    pass
+
+
+def test_axilrodteller_assignment():
+    pass
+
+
+def test_multipole_assignment():
+    pass
+

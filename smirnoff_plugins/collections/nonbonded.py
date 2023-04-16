@@ -1,7 +1,9 @@
 import math
-from typing import Dict, Iterable, Literal, Type, TypeVar
+from typing import Dict, Iterable, Literal, Type, TypeVar, Tuple, Set, Union
 
+from openff.interchange import Interchange
 from openff.interchange.exceptions import InvalidParameterHandlerError
+from openff.interchange.smirnoff._base import SMIRNOFFCollection
 from openff.interchange.smirnoff._nonbonded import (
     SMIRNOFFvdWCollection,
     _SMIRNOFFNonbondedCollection,
@@ -10,10 +12,11 @@ from openff.models.types import FloatQuantity
 from openff.toolkit import Topology
 from openff.toolkit.typing.engines.smirnoff.parameters import ParameterHandler
 from openff.units import unit
+from openmm import openmm
 
 from smirnoff_plugins.handlers.nonbonded import (
     DampedBuckingham68Handler,
-    DoubleExponentialHandler,
+    DoubleExponentialHandler, DampedExp6810Handler,
 )
 
 T = TypeVar("T", bound="_NonbondedPlugin")
@@ -226,3 +229,100 @@ class SMIRNOFFDoubleExponentialCollection(_NonbondedPlugin):
                 original_parameters["epsilon"].m_as(_units["epsilon"]),
             ),
         }
+
+
+class SMIRNOFFDampedExp6810Collection(_NonbondedPlugin):
+
+    type: Literal["DampedExp6810"] = "DampedExp6810"
+
+    expression: str = (
+        "repulsion - ttdamp6*c6*invR6 - ttdamp8*c8*invR8 - ttdamp10*c10*invR10;"
+        "repulsion = forceAtZero*invbeta*exp(-beta*(r-sigma));"
+        "ttdamp10 = 1.0 - expbr * ttdamp10Sum;"
+        "ttdamp8 = 1.0 - expbr * ttdamp8Sum;"
+        "ttdamp6 = 1.0 - expbr * ttdamp6Sum;"
+        "ttdamp10Sum = ttdamp8Sum + br9/362880 + br10/3628800;"
+        "ttdamp8Sum = ttdamp6Sum + br7/5040 + br8/40320;"
+        "ttdamp6Sum = 1.0 + br + br2/2 + br3/6 + br4/24 + br5/120 + br6/720;"
+        "expbr = exp(-br);"
+        "br10 = br5*br5;"
+        "br9 = br5*br4;"
+        "br8 = br4*br4;"
+        "br7 = br4*br3;"
+        "br6 = br3*br3;"
+        "br5 = br3*br2;"
+        "br4 = br2*br2;"
+        "br3 = br2*br;"
+        "br2 = br*br;"
+        "br = beta*r;"
+        "invR10 = invR6*invR4;"
+        "invR8 = invR4*invR4;"
+        "invR6 = invR4*invR2;"
+        "invR4 = invR2*invR2;"
+        "invR2 = invR*invR;"
+        "invR = 1.0/r;"
+        "invbeta = 1.0/beta;"
+        "c6 = sqrt(c61*c62);"
+        "c8 = sqrt(c81*c82);"
+        "c10 = sqrt(c101*c102);"
+        "beta = 2.0*beta1*beta2/(beta1+beta2);"
+        "sigma = 0.5*(sigma1+sigma2);"
+    )
+
+    forceAtZero: FloatQuantity["unit.kilojoules_per_mole * unit.nanometer ** -1"]
+
+    @classmethod
+    def allowed_parameter_handlers(cls) -> Iterable[Type[ParameterHandler]]:
+        """Return an iterable of allowed types of ParameterHandler classes."""
+        return DampedExp6810Handler,
+
+    @classmethod
+    def supported_parameters(cls) -> Iterable[str]:
+        """Return an iterable of supported parameter attributes."""
+        return "smirks", "id", "rho", "beta", "c6", "c8", "c10"
+
+    @classmethod
+    def default_parameter_values(cls) -> Iterable[float]:
+        """Per-particle parameter values passed to Force.addParticle()."""
+        return 0.0, 1.0, 0.0, 0.0, 0.0
+
+    @classmethod
+    def potential_parameters(cls) -> Iterable[str]:
+        """Return a subset of `supported_parameters` that are meant to be included in potentials."""
+        return "rho", "beta", "c6", "c8", "c10"
+
+    @classmethod
+    def global_parameters(cls) -> Iterable[str]:
+        """Return an iterable of global parameters, i.e. not per-potential parameters."""
+        return "forceAtZero",
+
+
+class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
+
+    type: Literal["AxilrodTeller"] = "AxilrodTeller"
+
+    def modify_openmm_forces(
+        self,
+        interchange: Interchange,
+        system: openmm.System,
+        add_constrained_forces: bool,
+        constrained_pairs: Set[Tuple[int, ...]],
+        particle_map: Dict[Union[int, "VirtualSiteKey"], int],
+    ):
+        pass
+
+
+class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
+
+    type: Literal["Multipole"] = "Multipole"
+
+    def modify_openmm_forces(
+        self,
+        interchange: Interchange,
+        system: openmm.System,
+        add_constrained_forces: bool,
+        constrained_pairs: Set[Tuple[int, ...]],
+        particle_map: Dict[Union[int, "VirtualSiteKey"], int],
+    ):
+        pass
+
