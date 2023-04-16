@@ -40,6 +40,9 @@ setup(
         "openff.toolkit.plugins.handlers": [
             "DampedBuckingham68Handler = smirnoff_plugins.handlers.nonbonded:DampedBuckingham68Handler",
             "DoubleExponentialHandler = smirnoff_plugins.handlers.nonbonded:DoubleExponentialHandler",
+            "DampedExp6810Handler = smirnoff_plugins.handlers.nonbonded:DampedExp6810Handler",
+            "AxilrodTellerHandler = smirnoff_plugins.handlers.nonbonded:AxilrodTellerHandler",
+            "MultipoleHandler = smirnoff_plugins.handlers.nonbonded:MultipoleHandler",
         ],
         "openff.interchange.plugins.collections": [
             "SMIRNOFFDampedBuckingham68Collection = smirnoff_plugins.collections.nonbonded:SMIRNOFFDampedBuckingham68Collection",
