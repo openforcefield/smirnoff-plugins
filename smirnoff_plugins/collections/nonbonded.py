@@ -233,6 +233,13 @@ class SMIRNOFFDoubleExponentialCollection(_NonbondedPlugin):
 
 
 class SMIRNOFFDampedExp6810Collection(_NonbondedPlugin):
+    """
+    Damped exponential-6-8-10 potential used in <https://doi.org/10.1021/acs.jctc.0c00837>
+
+    Essentially a Buckingham-6-8-10 potential with mixing rules from
+    <https://journals.aps.org/pra/abstract/10.1103/PhysRevA.5.1708>
+    and a physically reasonable parameter form from Stone, et al.
+    """
 
     type: Literal["DampedExp6810"] = "DampedExp6810"
 
@@ -322,6 +329,10 @@ class SMIRNOFFDampedExp6810Collection(_NonbondedPlugin):
 
 
 class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
+    """
+    Standard Axilrod-Teller potential from <https://aip.scitation.org/doi/10.1063/1.1723844>.
+    """
+
 
     expression: str = (
         "C*(1+3*cos(theta1)*cos(theta2)*cos(theta3))/(r12*r13*r23)^3;"
@@ -359,6 +370,30 @@ class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
 
 
 class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
+    """
+    Collection for OpenMM's AmoebaMultipoleForce
+
+    At the moment this code grabs the partial charges from the NonbondedForce after all other handlers are loaded.
+    Support is only provided for the partial charge and induced dipole portion of AmoebaMultipoleForce, all permanent
+    dipoles and quadrupoles are set to zero.
+
+    Exclusions in this Force work differently than other Forces, a list of 1-2, 1-3, 1-4, and 1-5 neighbors are added
+    to each particle via the setCovalentMap function. Covalent12, Covalent13, Covalent14, and Covalent15 are lists of
+    covalently bonded neighbors separated by 1, 2, 3, and 4 bonds respectively. PolarizationCovalent11 is a list
+    all atoms in a "group", all atoms in the "group" do not have permanent multipole-induced dipole interactions
+    (induced-induced mutual polarization still occurs between all atoms). The scale factors are as follows:
+
+    Covalent12 0.0
+    Covalent13 0.0
+    Covalent14 0.4
+    Covalent15 0.8
+
+    Note that Covalent15 is not set in this code, setting Covalent15 would result in inconsistent exclusions between
+    this force and all other forces and cause an OpenMM error.
+
+    Supported options cutoff, (nonbonded) method, polarization type, ewald error tolerance, thole, target epsilon,
+    and max iter are directly passed through to the OpenMM force.
+    """
 
     def store_potentials(self, parameter_handler: TP):
         pass
