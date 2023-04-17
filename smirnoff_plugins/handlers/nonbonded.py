@@ -4,7 +4,7 @@ from openff.toolkit.typing.engines.smirnoff.parameters import (
     ParameterAttribute,
     ParameterHandler,
     ParameterType,
-    _allow_only,
+    _allow_only, VirtualSiteHandler, vdWHandler, ElectrostaticsHandler, ToolkitAM1BCCHandler, LibraryChargeHandler,
 )
 from openff.toolkit.utils.exceptions import IncompatibleParameterError
 from openff.units import unit
@@ -159,3 +159,22 @@ class MultipoleHandler(ParameterHandler, abc.ABC):
 
     _TAGNAME = "Multipole"
     _INFOTYPE = MultipoleType
+    _DEPENDENCIES = [
+        VirtualSiteHandler,
+        vdWHandler,
+        ElectrostaticsHandler,
+        ToolkitAM1BCCHandler,
+        LibraryChargeHandler,
+    ]
+
+    cutoff = ParameterAttribute(default=9.0 * unit.angstrom, unit=unit.angstrom)
+    method = ParameterAttribute(
+        default="PME", converter=_allow_only(["NoCutoff", "PME"])
+    )
+    polarizationType = ParameterAttribute(
+        default="Extrapolated", converter=_allow_only(["Mutual", "Direct", "Extrapolated"])
+    )
+    ewaldErrorTolerance = ParameterAttribute(default=0.0001, converter=float)
+    thole = ParameterAttribute(default=0.39, converter=float)
+    targetEpsilon = ParameterAttribute(default=0.00001, converter=float)
+    maxIter = ParameterAttribute(default=60, converter=int)

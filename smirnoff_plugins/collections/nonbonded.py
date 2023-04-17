@@ -294,7 +294,7 @@ class SMIRNOFFDampedExp6810Collection(_NonbondedPlugin):
     @classmethod
     def default_parameter_values(cls) -> Iterable[float]:
         """Per-particle parameter values passed to Force.addParticle()."""
-        return 0.0, 1.0, 0.0, 0.0, 0.0
+        return 0.0, 0.0, 0.0, 0.0, 0.0
 
     @classmethod
     def potential_parameters(cls) -> Iterable[str]:
@@ -305,6 +305,29 @@ class SMIRNOFFDampedExp6810Collection(_NonbondedPlugin):
     def global_parameters(cls) -> Iterable[str]:
         """Return an iterable of global parameters, i.e. not per-potential parameters."""
         return "forceAtZero",
+
+    def pre_computed_terms(self) -> Dict[str, unit.Quantity]:
+        return {}
+
+    def modify_parameters(
+        self,
+        original_parameters: Dict[str, unit.Quantity],
+    ) -> Dict[str, float]:
+        # It's important that these keys are in the order of self.potential_parameters(),
+        # consider adding a check somewhere that this is the case.
+        _units = {"rho": unit.nanometers,
+                  "beta": unit.nanometers**-1,
+                  "c6": unit.kilojoule_per_mole * unit.nanometer**6,
+                  "c8": unit.kilojoule_per_mole * unit.nanometer**8,
+                  "c10": unit.kilojoule_per_mole * unit.nanometer**10}
+
+        return {
+            "rho": original_parameters["rho"].m_as(_units["rho"]),
+            "beta": original_parameters["beta"].m_as(_units["beta"]),
+            "c6": original_parameters["c6"].m_as(_units["c6"]),
+            "c8": original_parameters["c8"].m_as(_units["c8"]),
+            "c10": original_parameters["c10"].m_as(_units["c10"])
+        }
 
     @classmethod
     def create(  # type: ignore[override]
@@ -366,6 +389,16 @@ class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
         particle_map: Dict[Union[int, "VirtualSiteKey"], int],
     ):
         pass
+
+    def modify_parameters(
+        self,
+        original_parameters: Dict[str, unit.Quantity],
+    ) -> Dict[str, float]:
+        # It's important that these keys are in the order of self.potential_parameters(),
+        # consider adding a check somewhere that this is the case.
+        _units = {"c9": unit.kilojoule_per_mole * unit.nanometer**9}
+
+        return {"c9": original_parameters["c9"].m_as(_units["c9"])}
 
     @classmethod
     def create(  # type: ignore[override]
@@ -436,6 +469,16 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
         particle_map: Dict[Union[int, "VirtualSiteKey"], int],
     ):
         pass
+
+    def modify_parameters(
+        self,
+        original_parameters: Dict[str, unit.Quantity],
+    ) -> Dict[str, float]:
+        # It's important that these keys are in the order of self.potential_parameters(),
+        # consider adding a check somewhere that this is the case.
+        _units = {"polarity": unit.nanometer**3}
+
+        return {"polarity": original_parameters["polarity"].m_as(_units["polarity"])}
 
     @classmethod
     def create(  # type: ignore[override]

@@ -236,7 +236,17 @@ def test_scaled_de_energy():
 def test_dampedexp6810_assignment():
     ff = ForceField(load_plugins=True)
 
-    handler = ff.get_parameter_handler("DampedExp6810")
+    ff.get_parameter_handler("Electrostatics", {"version": "0.4",
+                                                "periodic_potential": "Ewald3D-ConductingBoundary",
+                                                "nonperiodic_potential": "Coulomb",
+                                                "exception_potential": "Coulomb",
+                                                })
+    ff.get_parameter_handler(
+        "ChargeIncrementModel",
+        {"version": "0.3", "partial_charge_method": "formal_charge"},
+    )
+
+    handler = ff.get_parameter_handler("DampedExp6810", {"version": "0.3"})
 
     handler.add_parameter(
         {
@@ -260,34 +270,66 @@ def test_dampedexp6810_assignment():
         }
     )
 
-    handler.add_parameter(
-        {
-            "smirks": "[#8:1]",
-            "rho": 3.0 * unit.angstrom,
-            "beta": 2.5 * unit.angstrom**-1,
-            "c6": 10.0 * unit.kilojoule_per_mole * unit.angstrom**6,
-            "c8": 100.0 * unit.kilojoule_per_mole * unit.angstrom**8,
-            "c10": 1000.0 * unit.kilojoule_per_mole * unit.angstrom**10,
-        }
-    )
-
     toluene = Molecule.from_mapped_smiles(
         "[H:10][c:3]1[c:2]([c:1]([c:6]([c:5]([c:4]1[H:11])[H:12])[C:7]([H:13])([H:14])[H:15])[H:8])[H:9]"
     )
     toluene.generate_conformers(n_conformers=1)
     off_top = toluene.to_topology()
+    off_top.box_vectors = [10, 10, 10] * unit.nanometer
 
-    omm_system = Interchange.from_smirnoff(ff, off_top)
+    interchange = Interchange.from_smirnoff(ff, off_top)
+    omm_system = interchange.to_openmm(combine_nonbonded_forces=False)
+
+    custom_nonbonded_forces = [
+        omm_system.getForce(i)
+        for i in range(omm_system.getNumForces())
+        if isinstance(omm_system.getForce(i), openmm.CustomNonbondedForce)
+    ]
+
+    assert len(custom_nonbonded_forces) == 1
+
+    custom_nonbonded_force: openmm.CustomNonbondedForce = custom_nonbonded_forces[0]
+
+    assert custom_nonbonded_force.getNumParticles() == 15
+
+    h_params = [1.5 * unit.angstrom,
+                3.0 * unit.angstrom ** -1,
+                1.0 * unit.kilojoule_per_mole * unit.angstrom ** 6,
+                10.0 * unit.kilojoule_per_mole * unit.angstrom ** 8,
+                100.0 * unit.kilojoule_per_mole * unit.angstrom ** 10]
+
+    c_params = [3.0 * unit.angstrom,
+                3.0 * unit.angstrom ** -1,
+                10.0 * unit.kilojoule_per_mole * unit.angstrom ** 6,
+                100.0 * unit.kilojoule_per_mole * unit.angstrom ** 8,
+                1000.0 * unit.kilojoule_per_mole * unit.angstrom ** 10]
+
+    expected_params = [c_params] * 7 + [h_params] * 8
+
+    for particle_idx in range(custom_nonbonded_force.getNumParticles()):
+        parameters = custom_nonbonded_force.getParticleParameters(particle_idx)
+        print(parameters)
+        print(expected_params[particle_idx])
 
 
 def test_dampedexp6810_energies():
     ff = ForceField(load_plugins=True)
 
+    ff.get_parameter_handler("Electrostatics", {"version": "0.4",
+                                                "periodic_potential": "Ewald3D-ConductingBoundary",
+                                                "nonperiodic_potential": "Coulomb",
+                                                "exception_potential": "Coulomb",
+                                                })
+    ff.get_parameter_handler(
+        "ChargeIncrementModel",
+        {"version": "0.3", "partial_charge_method": "formal_charge"},
+    )
+
     handler = ff.get_parameter_handler("DampedExp6810")
 
     handler.add_parameter(
         {
-            "smirks": "[#1:1]",
+            "smirks": "[#10:1]",
             "rho": 1.5 * unit.angstrom,
             "beta": 3.0 * unit.angstrom ** -1,
             "c6": 1.0 * unit.kilojoule_per_mole * unit.angstrom ** 6,
@@ -299,8 +341,12 @@ def test_dampedexp6810_energies():
     neon = Molecule.from_smiles("[Ne]")
     neon.generate_conformers(n_conformers=1)
     off_top = neon.to_topology()
+    off_top.box_vectors = [10, 10, 10] * unit.nanometer
 
-    omm_system = Interchange.from_smirnoff(ff, off_top)
+    interchange = Interchange.from_smirnoff(ff, off_top)
+    omm_system = interchange.to_openmm(combine_nonbonded_forces=False)
+
+
 
 
 def test_axilrodteller_assignment():
@@ -335,7 +381,8 @@ def test_axilrodteller_assignment():
     toluene.generate_conformers(n_conformers=1)
     off_top = toluene.to_topology()
 
-    omm_system = Interchange.from_smirnoff(ff, off_top)
+    interchange = Interchange.from_smirnoff(ff, off_top)
+    omm_system = interchange.to_openmm(combine_nonbonded_forces=False)
 
 
 def test_axilrodteller_energies():
@@ -350,21 +397,14 @@ def test_multipole_assignment():
     handler.add_parameter(
         {
             "smirks": "[#1:1]",
-            "polarity": 0.4 * unit.angstrom ** 3,
+            "polarity": 0.301856 * unit.angstrom ** 3,
         }
     )
 
     handler.add_parameter(
         {
             "smirks": "[#6:1]",
-            "polarity": 1.2 * unit.angstrom ** 3,
-        }
-    )
-
-    handler.add_parameter(
-        {
-            "smirks": "[#8:1]",
-            "polarity": .8 * unit.angstrom ** 3,
+            "polarity": 1.243042 * unit.angstrom ** 3,
         }
     )
 
@@ -374,7 +414,47 @@ def test_multipole_assignment():
     toluene.generate_conformers(n_conformers=1)
     off_top = toluene.to_topology()
 
-    omm_system = Interchange.from_smirnoff(ff, off_top)
+    interchange = Interchange.from_smirnoff(ff, off_top)
+    omm_system = interchange.to_openmm(combine_nonbonded_forces=False)
+
+    amoeba_forces = [
+        omm_system.getForce(i)
+        for i in range(omm_system.getNumForces())
+        if isinstance(omm_system.getForce(i), openmm.AmoebaMultipoleForce)
+    ]
+
+    assert len(amoeba_forces) == 1
+
+    amoeba_force = amoeba_forces[0]
+
+    assert amoeba_force.getNumMultipoles() == 30
+
+    c_polarity = 1.243042 * unit.angstrom**3
+    h_polarity = 0.301856 * unit.angstrom**3
+    expected_polarities = (
+        [c_polarity] * 7 + [h_polarity] * 8 + [h_polarity] * 8 + [c_polarity] * 7
+    )
+
+    for particle_idx in range(amoeba_force.getNumMultipoles()):
+        multipole_parameters = amoeba_force.getMultipoleParameters(particle_idx)
+        expected_polarity = expected_polarities[particle_idx].value_in_unit(
+            unit.angstrom ** 3
+        )
+        assigned_polarity = multipole_parameters[-1].value_in_unit(unit.angstrom ** 3)
+        assert assigned_polarity == expected_polarity
+        for degree, omm_kw in [
+            (1, amoeba_force.Covalent12),
+            (2, amoeba_force.Covalent13),
+            (3, amoeba_force.Covalent14),
+        ]:
+            amoeba_neighs = amoeba_force.getCovalentMap(particle_idx, omm_kw)
+            molecule_neighs = []
+            for pair in off_top.nth_degree_neighbors(degree):
+                if pair[0].topology_atom_index == particle_idx:
+                    molecule_neighs.append(pair[1].topology_atom_index)
+                if pair[1].topology_atom_index == particle_idx:
+                    molecule_neighs.append(pair[0].topology_atom_index)
+            assert set(amoeba_neighs) == set(molecule_neighs)
 
 
 def test_multipole_energies():
