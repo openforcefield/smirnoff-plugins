@@ -121,9 +121,8 @@ class DampedExp6810Handler(_CustomNonbondedHandler):
     _TAGNAME = "DampedExp6810"
     _INFOTYPE = DampedExp6810Type
 
-    # These are defined as dimensionless, we should consider enforcing global parameters
-    # as being unit-bearing even if that means using `unit.dimensionless`
-    forceAtZero = ParameterAttribute(default=49.6144931952, unit=unit.kilojoules_per_mole * unit.nanometer**-1)
+    forceAtZero = ParameterAttribute(default=49.6144931952 * unit.kilojoules_per_mole * unit.nanometer**-1,
+                                     unit=unit.kilojoules_per_mole * unit.nanometer**-1)
 
 
 class AxilrodTellerHandler(_CustomNonbondedHandler):

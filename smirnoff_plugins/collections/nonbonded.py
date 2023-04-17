@@ -262,15 +262,16 @@ class SMIRNOFFDampedExp6810Collection(_NonbondedPlugin):
         "invR4 = invR2*invR2;"
         "invR2 = invR*invR;"
         "invR = 1.0/r;"
-        "invbeta = 1.0/beta;"
         "c6 = sqrt(c61*c62);"
         "c8 = sqrt(c81*c82);"
         "c10 = sqrt(c101*c102);"
-        "beta = 2.0*beta1*beta2/(beta1+beta2);"
+        "invbeta = select(beta, 1.0/beta, 0);"
+        "beta = select(beta_mix, 2.0*beta_mix/(beta1+beta2), 0);"
+        "beta_mix = beta1*beta2;"
         "sigma = 0.5*(sigma1+sigma2);"
     )
 
-    forceAtZero: FloatQuantity["unit.kilojoules_per_mole * unit.nanometer ** -1"]
+    forceAtZero: FloatQuantity["unit.kilojoules_per_mole * unit.nanometer**-1"] = unit.Quantity(49.6144931952, unit.kilojoules_per_mole * unit.nanometer**-1)
 
     @classmethod
     def allowed_parameter_handlers(cls) -> Iterable[Type[ParameterHandler]]:
@@ -296,6 +297,27 @@ class SMIRNOFFDampedExp6810Collection(_NonbondedPlugin):
     def global_parameters(cls) -> Iterable[str]:
         """Return an iterable of global parameters, i.e. not per-potential parameters."""
         return "forceAtZero",
+
+    @classmethod
+    def create(  # type: ignore[override]
+        cls: Type[T],
+        parameter_handler: DampedExp6810Handler,
+        topology: Topology,
+    ) -> T:
+        handler = cls(
+            scale_13=parameter_handler.scale13,
+            scale_14=parameter_handler.scale14,
+            scale_15=parameter_handler.scale15,
+            cutoff=parameter_handler.cutoff,
+            method=parameter_handler.method.lower(),
+            switch_width=parameter_handler.switch_width,
+            forceAtZero=parameter_handler.forceAtZero,
+        )
+
+        handler.store_matches(parameter_handler=parameter_handler, topology=topology)
+        handler.store_potentials(parameter_handler=parameter_handler)
+
+        return handler
 
 
 class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):

@@ -253,10 +253,10 @@ def test_dampedexp6810_assignment():
         {
             "smirks": "[#6:1]",
             "rho": 3.0 * unit.angstrom,
-            "beta": 3.0 * unit.angstrom ** -1,
-            "c6": 10.0 * unit.kilojoule_per_mole * unit.angstrom ** 6,
-            "c8": 100.0 * unit.kilojoule_per_mole * unit.angstrom ** 8,
-            "c10": 1000.0 * unit.kilojoule_per_mole * unit.angstrom ** 10,
+            "beta": 3.0 * unit.angstrom**-1,
+            "c6": 10.0 * unit.kilojoule_per_mole * unit.angstrom**6,
+            "c8": 100.0 * unit.kilojoule_per_mole * unit.angstrom**8,
+            "c10": 1000.0 * unit.kilojoule_per_mole * unit.angstrom**10,
         }
     )
 
@@ -264,10 +264,10 @@ def test_dampedexp6810_assignment():
         {
             "smirks": "[#8:1]",
             "rho": 3.0 * unit.angstrom,
-            "beta": 2.5 * unit.angstrom ** -1,
-            "c6": 10.0 * unit.kilojoule_per_mole * unit.angstrom ** 6,
-            "c8": 100.0 * unit.kilojoule_per_mole * unit.angstrom ** 8,
-            "c10": 1000.0 * unit.kilojoule_per_mole * unit.angstrom ** 10,
+            "beta": 2.5 * unit.angstrom**-1,
+            "c6": 10.0 * unit.kilojoule_per_mole * unit.angstrom**6,
+            "c8": 100.0 * unit.kilojoule_per_mole * unit.angstrom**8,
+            "c10": 1000.0 * unit.kilojoule_per_mole * unit.angstrom**10,
         }
     )
 
