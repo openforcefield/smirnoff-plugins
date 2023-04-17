@@ -114,16 +114,16 @@ class DampedExp6810Handler(_CustomNonbondedHandler):
 
         rho = ParameterAttribute(default=None, unit=unit.nanometers)
         beta = ParameterAttribute(default=None, unit=unit.nanometers**-1)
-        c6 = ParameterAttribute(default=None, unit=unit.kilojoule_per_mole * unit.nanometer ** 6)
-        c8 = ParameterAttribute(default=None, unit=unit.kilojoule_per_mole * unit.nanometer ** 8)
-        c10 = ParameterAttribute(default=None, unit=unit.kilojoule_per_mole * unit.nanometer ** 10)
+        c6 = ParameterAttribute(default=None, unit=unit.kilojoule_per_mole * unit.nanometer**6)
+        c8 = ParameterAttribute(default=None, unit=unit.kilojoule_per_mole * unit.nanometer**8)
+        c10 = ParameterAttribute(default=None, unit=unit.kilojoule_per_mole * unit.nanometer**10)
 
     _TAGNAME = "DampedExp6810"
     _INFOTYPE = DampedExp6810Type
 
     # These are defined as dimensionless, we should consider enforcing global parameters
     # as being unit-bearing even if that means using `unit.dimensionless`
-    forceAtZero = ParameterAttribute(default=49.6144931952, unit=unit.kilojoules_per_mole * unit.nanometer ** -1)
+    forceAtZero = ParameterAttribute(default=49.6144931952, unit=unit.kilojoules_per_mole * unit.nanometer**-1)
 
 
 class AxilrodTellerHandler(_CustomNonbondedHandler):
@@ -137,7 +137,7 @@ class AxilrodTellerHandler(_CustomNonbondedHandler):
         _VALENCE_TYPE = "Atom"
         _ELEMENT_NAME = "Atom"
 
-        c9 = ParameterAttribute(default=None, unit=unit.kilojoule_per_mole * unit.nanometer ** 10)
+        c9 = ParameterAttribute(default=None, unit=unit.kilojoule_per_mole * unit.nanometer**10)
 
     _TAGNAME = "AxilrodTeller"
     _INFOTYPE = AxilrodTellerType
@@ -154,7 +154,7 @@ class MultipoleHandler(_CustomNonbondedHandler):
         _VALENCE_TYPE = "Atom"
         _ELEMENT_NAME = "Atom"
 
-        alpha = ParameterAttribute(default=None, unit=unit.nanometers ** 3)
+        polarity = ParameterAttribute(default=None, unit=unit.nanometers**3)
 
     _TAGNAME = "Multipole"
     _INFOTYPE = MultipoleType

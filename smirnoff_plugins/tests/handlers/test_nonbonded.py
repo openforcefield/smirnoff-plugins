@@ -234,6 +234,51 @@ def test_scaled_de_energy():
 
 
 def test_dampedexp6810_assignment():
+    ff = ForceField(load_plugins=True)
+
+    handler = ff.get_parameter_handler("DampedExp6810")
+
+    handler.add_parameter(
+        {
+            "smirks": "[#1:1]",
+            "rho": 1.5 * unit.angstrom,
+            "beta": 3.0 * unit.angstrom**-1,
+            "c6": 1.0 * unit.kilojoule_per_mole * unit.angstrom**6,
+            "c8": 10.0 * unit.kilojoule_per_mole * unit.angstrom**8,
+            "c10": 100.0 * unit.kilojoule_per_mole * unit.angstrom**10,
+        }
+    )
+
+    handler.add_parameter(
+        {
+            "smirks": "[#6:1]",
+            "rho": 3.0 * unit.angstrom,
+            "beta": 3.0 * unit.angstrom ** -1,
+            "c6": 10.0 * unit.kilojoule_per_mole * unit.angstrom ** 6,
+            "c8": 100.0 * unit.kilojoule_per_mole * unit.angstrom ** 8,
+            "c10": 1000.0 * unit.kilojoule_per_mole * unit.angstrom ** 10,
+        }
+    )
+
+    handler.add_parameter(
+        {
+            "smirks": "[#8:1]",
+            "rho": 3.0 * unit.angstrom,
+            "beta": 2.5 * unit.angstrom ** -1,
+            "c6": 10.0 * unit.kilojoule_per_mole * unit.angstrom ** 6,
+            "c8": 100.0 * unit.kilojoule_per_mole * unit.angstrom ** 8,
+            "c10": 1000.0 * unit.kilojoule_per_mole * unit.angstrom ** 10,
+        }
+    )
+
+    methanol = Molecule.from_smiles("CO")
+    methanol.generate_conformers(n_conformers=1)
+    off_top = methanol.to_topology()
+
+    omm_system = Interchange.from_smirnoff(ff, off_top)
+
+
+def test_dampedexp6810_energies():
     pass
 
 
@@ -241,6 +286,13 @@ def test_axilrodteller_assignment():
     pass
 
 
+def test_axilrodteller_energies():
+    pass
+
+
 def test_multipole_assignment():
     pass
 
+
+def test_multipole_energies():
+    pass

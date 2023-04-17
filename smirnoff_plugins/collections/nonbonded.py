@@ -1,9 +1,10 @@
 import math
+from abc import ABC
 from typing import Dict, Iterable, Literal, Type, TypeVar, Tuple, Set, Union
 
 from openff.interchange import Interchange
 from openff.interchange.exceptions import InvalidParameterHandlerError
-from openff.interchange.smirnoff._base import SMIRNOFFCollection
+from openff.interchange.smirnoff._base import SMIRNOFFCollection, TP
 from openff.interchange.smirnoff._nonbonded import (
     SMIRNOFFvdWCollection,
     _SMIRNOFFNonbondedCollection,
@@ -16,7 +17,7 @@ from openmm import openmm
 
 from smirnoff_plugins.handlers.nonbonded import (
     DampedBuckingham68Handler,
-    DoubleExponentialHandler, DampedExp6810Handler,
+    DoubleExponentialHandler, DampedExp6810Handler, AxilrodTellerHandler, MultipoleHandler,
 )
 
 T = TypeVar("T", bound="_NonbondedPlugin")
@@ -299,6 +300,21 @@ class SMIRNOFFDampedExp6810Collection(_NonbondedPlugin):
 
 class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
 
+    def store_potentials(self, parameter_handler: TP):
+        pass
+
+    @classmethod
+    def potential_parameters(cls):
+        return "c9",
+
+    @classmethod
+    def supported_parameters(cls):
+        return "smirks", "id", "c9"
+
+    @classmethod
+    def allowed_parameter_handlers(cls):
+        return AxilrodTellerHandler,
+
     type: Literal["AxilrodTeller"] = "AxilrodTeller"
 
     def modify_openmm_forces(
@@ -314,6 +330,21 @@ class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
 
 class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
 
+    def store_potentials(self, parameter_handler: TP):
+        pass
+
+    @classmethod
+    def potential_parameters(cls):
+        return "polarity",
+
+    @classmethod
+    def supported_parameters(cls):
+        return "smirks", "id", "polarity"
+
+    @classmethod
+    def allowed_parameter_handlers(cls):
+        return MultipoleHandler,
+
     type: Literal["Multipole"] = "Multipole"
 
     def modify_openmm_forces(
@@ -325,4 +356,3 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
         particle_map: Dict[Union[int, "VirtualSiteKey"], int],
     ):
         pass
-

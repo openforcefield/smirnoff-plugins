@@ -47,7 +47,7 @@ setup(
         "openff.interchange.plugins.collections": [
             "SMIRNOFFDampedBuckingham68Collection = smirnoff_plugins.collections.nonbonded:SMIRNOFFDampedBuckingham68Collection",
             "DoubleExponentialCollection = smirnoff_plugins.collections.nonbonded:SMIRNOFFDoubleExponentialCollection",
-            "SMIRNOFFDamped6810Collection = smirnoff_plugins.collections.nonbonded:SMIRNOFFDamped6810Collection",
+            "SMIRNOFFDampedExp6810Collection = smirnoff_plugins.collections.nonbonded:SMIRNOFFDampedExp6810Collection",
             "SMIRNOFFAxilrodTellerCollection = smirnoff_plugins.collections.nonbonded:SMIRNOFFAxilrodTellerCollection",
             "SMIRNOFFMultipoleCollection = smirnoff_plugins.collections.nonbonded:SMIRNOFFMultipoleCollection",
         ],
