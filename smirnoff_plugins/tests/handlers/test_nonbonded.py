@@ -253,9 +253,9 @@ def test_dampedexp6810_assignment():
             "smirks": "[#1:1]",
             "rho": 1.5 * unit.angstrom,
             "beta": 3.0 * unit.angstrom**-1,
-            "c6": 1.0 * unit.kilojoule_per_mole * unit.angstrom**6,
-            "c8": 10.0 * unit.kilojoule_per_mole * unit.angstrom**8,
-            "c10": 100.0 * unit.kilojoule_per_mole * unit.angstrom**10,
+            "c6": 1.0 * unit.kilojoule_per_mole * unit.nanometer**6,
+            "c8": 10.0 * unit.kilojoule_per_mole * unit.nanometer**8,
+            "c10": 100.0 * unit.kilojoule_per_mole * unit.nanometer**10,
         }
     )
 
@@ -264,9 +264,9 @@ def test_dampedexp6810_assignment():
             "smirks": "[#6:1]",
             "rho": 3.0 * unit.angstrom,
             "beta": 3.0 * unit.angstrom**-1,
-            "c6": 10.0 * unit.kilojoule_per_mole * unit.angstrom**6,
-            "c8": 100.0 * unit.kilojoule_per_mole * unit.angstrom**8,
-            "c10": 1000.0 * unit.kilojoule_per_mole * unit.angstrom**10,
+            "c6": 10.0 * unit.kilojoule_per_mole * unit.nanometer**6,
+            "c8": 100.0 * unit.kilojoule_per_mole * unit.nanometer**8,
+            "c10": 1000.0 * unit.kilojoule_per_mole * unit.nanometer**10,
         }
     )
 
@@ -292,24 +292,24 @@ def test_dampedexp6810_assignment():
 
     assert custom_nonbonded_force.getNumParticles() == 15
 
-    h_params = [1.5 * unit.angstrom,
-                3.0 * unit.angstrom ** -1,
-                1.0 * unit.kilojoule_per_mole * unit.angstrom ** 6,
-                10.0 * unit.kilojoule_per_mole * unit.angstrom ** 8,
-                100.0 * unit.kilojoule_per_mole * unit.angstrom ** 10]
+    h_params = [0.15 * unit.nanometer,
+                30.0 * unit.nanometer ** -1,
+                1.0 * unit.kilojoule_per_mole * unit.nanometer ** 6,
+                10.0 * unit.kilojoule_per_mole * unit.nanometer ** 8,
+                100.0 * unit.kilojoule_per_mole * unit.nanometer ** 10]
 
-    c_params = [3.0 * unit.angstrom,
-                3.0 * unit.angstrom ** -1,
-                10.0 * unit.kilojoule_per_mole * unit.angstrom ** 6,
-                100.0 * unit.kilojoule_per_mole * unit.angstrom ** 8,
-                1000.0 * unit.kilojoule_per_mole * unit.angstrom ** 10]
+    c_params = [0.3 * unit.angstrom,
+                30.0 * unit.angstrom ** -1,
+                10.0 * unit.kilojoule_per_mole * unit.nanometer ** 6,
+                100.0 * unit.kilojoule_per_mole * unit.nanometer ** 8,
+                1000.0 * unit.kilojoule_per_mole * unit.nanometer ** 10]
 
     expected_params = [c_params] * 7 + [h_params] * 8
 
     for particle_idx in range(custom_nonbonded_force.getNumParticles()):
         parameters = custom_nonbonded_force.getParticleParameters(particle_idx)
-        print(parameters)
-        print(expected_params[particle_idx])
+        for param, expected_param in zip(parameters, expected_params[particle_idx]):
+            assert expected_param.m == param
 
 
 def test_dampedexp6810_energies():
@@ -341,10 +341,23 @@ def test_dampedexp6810_energies():
     neon = Molecule.from_smiles("[Ne]")
     neon.generate_conformers(n_conformers=1)
     off_top = neon.to_topology()
+    off_top.add_molecule(neon)
     off_top.box_vectors = [10, 10, 10] * unit.nanometer
 
     interchange = Interchange.from_smirnoff(ff, off_top)
     omm_system = interchange.to_openmm(combine_nonbonded_forces=False)
+
+    custom_nonbonded_forces = [
+        omm_system.getForce(i)
+        for i in range(omm_system.getNumForces())
+        if isinstance(omm_system.getForce(i), openmm.CustomNonbondedForce)
+    ]
+
+    assert len(custom_nonbonded_forces) == 1
+
+    custom_nonbonded_force: openmm.CustomNonbondedForce = custom_nonbonded_forces[0]
+
+    assert custom_nonbonded_force.getNumParticles() == 2
 
 
 
@@ -413,6 +426,8 @@ def test_multipole_assignment():
     )
     toluene.generate_conformers(n_conformers=1)
     off_top = toluene.to_topology()
+    off_top.add_molecule(toluene)
+    off_top.box_vectors = [10, 10, 10] * unit.nanometer
 
     interchange = Interchange.from_smirnoff(ff, off_top)
     omm_system = interchange.to_openmm(combine_nonbonded_forces=False)
