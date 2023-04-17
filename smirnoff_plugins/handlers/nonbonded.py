@@ -102,12 +102,14 @@ class DoubleExponentialHandler(_CustomNonbondedHandler):
 class DampedExp6810Handler(_CustomNonbondedHandler):
     """
     Damped exponential-6-8-10 potential used in <https://doi.org/10.1021/acs.jctc.0c00837>
+
     Essentially a Buckingham-6-8-10 potential with mixing rules from
     <https://journals.aps.org/pra/abstract/10.1103/PhysRevA.5.1708>
+    and a physically reasonable parameter form from Stone, et al.
     """
 
     class DampedExp6810Type(ParameterType):
-        """A custom SMIRNOFF type for 6810 interactions."""
+        """A custom SMIRNOFF type for dampedexp6810 interactions."""
 
         _VALENCE_TYPE = "Atom"
         _ELEMENT_NAME = "Atom"
@@ -125,9 +127,9 @@ class DampedExp6810Handler(_CustomNonbondedHandler):
                                      unit=unit.kilojoules_per_mole * unit.nanometer**-1)
 
 
-class AxilrodTellerHandler(_CustomNonbondedHandler):
+class AxilrodTellerHandler(ParameterHandler, abc.ABC):
     """
-    Axilrod-Teller potential
+    Standard Axilrod-Teller potential from <https://aip.scitation.org/doi/10.1063/1.1723844>.
     """
 
     class AxilrodTellerType(ParameterType):
@@ -142,7 +144,7 @@ class AxilrodTellerHandler(_CustomNonbondedHandler):
     _INFOTYPE = AxilrodTellerType
 
 
-class MultipoleHandler(_CustomNonbondedHandler):
+class MultipoleHandler(ParameterHandler, abc.ABC):
     """
     Amoeba multipole handler from openmm
     """

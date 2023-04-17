@@ -325,7 +325,7 @@ def test_axilrodteller_assignment():
     handler.add_parameter(
         {
             "smirks": "[#8:1]",
-            "c9": 1000.0 * unit.kilojoule_per_mole * unit.angstrom ** 9,
+            "c9": 500.0 * unit.kilojoule_per_mole * unit.angstrom ** 9,
         }
     )
 
@@ -336,6 +336,7 @@ def test_axilrodteller_assignment():
     off_top = toluene.to_topology()
 
     omm_system = Interchange.from_smirnoff(ff, off_top)
+
 
 def test_axilrodteller_energies():
     pass

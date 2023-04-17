@@ -333,13 +333,14 @@ class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
     Standard Axilrod-Teller potential from <https://aip.scitation.org/doi/10.1063/1.1723844>.
     """
 
-
     expression: str = (
         "C*(1+3*cos(theta1)*cos(theta2)*cos(theta3))/(r12*r13*r23)^3;"
         "theta1=angle(p1,p2,p3); theta2=angle(p2,p3,p1); theta3=angle(p3,p1,p2);"
         "r12=distance(p1,p2); r13=distance(p1,p3); r23=distance(p2,p3);"
         "C=(c91*c92*c93)^(1.0/3.0)"
     )
+
+    type: Literal["AxilrodTeller"] = "AxilrodTeller"
 
     def store_potentials(self, parameter_handler: TP):
         pass
@@ -356,8 +357,6 @@ class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
     def allowed_parameter_handlers(cls):
         return AxilrodTellerHandler,
 
-    type: Literal["AxilrodTeller"] = "AxilrodTeller"
-
     def modify_openmm_forces(
         self,
         interchange: Interchange,
@@ -367,6 +366,20 @@ class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
         particle_map: Dict[Union[int, "VirtualSiteKey"], int],
     ):
         pass
+
+    @classmethod
+    def create(  # type: ignore[override]
+            cls: Type[T],
+            parameter_handler: AxilrodTellerHandler,
+            topology: Topology,
+    ) -> T:
+        handler = cls(
+        )
+
+        handler.store_matches(parameter_handler=parameter_handler, topology=topology)
+        handler.store_potentials(parameter_handler=parameter_handler)
+
+        return handler
 
 
 class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
@@ -395,6 +408,10 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
     and max iter are directly passed through to the OpenMM force.
     """
 
+    expression: str = ""
+
+    type: Literal["Multipole"] = "Multipole"
+
     def store_potentials(self, parameter_handler: TP):
         pass
 
@@ -409,8 +426,6 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
     @classmethod
     def allowed_parameter_handlers(cls):
         return MultipoleHandler,
-
-    type: Literal["Multipole"] = "Multipole"
 
     def modify_openmm_forces(
         self,
@@ -429,12 +444,6 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
         topology: Topology,
     ) -> T:
         handler = cls(
-            scale_13=parameter_handler.scale13,
-            scale_14=parameter_handler.scale14,
-            scale_15=parameter_handler.scale15,
-            cutoff=parameter_handler.cutoff,
-            method=parameter_handler.method.lower(),
-            switch_width=parameter_handler.switch_width,
         )
 
         handler.store_matches(parameter_handler=parameter_handler, topology=topology)
