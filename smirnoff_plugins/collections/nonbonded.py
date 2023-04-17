@@ -271,7 +271,8 @@ class SMIRNOFFDampedExp6810Collection(_NonbondedPlugin):
         "sigma = 0.5*(sigma1+sigma2);"
     )
 
-    forceAtZero: FloatQuantity["unit.kilojoules_per_mole * unit.nanometer**-1"] = unit.Quantity(49.6144931952, unit.kilojoules_per_mole * unit.nanometer**-1)
+    forceAtZero: FloatQuantity["kilojoules_per_mole * nanometer**-1"] =\
+        unit.Quantity(49.6144931952, unit.kilojoules_per_mole * unit.nanometer**-1)
 
     @classmethod
     def allowed_parameter_handlers(cls) -> Iterable[Type[ParameterHandler]]:
@@ -321,6 +322,13 @@ class SMIRNOFFDampedExp6810Collection(_NonbondedPlugin):
 
 
 class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
+
+    expression: str = (
+        "C*(1+3*cos(theta1)*cos(theta2)*cos(theta3))/(r12*r13*r23)^3;"
+        "theta1=angle(p1,p2,p3); theta2=angle(p2,p3,p1); theta3=angle(p3,p1,p2);"
+        "r12=distance(p1,p2); r13=distance(p1,p3); r23=distance(p2,p3);"
+        "C=(c91*c92*c93)^(1.0/3.0)"
+    )
 
     def store_potentials(self, parameter_handler: TP):
         pass
@@ -378,3 +386,23 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
         particle_map: Dict[Union[int, "VirtualSiteKey"], int],
     ):
         pass
+
+    @classmethod
+    def create(  # type: ignore[override]
+        cls: Type[T],
+        parameter_handler: DampedExp6810Handler,
+        topology: Topology,
+    ) -> T:
+        handler = cls(
+            scale_13=parameter_handler.scale13,
+            scale_14=parameter_handler.scale14,
+            scale_15=parameter_handler.scale15,
+            cutoff=parameter_handler.cutoff,
+            method=parameter_handler.method.lower(),
+            switch_width=parameter_handler.switch_width,
+        )
+
+        handler.store_matches(parameter_handler=parameter_handler, topology=topology)
+        handler.store_potentials(parameter_handler=parameter_handler)
+
+        return handler

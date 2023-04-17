@@ -271,27 +271,109 @@ def test_dampedexp6810_assignment():
         }
     )
 
-    methanol = Molecule.from_smiles("CO")
-    methanol.generate_conformers(n_conformers=1)
-    off_top = methanol.to_topology()
+    toluene = Molecule.from_mapped_smiles(
+        "[H:10][c:3]1[c:2]([c:1]([c:6]([c:5]([c:4]1[H:11])[H:12])[C:7]([H:13])([H:14])[H:15])[H:8])[H:9]"
+    )
+    toluene.generate_conformers(n_conformers=1)
+    off_top = toluene.to_topology()
 
     omm_system = Interchange.from_smirnoff(ff, off_top)
 
 
 def test_dampedexp6810_energies():
-    pass
+    ff = ForceField(load_plugins=True)
+
+    handler = ff.get_parameter_handler("DampedExp6810")
+
+    handler.add_parameter(
+        {
+            "smirks": "[#1:1]",
+            "rho": 1.5 * unit.angstrom,
+            "beta": 3.0 * unit.angstrom ** -1,
+            "c6": 1.0 * unit.kilojoule_per_mole * unit.angstrom ** 6,
+            "c8": 10.0 * unit.kilojoule_per_mole * unit.angstrom ** 8,
+            "c10": 100.0 * unit.kilojoule_per_mole * unit.angstrom ** 10,
+        }
+    )
+
+    neon = Molecule.from_smiles("[Ne]")
+    neon.generate_conformers(n_conformers=1)
+    off_top = neon.to_topology()
+
+    omm_system = Interchange.from_smirnoff(ff, off_top)
 
 
 def test_axilrodteller_assignment():
-    pass
+    ff = ForceField(load_plugins=True)
 
+    handler = ff.get_parameter_handler("AxilrodTeller")
+
+    handler.add_parameter(
+        {
+            "smirks": "[#1:1]",
+            "c9": 100.0 * unit.kilojoule_per_mole * unit.angstrom ** 9,
+        }
+    )
+
+    handler.add_parameter(
+        {
+            "smirks": "[#6:1]",
+            "c9": 1000.0 * unit.kilojoule_per_mole * unit.angstrom ** 9,
+        }
+    )
+
+    handler.add_parameter(
+        {
+            "smirks": "[#8:1]",
+            "c9": 1000.0 * unit.kilojoule_per_mole * unit.angstrom ** 9,
+        }
+    )
+
+    toluene = Molecule.from_mapped_smiles(
+        "[H:10][c:3]1[c:2]([c:1]([c:6]([c:5]([c:4]1[H:11])[H:12])[C:7]([H:13])([H:14])[H:15])[H:8])[H:9]"
+    )
+    toluene.generate_conformers(n_conformers=1)
+    off_top = toluene.to_topology()
+
+    omm_system = Interchange.from_smirnoff(ff, off_top)
 
 def test_axilrodteller_energies():
     pass
 
 
 def test_multipole_assignment():
-    pass
+    ff = ForceField(load_plugins=True)
+
+    handler = ff.get_parameter_handler("Multipole")
+
+    handler.add_parameter(
+        {
+            "smirks": "[#1:1]",
+            "polarity": 0.4 * unit.angstrom ** 3,
+        }
+    )
+
+    handler.add_parameter(
+        {
+            "smirks": "[#6:1]",
+            "polarity": 1.2 * unit.angstrom ** 3,
+        }
+    )
+
+    handler.add_parameter(
+        {
+            "smirks": "[#8:1]",
+            "polarity": .8 * unit.angstrom ** 3,
+        }
+    )
+
+    toluene = Molecule.from_mapped_smiles(
+        "[H:10][c:3]1[c:2]([c:1]([c:6]([c:5]([c:4]1[H:11])[H:12])[C:7]([H:13])([H:14])[H:15])[H:8])[H:9]"
+    )
+    toluene.generate_conformers(n_conformers=1)
+    off_top = toluene.to_topology()
+
+    omm_system = Interchange.from_smirnoff(ff, off_top)
 
 
 def test_multipole_energies():

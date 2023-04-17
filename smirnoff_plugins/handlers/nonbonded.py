@@ -121,7 +121,7 @@ class DampedExp6810Handler(_CustomNonbondedHandler):
     _TAGNAME = "DampedExp6810"
     _INFOTYPE = DampedExp6810Type
 
-    forceAtZero = ParameterAttribute(default=49.6144931952 * unit.kilojoules_per_mole * unit.nanometer**-1,
+    forceAtZero = ParameterAttribute(default=49.6144931952,
                                      unit=unit.kilojoules_per_mole * unit.nanometer**-1)
 
 
@@ -136,7 +136,7 @@ class AxilrodTellerHandler(_CustomNonbondedHandler):
         _VALENCE_TYPE = "Atom"
         _ELEMENT_NAME = "Atom"
 
-        c9 = ParameterAttribute(default=None, unit=unit.kilojoule_per_mole * unit.nanometer**10)
+        c9 = ParameterAttribute(default=None, unit=unit.kilojoule_per_mole * unit.nanometer**9)
 
     _TAGNAME = "AxilrodTeller"
     _INFOTYPE = AxilrodTellerType
