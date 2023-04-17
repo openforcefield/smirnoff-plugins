@@ -2,6 +2,7 @@ import math
 from abc import ABC
 from typing import Dict, Iterable, Literal, Type, TypeVar, Tuple, Set, Union
 
+import numpy
 from openff.interchange import Interchange
 from openff.interchange.exceptions import InvalidParameterHandlerError
 from openff.interchange.smirnoff._base import SMIRNOFFCollection, TP
@@ -468,7 +469,206 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
         constrained_pairs: Set[Tuple[int, ...]],
         particle_map: Dict[Union[int, "VirtualSiteKey"], int],
     ):
-        pass
+        # Sanity checks
+        existing_multipole = [
+            system.getForce(i)
+            for i in range(system.getNumForces())
+            if isinstance(system.getForce(i), openmm.AmoebaMultipoleForce)
+        ]
+
+        assert (
+                len(existing_multipole) < 2
+        ), "multiple multipole forces are not yet correctly handled."
+
+        if len(existing_multipole) == 0:
+            force = openmm.AmoebaMultipoleForce
+            system.addForce(force)
+        else:
+            force = existing_multipole[0]
+
+        existing_nonbondeds = [
+            system.getForce(i)
+            for i in range(system.getNumForces())
+            if isinstance(system.getForce(i), openmm.NonbondedForce)
+        ]
+
+        assert (
+                len(existing_nonbondeds) < 2
+        ), "multiple nonbonded forces are not yet correctly handled."
+
+        assert len(existing_nonbondeds) > 0, "can't find existing charges to copy from"
+
+        existing_nonbonded = existing_nonbondeds[0]
+
+        # Set options
+        methodMap = {
+            "NoCutoff": openmm.AmoebaMultipoleForce.NoCutoff,
+            "PME": openmm.AmoebaMultipoleForce.PME,
+        }
+        force.setNonbondedMethod(methodMap[self.method])
+        polarizationTypeMap = {
+            "Mutual": openmm.AmoebaMultipoleForce.Mutual,
+            "Direct": openmm.AmoebaMultipoleForce.Direct,
+            "Extrapolated": openmm.AmoebaMultipoleForce.Extrapolated,
+        }
+        force.setPolarizationType(polarizationTypeMap[self.polarizationType])
+        force.setCutoffDistance(self.cutoff)
+        force.setEwaldErrorTolerance(self.ewaldErrorTolerance)
+        force.setMutualInducedTargetEpsilon(self.targetEpsilon)
+        force.setMutualInducedMaxIterations(self.maxIter)
+        force.setExtrapolationCoefficients([-0.154, 0.017, 0.658, 0.474])
+
+        # Call addMultipole for all particles in the system and create zero'ed array of polarities
+        polarities = []
+        for topology_molecule in topology.topology_molecules:
+            for topology_particle in topology_molecule.particles:
+                # allowed in theory, but we should keep the implementation scope small for now
+                assert type(topology_particle) is not TopologyVirtualSite
+                force.addMultipole(
+                    0.0,
+                    (0.0, 0.0, 0.0),
+                    (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+                    0,
+                    0,
+                    0,
+                    0,
+                    0.0,
+                    0.0,
+                    0.0,
+                )
+                polarities.append(0.0)
+
+        # Iterate over all types, allowing later matches to override earlier ones.
+        atom_matches = self.find_matches(topology)
+
+        # Set the particle polarity terms
+        for atom_key, atom_match in atom_matches.items():
+            atom_idx = atom_key[0]
+            mpoltype = atom_match.parameter_type
+            polarities[atom_idx] = mpoltype.polarity
+
+        # Grab partial charges from NonbondedForce and zero out the NonbondedForce charges
+        for topology_molecule in topology.topology_molecules:
+
+            for topology_particle in topology_molecule.particles:
+                topology_particle_index = topology_particle.topology_particle_index
+
+                (
+                    particle_charge,
+                    sigma,
+                    epsilon,
+                ) = existing_nonbonded.getParticleParameters(topology_particle_index)
+
+                existing_nonbonded.setParticleParameters(
+                    topology_particle_index, 0.0, sigma, epsilon
+                )
+
+                # setMultipoleParameters(self,
+                #                        index,
+                #                        charge,
+                #                        molecularDipole,
+                #                        molecularQuadrupole,
+                #                        axisType,
+                #                        multipoleAtomZ,
+                #                        multipoleAtomX,
+                #                        multipoleAtomY,
+                #                        thole,
+                #                        dampingFactor,
+                #                        polarity)
+                force.setMultipoleParameters(
+                    topology_particle_index,
+                    particle_charge,
+                    (0.0, 0.0, 0.0) * unit.elementary_charge * unit.angstrom,
+                    (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+                    * unit.elementary_charge
+                    * unit.angstrom ** 2,
+                    openmm.AmoebaMultipoleForce.NoAxisType,
+                    -1,
+                    -1,
+                    -1,
+                    self.thole,
+                    polarities[topology_particle_index] ** (1 / 6),
+                    polarities[topology_particle_index],
+                )
+
+        # Generate exclusions, using reference molecules approach
+        for ref_mol in topology.reference_molecules:
+            for ref_atom in ref_mol.atoms:
+                bonded2 = [a.molecule_particle_index for a in ref_atom.bonded_atoms]
+
+                bonded3 = []
+                for first_neighbor in ref_atom.bonded_atoms:
+                    for second_neighbor in first_neighbor.bonded_atoms:
+                        if second_neighbor.molecule_atom_index in bonded2:
+                            continue
+                        if (
+                                second_neighbor.molecule_atom_index
+                                == ref_atom.molecule_particle_index
+                        ):
+                            continue
+                        bonded3.append(second_neighbor.molecule_atom_index)
+
+                bonded4 = []
+                for first_neighbor in ref_atom.bonded_atoms:
+                    for second_neighbor in first_neighbor.bonded_atoms:
+                        for third_neighbor in second_neighbor.bonded_atoms:
+                            if third_neighbor.molecule_atom_index in bonded2:
+                                continue
+                            if third_neighbor.molecule_atom_index in bonded3:
+                                continue
+                            if (
+                                    third_neighbor.molecule_atom_index
+                                    == ref_atom.molecule_particle_index
+                            ):
+                                continue
+                            bonded4.append(third_neighbor.molecule_atom_index)
+
+                for (
+                        topology_molecule
+                ) in topology._reference_molecule_to_topology_molecules[ref_mol]:
+                    for topology_particle in topology_molecule.particles:
+
+                        topology_particle_index = (
+                            topology_particle.topology_particle_index
+                        )
+                        ref_mol_particle_index = (
+                            topology_particle.atom.molecule_particle_index
+                        )
+                        if ref_mol_particle_index != ref_atom.molecule_particle_index:
+                            continue
+
+                        atom_map = {}
+                        for other_topology_particle in topology_molecule.particles:
+                            atom_map[
+                                other_topology_particle.atom.molecule_particle_index
+                            ] = other_topology_particle.topology_particle_index
+
+                        mapped_bonded2 = [atom_map[a] for a in bonded2]
+                        mapped_bonded3 = [atom_map[a] for a in bonded3]
+                        mapped_bonded4 = [atom_map[a] for a in bonded4]
+
+                        force.setCovalentMap(
+                            topology_particle_index,
+                            openmm.AmoebaMultipoleForce.Covalent12,
+                            mapped_bonded2,
+                        )
+                        force.setCovalentMap(
+                            topology_particle_index,
+                            openmm.AmoebaMultipoleForce.Covalent13,
+                            mapped_bonded3,
+                        )
+                        force.setCovalentMap(
+                            topology_particle_index,
+                            openmm.AmoebaMultipoleForce.Covalent14,
+                            mapped_bonded4,
+                        )
+                        force.setCovalentMap(
+                            topology_particle_index,
+                            openmm.AmoebaMultipoleForce.PolarizationCovalent11,
+                            numpy.concatenate(
+                                (mapped_bonded2, mapped_bonded3, mapped_bonded4)
+                            ),
+                        )
 
     def modify_parameters(
         self,
