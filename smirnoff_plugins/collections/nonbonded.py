@@ -4,6 +4,7 @@ from typing import Dict, Iterable, Literal, Type, TypeVar, Tuple, Set, Union
 
 import numpy
 from openff.interchange import Interchange
+from openff.interchange.components.potentials import Potential
 from openff.interchange.exceptions import InvalidParameterHandlerError
 from openff.interchange.smirnoff._base import SMIRNOFFCollection, TP
 from openff.interchange.smirnoff._nonbonded import (
@@ -446,8 +447,35 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
 
     type: Literal["Multipole"] = "Multipole"
 
-    def store_potentials(self, parameter_handler: TP):
-        pass
+    is_plugin: bool = True
+
+    method: Literal["PME"] = "PME"
+    polarizationType: Literal["Extrapolated"] = "Extrapolated"
+    cutoff: FloatQuantity["nanometer"] = unit.Quantity(0.9, unit.nanometer)
+    ewaldErrorTolerance: FloatQuantity["dimensionless"] = 0.0001
+    targetEpsilon: FloatQuantity["dimensionless"] = 0.00001
+    maxIter: int = 60
+    thole: FloatQuantity["dimensionless"] = 0.39
+
+    def store_potentials(self, parameter_handler: MultipoleHandler) -> None:
+        self.method = parameter_handler.method
+        self.polarizationType = parameter_handler.polarizationType
+        self.cutoff = parameter_handler.cutoff
+        self.ewaldErrorTolerance = parameter_handler.ewaldErrorTolerance
+        self.targetEpsilon = parameter_handler.targetEpsilon
+        self.maxIter = parameter_handler.maxIter
+        self.thole = parameter_handler.thole
+
+        for potential_key in self.key_map.values():
+            smirks = potential_key.id
+            parameter = parameter_handler.parameters[smirks]
+
+            self.potentials[potential_key] = Potential(
+                parameters={
+                    "polarity": parameter.polarity
+                },
+            )
+
 
     @classmethod
     def potential_parameters(cls):
@@ -481,42 +509,58 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
         ), "multiple multipole forces are not yet correctly handled."
 
         if len(existing_multipole) == 0:
-            force = openmm.AmoebaMultipoleForce
+            force: openmm.AmoebaMultipoleForce = openmm.AmoebaMultipoleForce()
             system.addForce(force)
         else:
-            force = existing_multipole[0]
+            force: openmm.AmoebaMultipoleForce = existing_multipole[0]
 
-        existing_nonbondeds = [
-            system.getForce(i)
-            for i in range(system.getNumForces())
-            if isinstance(system.getForce(i), openmm.NonbondedForce)
-        ]
-
-        assert (
-                len(existing_nonbondeds) < 2
-        ), "multiple nonbonded forces are not yet correctly handled."
-
-        assert len(existing_nonbondeds) > 0, "can't find existing charges to copy from"
-
-        existing_nonbonded = existing_nonbondeds[0]
+        # interchange.collections['Electrostatics'].charges[TopologyKey(atom_indices=(1,))]
+        charges = interchange.collections['Electrostatics'].charges
 
         # Set options
-        methodMap = {
+        method_map = {
             "NoCutoff": openmm.AmoebaMultipoleForce.NoCutoff,
             "PME": openmm.AmoebaMultipoleForce.PME,
         }
-        force.setNonbondedMethod(methodMap[self.method])
-        polarizationTypeMap = {
+        force.setNonbondedMethod(method_map[self.method])
+        polarization_type_map = {
             "Mutual": openmm.AmoebaMultipoleForce.Mutual,
             "Direct": openmm.AmoebaMultipoleForce.Direct,
             "Extrapolated": openmm.AmoebaMultipoleForce.Extrapolated,
         }
-        force.setPolarizationType(polarizationTypeMap[self.polarizationType])
-        force.setCutoffDistance(self.cutoff)
+        force.setPolarizationType(polarization_type_map[self.polarizationType])
+        force.setCutoffDistance(self.cutoff.m_as("nanometer"))
         force.setEwaldErrorTolerance(self.ewaldErrorTolerance)
         force.setMutualInducedTargetEpsilon(self.targetEpsilon)
         force.setMutualInducedMaxIterations(self.maxIter)
         force.setExtrapolationCoefficients([-0.154, 0.017, 0.658, 0.474])
+
+        for _ in range(len(self.key_map)):
+            force.addMultipole(
+                0.0,
+                (0.0, 0.0, 0.0),
+                (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+                openmm.AmoebaMultipoleForce.NoAxisType,
+                -1,
+                -1,
+                -1,
+                self.thole,
+                0.0,
+                0.0
+            )
+
+        for key, val in charges.items():
+            params = force.getMultipoleParameters(key.atom_indices[0])
+            params[0] = val.m_as('elementary_charge')
+            force.setMultipoleParameters(key.atom_indices[0], *params)
+
+        for key, val in self.key_map.items():
+            params = force.getMultipoleParameters(key.atom_indices[0])
+            params[8] = self.potentials[val].parameters['polarity'].m_as('nanometer**3') ** (1/6)
+            params[9] = self.potentials[val].parameters['polarity'].m_as('nanometer**3')
+            force.setMultipoleParameters(key.atom_indices[0], *params)
+
+        '''
 
         # Call addMultipole for all particles in the system and create zero'ed array of polarities
         polarities = []
@@ -669,6 +713,7 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
                                 (mapped_bonded2, mapped_bonded3, mapped_bonded4)
                             ),
                         )
+    '''
 
     def modify_parameters(
         self,

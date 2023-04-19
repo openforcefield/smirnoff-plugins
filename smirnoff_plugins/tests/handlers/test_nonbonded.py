@@ -5,6 +5,7 @@ from openff.interchange import Interchange
 from openff.toolkit.topology import Molecule
 from openff.toolkit.typing.engines.smirnoff import ForceField
 from openff.units import unit
+from openff.units.openmm import from_openmm
 
 from smirnoff_plugins.utilities.openmm import (
     evaluate_energy,
@@ -405,19 +406,53 @@ def test_axilrodteller_energies():
 def test_multipole_assignment():
     ff = ForceField(load_plugins=True)
 
-    handler = ff.get_parameter_handler("Multipole")
+    ff.get_parameter_handler("Electrostatics", {"version": "0.4",
+                                                "periodic_potential": "Ewald3D-ConductingBoundary",
+                                                "nonperiodic_potential": "Coulomb",
+                                                "exception_potential": "Coulomb",
+                                                })
+    ff.get_parameter_handler(
+        "ChargeIncrementModel",
+        {"version": "0.3", "partial_charge_method": "formal_charge"},
+    )
 
-    handler.add_parameter(
+    multipole_handler = ff.get_parameter_handler("Multipole")
+
+    multipole_handler.add_parameter(
         {
             "smirks": "[#1:1]",
             "polarity": 0.301856 * unit.angstrom ** 3,
         }
     )
 
-    handler.add_parameter(
+    multipole_handler.add_parameter(
         {
             "smirks": "[#6:1]",
             "polarity": 1.243042 * unit.angstrom ** 3,
+        }
+    )
+
+    de6810_handler = ff.get_parameter_handler("DampedExp6810", {"version": "0.3"})
+
+    de6810_handler.add_parameter(
+        {
+            "smirks": "[#1:1]",
+            "rho": 1.5 * unit.angstrom,
+            "beta": 3.0 * unit.angstrom ** -1,
+            "c6": 1.0 * unit.kilojoule_per_mole * unit.nanometer ** 6,
+            "c8": 10.0 * unit.kilojoule_per_mole * unit.nanometer ** 8,
+            "c10": 100.0 * unit.kilojoule_per_mole * unit.nanometer ** 10,
+        }
+    )
+
+    de6810_handler.add_parameter(
+        {
+            "smirks": "[#6:1]",
+            "rho": 3.0 * unit.angstrom,
+            "beta": 3.0 * unit.angstrom ** -1,
+            "c6": 10.0 * unit.kilojoule_per_mole * unit.nanometer ** 6,
+            "c8": 100.0 * unit.kilojoule_per_mole * unit.nanometer ** 8,
+            "c10": 1000.0 * unit.kilojoule_per_mole * unit.nanometer ** 10,
         }
     )
 
@@ -452,11 +487,10 @@ def test_multipole_assignment():
 
     for particle_idx in range(amoeba_force.getNumMultipoles()):
         multipole_parameters = amoeba_force.getMultipoleParameters(particle_idx)
-        expected_polarity = expected_polarities[particle_idx].value_in_unit(
-            unit.angstrom ** 3
-        )
-        assigned_polarity = multipole_parameters[-1].value_in_unit(unit.angstrom ** 3)
+        expected_polarity = expected_polarities[particle_idx].m_as(unit.nanometer**3)
+        assigned_polarity = from_openmm(multipole_parameters[-1]).m_as(unit.nanometer**3)
         assert assigned_polarity == expected_polarity
+
         for degree, omm_kw in [
             (1, amoeba_force.Covalent12),
             (2, amoeba_force.Covalent13),
