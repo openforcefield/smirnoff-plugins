@@ -13,6 +13,7 @@ from openff.interchange.smirnoff._nonbonded import (
 )
 from openff.models.types import FloatQuantity
 from openff.toolkit import Topology
+from openff.toolkit.topology import Atom
 from openff.toolkit.typing.engines.smirnoff.parameters import ParameterHandler
 from openff.units import unit
 from openmm import openmm
@@ -498,6 +499,7 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
         particle_map: Dict[Union[int, "VirtualSiteKey"], int],
     ):
         # Sanity checks
+        # TODO: assert no virtual sites
         existing_multipole = [
             system.getForce(i)
             for i in range(system.getNumForces())
@@ -514,7 +516,7 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
         else:
             force: openmm.AmoebaMultipoleForce = existing_multipole[0]
 
-        # interchange.collections['Electrostatics'].charges[TopologyKey(atom_indices=(1,))]
+        topology: Topology = interchange.topology
         charges = interchange.collections['Electrostatics'].charges
 
         # Set options
@@ -535,7 +537,7 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
         force.setMutualInducedMaxIterations(self.maxIter)
         force.setExtrapolationCoefficients([-0.154, 0.017, 0.658, 0.474])
 
-        for _ in range(len(self.key_map)):
+        for _ in range(topology.n_atoms):
             force.addMultipole(
                 0.0,
                 (0.0, 0.0, 0.0),
@@ -560,160 +562,152 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
             params[9] = self.potentials[val].parameters['polarity'].m_as('nanometer**3')
             force.setMultipoleParameters(key.atom_indices[0], *params)
 
-        '''
+        for unique_mol_index, mol_map in topology.identical_molecule_groups.items():
+            unique_mol = topology.molecule(unique_mol_index)
+            # bonded2, bonded3, etc is a dict of molecule_atom_index -> list of molecule_atom_indexs 1 (2, 3) bonds away
+            # for the unique_mol
+            bonded2: dict[int, list[int]] = {}
+            bonded3: dict[int, list[int]] = {}
+            bonded4: dict[int, list[int]] = {}
+            bonded5: dict[int, list[int]] = {}
+            polarization_bonded: dict[int, list[int]] = {}
 
-        # Call addMultipole for all particles in the system and create zero'ed array of polarities
-        polarities = []
-        for topology_molecule in topology.topology_molecules:
-            for topology_particle in topology_molecule.particles:
-                # allowed in theory, but we should keep the implementation scope small for now
-                assert type(topology_particle) is not TopologyVirtualSite
-                force.addMultipole(
-                    0.0,
-                    (0.0, 0.0, 0.0),
-                    (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
-                    0,
-                    0,
-                    0,
-                    0,
-                    0.0,
-                    0.0,
-                    0.0,
-                )
-                polarities.append(0.0)
+            atom1: Atom
+            atom2: Atom
+            for atom1, atom2 in unique_mol.nth_degree_neighbors(1):
 
-        # Iterate over all types, allowing later matches to override earlier ones.
-        atom_matches = self.find_matches(topology)
+                if atom1.molecule_atom_index not in bonded2:
+                    bonded2[atom1.molecule_atom_index] = [atom2.molecule_atom_index]
+                else:
+                    bonded2[atom1.molecule_atom_index].append(atom2.molecule_atom_index)
 
-        # Set the particle polarity terms
-        for atom_key, atom_match in atom_matches.items():
-            atom_idx = atom_key[0]
-            mpoltype = atom_match.parameter_type
-            polarities[atom_idx] = mpoltype.polarity
+                if atom2.molecule_atom_index not in bonded2:
+                    bonded2[atom2.molecule_atom_index] = [atom1.molecule_atom_index]
+                else:
+                    bonded2[atom2.molecule_atom_index].append(atom1.molecule_atom_index)
 
-        # Grab partial charges from NonbondedForce and zero out the NonbondedForce charges
-        for topology_molecule in topology.topology_molecules:
+                if atom1.molecule_atom_index not in polarization_bonded:
+                    polarization_bonded[atom1.molecule_atom_index] = [atom2.molecule_atom_index]
+                else:
+                    if atom2.molecule_atom_index not in polarization_bonded[atom1.molecule_atom_index]:
+                        polarization_bonded[atom1.molecule_atom_index].append(atom2.molecule_atom_index)
 
-            for topology_particle in topology_molecule.particles:
-                topology_particle_index = topology_particle.topology_particle_index
+                if atom2.molecule_atom_index not in polarization_bonded:
+                    polarization_bonded[atom2.molecule_atom_index] = [atom1.molecule_atom_index]
+                else:
+                    if atom1.molecule_atom_index not in polarization_bonded[atom2.molecule_atom_index]:
+                        polarization_bonded[atom2.molecule_atom_index].append(atom1.molecule_atom_index)
 
-                (
-                    particle_charge,
-                    sigma,
-                    epsilon,
-                ) = existing_nonbonded.getParticleParameters(topology_particle_index)
+            for atom1, atom2 in unique_mol.nth_degree_neighbors(2):
 
-                existing_nonbonded.setParticleParameters(
-                    topology_particle_index, 0.0, sigma, epsilon
-                )
+                if atom1.molecule_atom_index not in bonded3:
+                    bonded3[atom1.molecule_atom_index] = [atom2.molecule_atom_index]
+                else:
+                    bonded3[atom1.molecule_atom_index].append(atom2.molecule_atom_index)
 
-                # setMultipoleParameters(self,
-                #                        index,
-                #                        charge,
-                #                        molecularDipole,
-                #                        molecularQuadrupole,
-                #                        axisType,
-                #                        multipoleAtomZ,
-                #                        multipoleAtomX,
-                #                        multipoleAtomY,
-                #                        thole,
-                #                        dampingFactor,
-                #                        polarity)
-                force.setMultipoleParameters(
-                    topology_particle_index,
-                    particle_charge,
-                    (0.0, 0.0, 0.0) * unit.elementary_charge * unit.angstrom,
-                    (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-                    * unit.elementary_charge
-                    * unit.angstrom ** 2,
-                    openmm.AmoebaMultipoleForce.NoAxisType,
-                    -1,
-                    -1,
-                    -1,
-                    self.thole,
-                    polarities[topology_particle_index] ** (1 / 6),
-                    polarities[topology_particle_index],
-                )
+                if atom2.molecule_atom_index not in bonded3:
+                    bonded3[atom2.molecule_atom_index] = [atom1.molecule_atom_index]
+                else:
+                    bonded3[atom2.molecule_atom_index].append(atom1.molecule_atom_index)
 
-        # Generate exclusions, using reference molecules approach
-        for ref_mol in topology.reference_molecules:
-            for ref_atom in ref_mol.atoms:
-                bonded2 = [a.molecule_particle_index for a in ref_atom.bonded_atoms]
+                if atom1.molecule_atom_index not in polarization_bonded:
+                    polarization_bonded[atom1.molecule_atom_index] = [atom2.molecule_atom_index]
+                else:
+                    if atom2.molecule_atom_index not in polarization_bonded[atom1.molecule_atom_index]:
+                        polarization_bonded[atom1.molecule_atom_index].append(atom2.molecule_atom_index)
 
-                bonded3 = []
-                for first_neighbor in ref_atom.bonded_atoms:
-                    for second_neighbor in first_neighbor.bonded_atoms:
-                        if second_neighbor.molecule_atom_index in bonded2:
-                            continue
-                        if (
-                                second_neighbor.molecule_atom_index
-                                == ref_atom.molecule_particle_index
-                        ):
-                            continue
-                        bonded3.append(second_neighbor.molecule_atom_index)
+                if atom2.molecule_atom_index not in polarization_bonded:
+                    polarization_bonded[atom2.molecule_atom_index] = [atom1.molecule_atom_index]
+                else:
+                    if atom1.molecule_atom_index not in polarization_bonded[atom2.molecule_atom_index]:
+                        polarization_bonded[atom2.molecule_atom_index].append(atom1.molecule_atom_index)
 
-                bonded4 = []
-                for first_neighbor in ref_atom.bonded_atoms:
-                    for second_neighbor in first_neighbor.bonded_atoms:
-                        for third_neighbor in second_neighbor.bonded_atoms:
-                            if third_neighbor.molecule_atom_index in bonded2:
-                                continue
-                            if third_neighbor.molecule_atom_index in bonded3:
-                                continue
-                            if (
-                                    third_neighbor.molecule_atom_index
-                                    == ref_atom.molecule_particle_index
-                            ):
-                                continue
-                            bonded4.append(third_neighbor.molecule_atom_index)
+            for atom1, atom2 in unique_mol.nth_degree_neighbors(3):
 
-                for (
-                        topology_molecule
-                ) in topology._reference_molecule_to_topology_molecules[ref_mol]:
-                    for topology_particle in topology_molecule.particles:
+                if atom1.molecule_atom_index not in bonded4:
+                    bonded4[atom1.molecule_atom_index] = [atom2.molecule_atom_index]
+                else:
+                    bonded4[atom1.molecule_atom_index].append(atom2.molecule_atom_index)
 
-                        topology_particle_index = (
-                            topology_particle.topology_particle_index
-                        )
-                        ref_mol_particle_index = (
-                            topology_particle.atom.molecule_particle_index
-                        )
-                        if ref_mol_particle_index != ref_atom.molecule_particle_index:
-                            continue
+                if atom2.molecule_atom_index not in bonded4:
+                    bonded4[atom2.molecule_atom_index] = [atom1.molecule_atom_index]
+                else:
+                    bonded4[atom2.molecule_atom_index].append(atom1.molecule_atom_index)
 
-                        atom_map = {}
-                        for other_topology_particle in topology_molecule.particles:
-                            atom_map[
-                                other_topology_particle.atom.molecule_particle_index
-                            ] = other_topology_particle.topology_particle_index
+                if atom1.molecule_atom_index not in polarization_bonded:
+                    polarization_bonded[atom1.molecule_atom_index] = [atom2.molecule_atom_index]
+                else:
+                    if atom2.molecule_atom_index not in polarization_bonded[atom1.molecule_atom_index]:
+                        polarization_bonded[atom1.molecule_atom_index].append(atom2.molecule_atom_index)
 
-                        mapped_bonded2 = [atom_map[a] for a in bonded2]
-                        mapped_bonded3 = [atom_map[a] for a in bonded3]
-                        mapped_bonded4 = [atom_map[a] for a in bonded4]
+                if atom2.molecule_atom_index not in polarization_bonded:
+                    polarization_bonded[atom2.molecule_atom_index] = [atom1.molecule_atom_index]
+                else:
+                    if atom1.molecule_atom_index not in polarization_bonded[atom2.molecule_atom_index]:
+                        polarization_bonded[atom2.molecule_atom_index].append(atom1.molecule_atom_index)
 
-                        force.setCovalentMap(
-                            topology_particle_index,
-                            openmm.AmoebaMultipoleForce.Covalent12,
-                            mapped_bonded2,
-                        )
-                        force.setCovalentMap(
-                            topology_particle_index,
-                            openmm.AmoebaMultipoleForce.Covalent13,
-                            mapped_bonded3,
-                        )
-                        force.setCovalentMap(
-                            topology_particle_index,
-                            openmm.AmoebaMultipoleForce.Covalent14,
-                            mapped_bonded4,
-                        )
-                        force.setCovalentMap(
-                            topology_particle_index,
-                            openmm.AmoebaMultipoleForce.PolarizationCovalent11,
-                            numpy.concatenate(
-                                (mapped_bonded2, mapped_bonded3, mapped_bonded4)
-                            ),
-                        )
-    '''
+            for atom1, atom2 in unique_mol.nth_degree_neighbors(4):
+
+                if atom1.molecule_atom_index not in bonded5:
+                    bonded5[atom1.molecule_atom_index] = [atom2.molecule_atom_index]
+                else:
+                    bonded5[atom1.molecule_atom_index].append(atom2.molecule_atom_index)
+
+                if atom2.molecule_atom_index not in bonded5:
+                    bonded5[atom2.molecule_atom_index] = [atom1.molecule_atom_index]
+                else:
+                    bonded5[atom2.molecule_atom_index].append(atom1.molecule_atom_index)
+
+                if atom1.molecule_atom_index not in polarization_bonded:
+                    polarization_bonded[atom1.molecule_atom_index] = [atom2.molecule_atom_index]
+                else:
+                    if atom2.molecule_atom_index not in polarization_bonded[atom1.molecule_atom_index]:
+                        polarization_bonded[atom1.molecule_atom_index].append(atom2.molecule_atom_index)
+
+                if atom2.molecule_atom_index not in polarization_bonded:
+                    polarization_bonded[atom2.molecule_atom_index] = [atom1.molecule_atom_index]
+                else:
+                    if atom1.molecule_atom_index not in polarization_bonded[atom2.molecule_atom_index]:
+                        polarization_bonded[atom2.molecule_atom_index].append(atom1.molecule_atom_index)
+
+            for mol_index, atom_map in mol_map:
+
+                base_atom_index = topology.molecule_atom_start_index(topology.molecule(mol_index))
+
+                for unique_atom_index, unique_bonded_list in bonded2.items():
+                    atom_index = atom_map[unique_atom_index] + base_atom_index
+                    atom_bonded2 = [
+                        atom_map[unique_bonded_index]+base_atom_index for unique_bonded_index in unique_bonded_list
+                    ]
+                    force.setCovalentMap(atom_index, openmm.AmoebaMultipoleForce.Covalent12, atom_bonded2)
+
+                for unique_atom_index, unique_bonded_list in bonded3.items():
+                    atom_index = atom_map[unique_atom_index] + base_atom_index
+                    atom_bonded2 = [
+                        atom_map[unique_bonded_index]+base_atom_index for unique_bonded_index in unique_bonded_list
+                    ]
+                    force.setCovalentMap(atom_index, openmm.AmoebaMultipoleForce.Covalent13, atom_bonded2)
+
+                for unique_atom_index, unique_bonded_list in bonded4.items():
+                    atom_index = atom_map[unique_atom_index] + base_atom_index
+                    atom_bonded2 = [
+                        atom_map[unique_bonded_index]+base_atom_index for unique_bonded_index in unique_bonded_list
+                    ]
+                    force.setCovalentMap(atom_index, openmm.AmoebaMultipoleForce.Covalent14, atom_bonded2)
+
+                for unique_atom_index, unique_bonded_list in bonded5.items():
+                    atom_index = atom_map[unique_atom_index] + base_atom_index
+                    atom_bonded2 = [
+                        atom_map[unique_bonded_index]+base_atom_index for unique_bonded_index in unique_bonded_list
+                    ]
+                    force.setCovalentMap(atom_index, openmm.AmoebaMultipoleForce.Covalent15, atom_bonded2)
+
+                for unique_atom_index, unique_bonded_list in polarization_bonded.items():
+                    atom_index = atom_map[unique_atom_index] + base_atom_index
+                    atom_pol_bonded = [
+                        atom_map[unique_bonded_index]+base_atom_index for unique_bonded_index in unique_bonded_list
+                    ]
+                    force.setCovalentMap(atom_index, openmm.AmoebaMultipoleForce.PolarizationCovalent11, atom_pol_bonded)
 
     def modify_parameters(
         self,
