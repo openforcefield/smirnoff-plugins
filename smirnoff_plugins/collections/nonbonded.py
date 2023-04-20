@@ -16,7 +16,7 @@ from openff.toolkit import Topology
 from openff.toolkit.topology import Atom
 from openff.toolkit.typing.engines.smirnoff.parameters import ParameterHandler
 from openff.units import unit
-from openmm import openmm
+from openmm import openmm, CustomManyParticleForce
 
 from smirnoff_plugins.handlers.nonbonded import (
     DampedBuckingham68Handler,
@@ -368,8 +368,18 @@ class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
 
     type: Literal["AxilrodTeller"] = "AxilrodTeller"
 
+    is_plugin: bool = True
+
     def store_potentials(self, parameter_handler: TP):
-        pass
+        for potential_key in self.key_map.values():
+            smirks = potential_key.id
+            parameter = parameter_handler.parameters[smirks]
+
+            self.potentials[potential_key] = Potential(
+                parameters={
+                    "c9": parameter.c9
+                },
+            )
 
     @classmethod
     def potential_parameters(cls):
@@ -391,7 +401,19 @@ class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
         constrained_pairs: Set[Tuple[int, ...]],
         particle_map: Dict[Union[int, "VirtualSiteKey"], int],
     ):
-        pass
+        force: CustomManyParticleForce = CustomManyParticleForce(3, self.expression)
+        force.setPermutationMode(CustomManyParticleForce.UniqueCentralParticle)
+        system.addForce(force)
+
+        topology = interchange.topology
+
+        for _ in range(topology.n_atoms):
+            force.addParticle([0.0])
+
+        for key, val in self.key_map.items():
+            force.setParticleParameters(key.atom_indices[0],
+                                        [self.potentials[val].parameters['c9'].m_as('kilojoule_per_mole * nanometer**9')],
+                                        0)
 
     def modify_parameters(
         self,
