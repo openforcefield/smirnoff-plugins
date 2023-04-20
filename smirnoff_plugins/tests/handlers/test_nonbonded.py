@@ -395,9 +395,33 @@ def test_axilrodteller_assignment():
     )
     toluene.generate_conformers(n_conformers=1)
     off_top = toluene.to_topology()
+    off_top.add_molecule(toluene)
 
     interchange = Interchange.from_smirnoff(ff, off_top)
     omm_system = interchange.to_openmm(combine_nonbonded_forces=False)
+
+    forces = [
+        omm_system.getForce(i)
+        for i in range(omm_system.getNumForces())
+        if isinstance(omm_system.getForce(i), openmm.CustomManyParticleForce)
+    ]
+
+    assert len(forces) == 1
+
+    force: openmm.CustomManyParticleForce = forces[0]
+
+    assert force.getNumParticles() == 30
+
+    c_param = 1000.0 * unit.kilojoule_per_mole * unit.angstrom ** 9
+    h_param = 100.0 * unit.kilojoule_per_mole * unit.angstrom ** 9
+    expected_params = (
+            [c_param] * 7 + [h_param] * 8 + [c_param] * 7 + [h_param] * 8
+    )
+
+    for atom_idx in range(force.getNumParticles()):
+        expected_param = expected_params[atom_idx]
+        actual_param = force.getParticleParameters(atom_idx)[0][0]
+        assert actual_param == expected_param.m_as("kilojoule_per_mole * nanometer ** 9")
 
 
 def test_axilrodteller_energies():
