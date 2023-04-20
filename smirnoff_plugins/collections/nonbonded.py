@@ -246,6 +246,8 @@ class SMIRNOFFDampedExp6810Collection(_NonbondedPlugin):
 
     type: Literal["DampedExp6810"] = "DampedExp6810"
 
+    acts_as: str = "vdW"
+
     expression: str = (
         "repulsion - ttdamp6*c6*invR6 - ttdamp8*c8*invR8 - ttdamp10*c10*invR10;"
         "repulsion = forceAtZero*invbeta*exp(-beta*(r-sigma));"
@@ -278,7 +280,7 @@ class SMIRNOFFDampedExp6810Collection(_NonbondedPlugin):
         "invbeta = select(beta, 1.0/beta, 0);"
         "beta = select(beta_mix, 2.0*beta_mix/(beta1+beta2), 0);"
         "beta_mix = beta1*beta2;"
-        "sigma = 0.5*(sigma1+sigma2);"
+        "sigma = 0.5*(rho1+rho2);"
     )
 
     forceAtZero: FloatQuantity["kilojoules_per_mole * nanometer**-1"] =\

@@ -6,7 +6,7 @@ from openff.toolkit import Topology
 from openff.toolkit.topology import Molecule, Atom
 from openff.toolkit.typing.engines.smirnoff import ForceField
 from openff.units import unit
-from openff.units.openmm import from_openmm
+from openff.units.openmm import from_openmm, to_openmm
 
 from smirnoff_plugins.utilities.openmm import (
     evaluate_energy,
@@ -317,27 +317,28 @@ def test_dampedexp6810_assignment():
 def test_dampedexp6810_energies():
     ff = ForceField(load_plugins=True)
 
-    ff.get_parameter_handler("Electrostatics", {"version": "0.4",
-                                                "periodic_potential": "Ewald3D-ConductingBoundary",
-                                                "nonperiodic_potential": "Coulomb",
-                                                "exception_potential": "Coulomb",
-                                                })
-    ff.get_parameter_handler(
-        "ChargeIncrementModel",
-        {"version": "0.3", "partial_charge_method": "formal_charge"},
-    )
-
     handler = ff.get_parameter_handler("DampedExp6810")
 
     handler.add_parameter(
         {
             "smirks": "[#10:1]",
-            "rho": 1.5 * unit.angstrom,
-            "beta": 3.0 * unit.angstrom ** -1,
-            "c6": 1.0 * unit.kilojoule_per_mole * unit.angstrom ** 6,
-            "c8": 10.0 * unit.kilojoule_per_mole * unit.angstrom ** 8,
-            "c10": 100.0 * unit.kilojoule_per_mole * unit.angstrom ** 10,
+            "rho": 2.802400 * unit.angstrom,
+            "beta": 4.994320 * unit.angstrom**-1,
+            "c6": 3.581767e-04 * unit.kilojoule_per_mole * unit.nanometer**6,
+            "c8": 1.097581e-05 * unit.kilojoule_per_mole * unit.nanometer**8,
+            "c10": 4.120140e-07 * unit.kilojoule_per_mole * unit.nanometer**10,
         }
+    )
+
+    ff.get_parameter_handler("Electrostatics")
+    library_charge = ff.get_parameter_handler("LibraryCharges")
+    library_charge.add_parameter(
+        {"smirks": "[#10:1]", "charge1": 0 * unit.elementary_charge}
+    )
+
+    lj = ff.get_parameter_handler("vdW")
+    lj.add_parameter(
+        {"smirks": "[#10:1]", "epsilon": "0 * kilojoule_per_mole", "sigma": "1 * angstrom"}
     )
 
     neon = Molecule.from_smiles("[Ne]")
@@ -361,7 +362,20 @@ def test_dampedexp6810_energies():
 
     assert custom_nonbonded_force.getNumParticles() == 2
 
+    distances = [2.5, 3.0, 3.5, 5.0, 10.0]
+    energies = [0.0, 0.0, 0.0, 0.0, 0.0] * unit.kilojoule_per_mole
 
+    omm_integrator: openmm.LangevinMiddleIntegrator = openmm.LangevinMiddleIntegrator(298, 1.0, 0.002)
+    omm_simulation: openmm.app.Simulation = openmm.app.Simulation(
+        off_top.to_openmm(),
+        omm_system,
+        omm_integrator
+    )
+    omm_context: openmm.Context = omm_simulation.context
+
+    for distance in distances:
+        omm_context.setPositions(to_openmm([[0, 0, 0], [distance, 0, 0]] * unit.angstrom))
+        omm_state: openmm.State = omm_context.getState(getEnergy=True)
 
 
 def test_axilrodteller_assignment():
@@ -530,7 +544,6 @@ def test_multipole_assignment():
                 if off_top.atom_index(pair[1]) == particle_idx:
                     molecule_neighs.append(off_top.atom_index(pair[0]))
             assert set(amoeba_neighs) == set(molecule_neighs)
-
 
 
 def test_multipole_energies():
