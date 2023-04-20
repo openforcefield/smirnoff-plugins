@@ -2,7 +2,8 @@ import openmm
 import openmm.unit
 import pytest
 from openff.interchange import Interchange
-from openff.toolkit.topology import Molecule
+from openff.toolkit import Topology
+from openff.toolkit.topology import Molecule, Atom
 from openff.toolkit.typing.engines.smirnoff import ForceField
 from openff.units import unit
 from openff.units.openmm import from_openmm
@@ -460,7 +461,7 @@ def test_multipole_assignment():
         "[H:10][c:3]1[c:2]([c:1]([c:6]([c:5]([c:4]1[H:11])[H:12])[C:7]([H:13])([H:14])[H:15])[H:8])[H:9]"
     )
     toluene.generate_conformers(n_conformers=1)
-    off_top = toluene.to_topology()
+    off_top: Topology = toluene.to_topology()
     off_top.add_molecule(toluene)
     off_top.box_vectors = [10, 10, 10] * unit.nanometer
 
@@ -475,7 +476,7 @@ def test_multipole_assignment():
 
     assert len(amoeba_forces) == 1
 
-    amoeba_force = amoeba_forces[0]
+    amoeba_force: openmm.AmoebaMultipoleForce = amoeba_forces[0]
 
     assert amoeba_force.getNumMultipoles() == 30
 
@@ -490,21 +491,22 @@ def test_multipole_assignment():
         expected_polarity = expected_polarities[particle_idx].m_as(unit.nanometer**3)
         assigned_polarity = from_openmm(multipole_parameters[-1]).m_as(unit.nanometer**3)
         assert assigned_polarity == expected_polarity
-        '''
+
         for degree, omm_kw in [
             (1, amoeba_force.Covalent12),
             (2, amoeba_force.Covalent13),
             (3, amoeba_force.Covalent14),
+            (4, amoeba_force.Covalent15)
         ]:
             amoeba_neighs = amoeba_force.getCovalentMap(particle_idx, omm_kw)
             molecule_neighs = []
             for pair in off_top.nth_degree_neighbors(degree):
-                if pair[0].topology_atom_index == particle_idx:
-                    molecule_neighs.append(pair[1].topology_atom_index)
-                if pair[1].topology_atom_index == particle_idx:
-                    molecule_neighs.append(pair[0].topology_atom_index)
+                if off_top.atom_index(pair[0]) == particle_idx:
+                    molecule_neighs.append(off_top.atom_index(pair[1]))
+                if off_top.atom_index(pair[1]) == particle_idx:
+                    molecule_neighs.append(off_top.atom_index(pair[0]))
             assert set(amoeba_neighs) == set(molecule_neighs)
-        '''
+
 
 
 def test_multipole_energies():
