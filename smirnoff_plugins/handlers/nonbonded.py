@@ -172,7 +172,7 @@ class MultipoleHandler(ParameterHandler, abc.ABC):
         LibraryChargeHandler,
     ]
 
-    cutoff = ParameterAttribute(default=9.0 * unit.angstrom, unit=unit.angstrom)
+    cutoff = ParameterAttribute(default=0.9 * unit.nanometer, unit=unit.nanometer)
     method = ParameterAttribute(
         default="PME", converter=_allow_only(["NoCutoff", "PME"])
     )
