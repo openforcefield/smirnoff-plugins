@@ -317,7 +317,7 @@ def test_dampedexp6810_assignment():
 def test_dampedexp6810_energies():
     ff = ForceField(load_plugins=True)
 
-    handler = ff.get_parameter_handler("DampedExp6810")
+    handler = ff.get_parameter_handler("DampedExp6810", {"version": "0.3"})
 
     handler.add_parameter(
         {
@@ -334,11 +334,6 @@ def test_dampedexp6810_energies():
     library_charge = ff.get_parameter_handler("LibraryCharges")
     library_charge.add_parameter(
         {"smirks": "[#10:1]", "charge1": 0 * unit.elementary_charge}
-    )
-
-    lj = ff.get_parameter_handler("vdW")
-    lj.add_parameter(
-        {"smirks": "[#10:1]", "epsilon": "0 * kilojoule_per_mole", "sigma": "1 * angstrom"}
     )
 
     neon = Molecule.from_smiles("[Ne]")
@@ -362,8 +357,15 @@ def test_dampedexp6810_energies():
 
     assert custom_nonbonded_force.getNumParticles() == 2
 
-    distances = [2.5, 3.0, 3.5, 5.0, 10.0]
-    energies = [0.0, 0.0, 0.0, 0.0, 0.0] * unit.kilojoule_per_mole
+    distances = [2.0, 2.5, 3.0, 3.5, 5.0, 10.0]
+    energies = [
+                   45.2528254748291,
+                   2.1502482653564474,
+                   -0.33967518201408164,
+                   -0.22670463612613456,
+                   -0.026142436548445384,
+                   -5.0305419899633764e-06,
+               ] * unit.kilojoule_per_mole
 
     omm_integrator: openmm.LangevinMiddleIntegrator = openmm.LangevinMiddleIntegrator(298, 1.0, 0.002)
     omm_simulation: openmm.app.Simulation = openmm.app.Simulation(
@@ -373,9 +375,10 @@ def test_dampedexp6810_energies():
     )
     omm_context: openmm.Context = omm_simulation.context
 
-    for distance in distances:
+    for energy, distance in zip(energies, distances):
         omm_context.setPositions(to_openmm([[0, 0, 0], [distance, 0, 0]] * unit.angstrom))
         omm_state: openmm.State = omm_context.getState(getEnergy=True)
+        assert from_openmm(omm_state.getPotentialEnergy()).m == pytest.approx(energy)
 
 
 def test_axilrodteller_assignment():
@@ -439,7 +442,74 @@ def test_axilrodteller_assignment():
 
 
 def test_axilrodteller_energies():
-    pass
+    ff = ForceField(load_plugins=True)
+
+    de6810_handler = ff.get_parameter_handler("DampedExp6810", {"version": "0.3"})
+
+    de6810_handler.add_parameter(
+        {
+            "smirks": "[#10:1]",
+            "rho": 0.0 * unit.angstrom,
+            "beta": 0.0 * unit.angstrom ** -1,
+            "c6": 0.0 * unit.kilojoule_per_mole * unit.nanometer ** 6,
+            "c8": 0.0 * unit.kilojoule_per_mole * unit.nanometer ** 8,
+            "c10": 0.0 * unit.kilojoule_per_mole * unit.nanometer ** 10,
+        }
+    )
+
+    ff.get_parameter_handler("Electrostatics")
+    library_charge = ff.get_parameter_handler("LibraryCharges")
+    library_charge.add_parameter(
+        {"smirks": "[#10:1]", "charge1": 0 * unit.elementary_charge}
+    )
+
+    axilrod_handler = ff.get_parameter_handler("AxilrodTeller")
+    axilrod_handler.add_parameter(
+        {"smirks": "[#10:1]", "c9": 0.1 * unit.kilojoule_per_mole * unit.nanometer**9}
+    )
+
+    neon = Molecule.from_smiles("[Ne]")
+    neon.generate_conformers(n_conformers=1)
+    off_top = neon.to_topology()
+    off_top.add_molecule(neon)
+    off_top.add_molecule(neon)
+    off_top.box_vectors = [10, 10, 10] * unit.nanometer
+
+    interchange = Interchange.from_smirnoff(ff, off_top)
+    omm_system = interchange.to_openmm(combine_nonbonded_forces=False)
+
+    custom_manyp_forces = [
+        omm_system.getForce(i)
+        for i in range(omm_system.getNumForces())
+        if isinstance(omm_system.getForce(i), openmm.CustomManyParticleForce)
+    ]
+
+    assert len(custom_manyp_forces) == 1
+
+    custom_manyp_force: openmm.CustomManyParticleForce = custom_manyp_forces[0]
+
+    assert custom_manyp_force.getNumParticles() == 3
+
+    distances = [3.0, 3.5, 5.0, 10.0]
+    energies = [
+                   -3810.3935546875,
+                   -951.5879516601562,
+                   -38.400001525878906,
+                   -0.07500000298023224,
+               ] * unit.kilojoule_per_mole
+
+    omm_integrator: openmm.LangevinMiddleIntegrator = openmm.LangevinMiddleIntegrator(298, 1.0, 0.002)
+    omm_simulation: openmm.app.Simulation = openmm.app.Simulation(
+        off_top.to_openmm(),
+        omm_system,
+        omm_integrator
+    )
+    omm_context: openmm.Context = omm_simulation.context
+
+    for energy, distance in zip(energies, distances):
+        omm_context.setPositions(to_openmm([[0, 0, 0], [distance, 0, 0], [2*distance, 0, 0]] * unit.angstrom))
+        omm_state: openmm.State = omm_context.getState(getEnergy=True)
+        assert from_openmm(omm_state.getPotentialEnergy()).m == pytest.approx(energy)
 
 
 def test_multipole_assignment():

@@ -371,8 +371,14 @@ class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
     type: Literal["AxilrodTeller"] = "AxilrodTeller"
 
     is_plugin: bool = True
+    acts_as: str = ""
+    method: Literal["cutoff"] = "cutoff"
+    cutoff: FloatQuantity["nanometer"] = unit.Quantity(0.9, unit.nanometer)
 
-    def store_potentials(self, parameter_handler: TP):
+    def store_potentials(self, parameter_handler: AxilrodTellerHandler):
+        self.method = parameter_handler.method
+        self.cutoff = parameter_handler.cutoff
+
         for potential_key in self.key_map.values():
             smirks = potential_key.id
             parameter = parameter_handler.parameters[smirks]
@@ -405,6 +411,7 @@ class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
     ):
         force: CustomManyParticleForce = CustomManyParticleForce(3, self.expression)
         force.setPermutationMode(CustomManyParticleForce.UniqueCentralParticle)
+        force.addPerParticleParameter("c9")
         system.addForce(force)
 
         topology = interchange.topology

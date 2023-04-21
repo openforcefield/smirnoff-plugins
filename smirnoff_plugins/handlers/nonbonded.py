@@ -132,6 +132,11 @@ class AxilrodTellerHandler(ParameterHandler, abc.ABC):
     Standard Axilrod-Teller potential from <https://aip.scitation.org/doi/10.1063/1.1723844>.
     """
 
+    cutoff = ParameterAttribute(default=9.0 * unit.angstroms, unit=unit.angstrom)
+    method = ParameterAttribute(
+        default="cutoff", converter=_allow_only(["cutoff", "cutoffperiodic", "cutoffnonperiodic"])
+    )
+
     class AxilrodTellerType(ParameterType):
         """A custom SMIRNOFF type for Axilrod-Teller interactions."""
 
