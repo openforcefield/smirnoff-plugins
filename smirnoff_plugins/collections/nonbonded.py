@@ -1,12 +1,10 @@
 import math
-from abc import ABC
 from typing import Dict, Iterable, Literal, Set, Tuple, Type, TypeVar, Union
 
-import numpy
 from openff.interchange import Interchange
 from openff.interchange.components.potentials import Potential
 from openff.interchange.exceptions import InvalidParameterHandlerError
-from openff.interchange.smirnoff._base import TP, SMIRNOFFCollection
+from openff.interchange.smirnoff._base import SMIRNOFFCollection
 from openff.interchange.smirnoff._nonbonded import (
     SMIRNOFFvdWCollection,
     _SMIRNOFFNonbondedCollection,

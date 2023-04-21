@@ -3,7 +3,7 @@ import openmm.unit
 import pytest
 from openff.interchange import Interchange
 from openff.toolkit import Topology
-from openff.toolkit.topology import Atom, Molecule
+from openff.toolkit.topology import Molecule
 from openff.toolkit.typing.engines.smirnoff import ForceField
 from openff.units import unit
 from openff.units.openmm import from_openmm, to_openmm
