@@ -1,12 +1,12 @@
 import math
 from abc import ABC
-from typing import Dict, Iterable, Literal, Type, TypeVar, Tuple, Set, Union
+from typing import Dict, Iterable, Literal, Set, Tuple, Type, TypeVar, Union
 
 import numpy
 from openff.interchange import Interchange
 from openff.interchange.components.potentials import Potential
 from openff.interchange.exceptions import InvalidParameterHandlerError
-from openff.interchange.smirnoff._base import SMIRNOFFCollection, TP
+from openff.interchange.smirnoff._base import TP, SMIRNOFFCollection
 from openff.interchange.smirnoff._nonbonded import (
     SMIRNOFFvdWCollection,
     _SMIRNOFFNonbondedCollection,
@@ -16,18 +16,20 @@ from openff.toolkit import Topology
 from openff.toolkit.topology import Atom
 from openff.toolkit.typing.engines.smirnoff.parameters import ParameterHandler
 from openff.units import unit
-from openmm import openmm, CustomManyParticleForce
+from openmm import CustomManyParticleForce, openmm
 
 from smirnoff_plugins.handlers.nonbonded import (
+    AxilrodTellerHandler,
     DampedBuckingham68Handler,
-    DoubleExponentialHandler, DampedExp6810Handler, AxilrodTellerHandler, MultipoleHandler,
+    DampedExp6810Handler,
+    DoubleExponentialHandler,
+    MultipoleHandler,
 )
 
 T = TypeVar("T", bound="_NonbondedPlugin")
 
 
 class _NonbondedPlugin(_SMIRNOFFNonbondedCollection):
-
     is_plugin: bool = True
     acts_as: str = "vdW"
 
@@ -283,13 +285,14 @@ class SMIRNOFFDampedExp6810Collection(_NonbondedPlugin):
         "sigma = 0.5*(rho1+rho2);"
     )
 
-    forceAtZero: FloatQuantity["kilojoules_per_mole * nanometer**-1"] =\
-        unit.Quantity(49.6144931952, unit.kilojoules_per_mole * unit.nanometer**-1)
+    forceAtZero: FloatQuantity["kilojoules_per_mole * nanometer**-1"] = unit.Quantity(
+        49.6144931952, unit.kilojoules_per_mole * unit.nanometer**-1
+    )
 
     @classmethod
     def allowed_parameter_handlers(cls) -> Iterable[Type[ParameterHandler]]:
         """Return an iterable of allowed types of ParameterHandler classes."""
-        return DampedExp6810Handler,
+        return (DampedExp6810Handler,)
 
     @classmethod
     def supported_parameters(cls) -> Iterable[str]:
@@ -309,7 +312,7 @@ class SMIRNOFFDampedExp6810Collection(_NonbondedPlugin):
     @classmethod
     def global_parameters(cls) -> Iterable[str]:
         """Return an iterable of global parameters, i.e. not per-potential parameters."""
-        return "forceAtZero",
+        return ("forceAtZero",)
 
     def pre_computed_terms(self) -> Dict[str, unit.Quantity]:
         return {}
@@ -320,18 +323,20 @@ class SMIRNOFFDampedExp6810Collection(_NonbondedPlugin):
     ) -> Dict[str, float]:
         # It's important that these keys are in the order of self.potential_parameters(),
         # consider adding a check somewhere that this is the case.
-        _units = {"rho": unit.nanometers,
-                  "beta": unit.nanometers**-1,
-                  "c6": unit.kilojoule_per_mole * unit.nanometer**6,
-                  "c8": unit.kilojoule_per_mole * unit.nanometer**8,
-                  "c10": unit.kilojoule_per_mole * unit.nanometer**10}
+        _units = {
+            "rho": unit.nanometers,
+            "beta": unit.nanometers**-1,
+            "c6": unit.kilojoule_per_mole * unit.nanometer**6,
+            "c8": unit.kilojoule_per_mole * unit.nanometer**8,
+            "c10": unit.kilojoule_per_mole * unit.nanometer**10,
+        }
 
         return {
             "rho": original_parameters["rho"].m_as(_units["rho"]),
             "beta": original_parameters["beta"].m_as(_units["beta"]),
             "c6": original_parameters["c6"].m_as(_units["c6"]),
             "c8": original_parameters["c8"].m_as(_units["c8"]),
-            "c10": original_parameters["c10"].m_as(_units["c10"])
+            "c10": original_parameters["c10"].m_as(_units["c10"]),
         }
 
     @classmethod
@@ -384,14 +389,12 @@ class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
             parameter = parameter_handler.parameters[smirks]
 
             self.potentials[potential_key] = Potential(
-                parameters={
-                    "c9": parameter.c9
-                },
+                parameters={"c9": parameter.c9},
             )
 
     @classmethod
     def potential_parameters(cls):
-        return "c9",
+        return ("c9",)
 
     @classmethod
     def supported_parameters(cls):
@@ -399,7 +402,7 @@ class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
 
     @classmethod
     def allowed_parameter_handlers(cls):
-        return AxilrodTellerHandler,
+        return (AxilrodTellerHandler,)
 
     def modify_openmm_forces(
         self,
@@ -420,9 +423,15 @@ class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
             force.addParticle([0.0])
 
         for key, val in self.key_map.items():
-            force.setParticleParameters(key.atom_indices[0],
-                                        [self.potentials[val].parameters['c9'].m_as('kilojoule_per_mole * nanometer**9')],
-                                        0)
+            force.setParticleParameters(
+                key.atom_indices[0],
+                [
+                    self.potentials[val]
+                    .parameters["c9"]
+                    .m_as("kilojoule_per_mole * nanometer**9")
+                ],
+                0,
+            )
 
     def modify_parameters(
         self,
@@ -436,12 +445,11 @@ class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
 
     @classmethod
     def create(  # type: ignore[override]
-            cls: Type[T],
-            parameter_handler: AxilrodTellerHandler,
-            topology: Topology,
+        cls: Type[T],
+        parameter_handler: AxilrodTellerHandler,
+        topology: Topology,
     ) -> T:
-        handler = cls(
-        )
+        handler = cls()
 
         handler.store_matches(parameter_handler=parameter_handler, topology=topology)
         handler.store_potentials(parameter_handler=parameter_handler)
@@ -503,15 +511,12 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
             parameter = parameter_handler.parameters[smirks]
 
             self.potentials[potential_key] = Potential(
-                parameters={
-                    "polarity": parameter.polarity
-                },
+                parameters={"polarity": parameter.polarity},
             )
-
 
     @classmethod
     def potential_parameters(cls):
-        return "polarity",
+        return ("polarity",)
 
     @classmethod
     def supported_parameters(cls):
@@ -519,7 +524,7 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
 
     @classmethod
     def allowed_parameter_handlers(cls):
-        return MultipoleHandler,
+        return (MultipoleHandler,)
 
     def modify_openmm_forces(
         self,
@@ -538,7 +543,7 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
         ]
 
         assert (
-                len(existing_multipole) < 2
+            len(existing_multipole) < 2
         ), "multiple multipole forces are not yet correctly handled."
 
         if len(existing_multipole) == 0:
@@ -548,7 +553,7 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
             force: openmm.AmoebaMultipoleForce = existing_multipole[0]
 
         topology: Topology = interchange.topology
-        charges = interchange.collections['Electrostatics'].charges
+        charges = interchange.collections["Electrostatics"].charges
 
         # Set options
         method_map = {
@@ -579,18 +584,20 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
                 -1,
                 self.thole,
                 0.0,
-                0.0
+                0.0,
             )
 
         for key, val in charges.items():
             params = force.getMultipoleParameters(key.atom_indices[0])
-            params[0] = val.m_as('elementary_charge')
+            params[0] = val.m_as("elementary_charge")
             force.setMultipoleParameters(key.atom_indices[0], *params)
 
         for key, val in self.key_map.items():
             params = force.getMultipoleParameters(key.atom_indices[0])
-            params[8] = self.potentials[val].parameters['polarity'].m_as('nanometer**3') ** (1/6)
-            params[9] = self.potentials[val].parameters['polarity'].m_as('nanometer**3')
+            params[8] = self.potentials[val].parameters["polarity"].m_as(
+                "nanometer**3"
+            ) ** (1 / 6)
+            params[9] = self.potentials[val].parameters["polarity"].m_as("nanometer**3")
             force.setMultipoleParameters(key.atom_indices[0], *params)
 
         for unique_mol_index, mol_map in topology.identical_molecule_groups.items():
@@ -606,7 +613,6 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
             atom1: Atom
             atom2: Atom
             for atom1, atom2 in unique_mol.nth_degree_neighbors(1):
-
                 if atom1.molecule_atom_index not in bonded2:
                     bonded2[atom1.molecule_atom_index] = [atom2.molecule_atom_index]
                 else:
@@ -618,19 +624,32 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
                     bonded2[atom2.molecule_atom_index].append(atom1.molecule_atom_index)
 
                 if atom1.molecule_atom_index not in polarization_bonded:
-                    polarization_bonded[atom1.molecule_atom_index] = [atom2.molecule_atom_index]
+                    polarization_bonded[atom1.molecule_atom_index] = [
+                        atom2.molecule_atom_index
+                    ]
                 else:
-                    if atom2.molecule_atom_index not in polarization_bonded[atom1.molecule_atom_index]:
-                        polarization_bonded[atom1.molecule_atom_index].append(atom2.molecule_atom_index)
+                    if (
+                        atom2.molecule_atom_index
+                        not in polarization_bonded[atom1.molecule_atom_index]
+                    ):
+                        polarization_bonded[atom1.molecule_atom_index].append(
+                            atom2.molecule_atom_index
+                        )
 
                 if atom2.molecule_atom_index not in polarization_bonded:
-                    polarization_bonded[atom2.molecule_atom_index] = [atom1.molecule_atom_index]
+                    polarization_bonded[atom2.molecule_atom_index] = [
+                        atom1.molecule_atom_index
+                    ]
                 else:
-                    if atom1.molecule_atom_index not in polarization_bonded[atom2.molecule_atom_index]:
-                        polarization_bonded[atom2.molecule_atom_index].append(atom1.molecule_atom_index)
+                    if (
+                        atom1.molecule_atom_index
+                        not in polarization_bonded[atom2.molecule_atom_index]
+                    ):
+                        polarization_bonded[atom2.molecule_atom_index].append(
+                            atom1.molecule_atom_index
+                        )
 
             for atom1, atom2 in unique_mol.nth_degree_neighbors(2):
-
                 if atom1.molecule_atom_index not in bonded3:
                     bonded3[atom1.molecule_atom_index] = [atom2.molecule_atom_index]
                 else:
@@ -642,19 +661,32 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
                     bonded3[atom2.molecule_atom_index].append(atom1.molecule_atom_index)
 
                 if atom1.molecule_atom_index not in polarization_bonded:
-                    polarization_bonded[atom1.molecule_atom_index] = [atom2.molecule_atom_index]
+                    polarization_bonded[atom1.molecule_atom_index] = [
+                        atom2.molecule_atom_index
+                    ]
                 else:
-                    if atom2.molecule_atom_index not in polarization_bonded[atom1.molecule_atom_index]:
-                        polarization_bonded[atom1.molecule_atom_index].append(atom2.molecule_atom_index)
+                    if (
+                        atom2.molecule_atom_index
+                        not in polarization_bonded[atom1.molecule_atom_index]
+                    ):
+                        polarization_bonded[atom1.molecule_atom_index].append(
+                            atom2.molecule_atom_index
+                        )
 
                 if atom2.molecule_atom_index not in polarization_bonded:
-                    polarization_bonded[atom2.molecule_atom_index] = [atom1.molecule_atom_index]
+                    polarization_bonded[atom2.molecule_atom_index] = [
+                        atom1.molecule_atom_index
+                    ]
                 else:
-                    if atom1.molecule_atom_index not in polarization_bonded[atom2.molecule_atom_index]:
-                        polarization_bonded[atom2.molecule_atom_index].append(atom1.molecule_atom_index)
+                    if (
+                        atom1.molecule_atom_index
+                        not in polarization_bonded[atom2.molecule_atom_index]
+                    ):
+                        polarization_bonded[atom2.molecule_atom_index].append(
+                            atom1.molecule_atom_index
+                        )
 
             for atom1, atom2 in unique_mol.nth_degree_neighbors(3):
-
                 if atom1.molecule_atom_index not in bonded4:
                     bonded4[atom1.molecule_atom_index] = [atom2.molecule_atom_index]
                 else:
@@ -666,19 +698,32 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
                     bonded4[atom2.molecule_atom_index].append(atom1.molecule_atom_index)
 
                 if atom1.molecule_atom_index not in polarization_bonded:
-                    polarization_bonded[atom1.molecule_atom_index] = [atom2.molecule_atom_index]
+                    polarization_bonded[atom1.molecule_atom_index] = [
+                        atom2.molecule_atom_index
+                    ]
                 else:
-                    if atom2.molecule_atom_index not in polarization_bonded[atom1.molecule_atom_index]:
-                        polarization_bonded[atom1.molecule_atom_index].append(atom2.molecule_atom_index)
+                    if (
+                        atom2.molecule_atom_index
+                        not in polarization_bonded[atom1.molecule_atom_index]
+                    ):
+                        polarization_bonded[atom1.molecule_atom_index].append(
+                            atom2.molecule_atom_index
+                        )
 
                 if atom2.molecule_atom_index not in polarization_bonded:
-                    polarization_bonded[atom2.molecule_atom_index] = [atom1.molecule_atom_index]
+                    polarization_bonded[atom2.molecule_atom_index] = [
+                        atom1.molecule_atom_index
+                    ]
                 else:
-                    if atom1.molecule_atom_index not in polarization_bonded[atom2.molecule_atom_index]:
-                        polarization_bonded[atom2.molecule_atom_index].append(atom1.molecule_atom_index)
+                    if (
+                        atom1.molecule_atom_index
+                        not in polarization_bonded[atom2.molecule_atom_index]
+                    ):
+                        polarization_bonded[atom2.molecule_atom_index].append(
+                            atom1.molecule_atom_index
+                        )
 
             for atom1, atom2 in unique_mol.nth_degree_neighbors(4):
-
                 if atom1.molecule_atom_index not in bonded5:
                     bonded5[atom1.molecule_atom_index] = [atom2.molecule_atom_index]
                 else:
@@ -690,55 +735,90 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
                     bonded5[atom2.molecule_atom_index].append(atom1.molecule_atom_index)
 
                 if atom1.molecule_atom_index not in polarization_bonded:
-                    polarization_bonded[atom1.molecule_atom_index] = [atom2.molecule_atom_index]
+                    polarization_bonded[atom1.molecule_atom_index] = [
+                        atom2.molecule_atom_index
+                    ]
                 else:
-                    if atom2.molecule_atom_index not in polarization_bonded[atom1.molecule_atom_index]:
-                        polarization_bonded[atom1.molecule_atom_index].append(atom2.molecule_atom_index)
+                    if (
+                        atom2.molecule_atom_index
+                        not in polarization_bonded[atom1.molecule_atom_index]
+                    ):
+                        polarization_bonded[atom1.molecule_atom_index].append(
+                            atom2.molecule_atom_index
+                        )
 
                 if atom2.molecule_atom_index not in polarization_bonded:
-                    polarization_bonded[atom2.molecule_atom_index] = [atom1.molecule_atom_index]
+                    polarization_bonded[atom2.molecule_atom_index] = [
+                        atom1.molecule_atom_index
+                    ]
                 else:
-                    if atom1.molecule_atom_index not in polarization_bonded[atom2.molecule_atom_index]:
-                        polarization_bonded[atom2.molecule_atom_index].append(atom1.molecule_atom_index)
+                    if (
+                        atom1.molecule_atom_index
+                        not in polarization_bonded[atom2.molecule_atom_index]
+                    ):
+                        polarization_bonded[atom2.molecule_atom_index].append(
+                            atom1.molecule_atom_index
+                        )
 
             for mol_index, atom_map in mol_map:
-
-                base_atom_index = topology.molecule_atom_start_index(topology.molecule(mol_index))
+                base_atom_index = topology.molecule_atom_start_index(
+                    topology.molecule(mol_index)
+                )
 
                 for unique_atom_index, unique_bonded_list in bonded2.items():
                     atom_index = atom_map[unique_atom_index] + base_atom_index
                     atom_bonded2 = [
-                        atom_map[unique_bonded_index]+base_atom_index for unique_bonded_index in unique_bonded_list
+                        atom_map[unique_bonded_index] + base_atom_index
+                        for unique_bonded_index in unique_bonded_list
                     ]
-                    force.setCovalentMap(atom_index, openmm.AmoebaMultipoleForce.Covalent12, atom_bonded2)
+                    force.setCovalentMap(
+                        atom_index, openmm.AmoebaMultipoleForce.Covalent12, atom_bonded2
+                    )
 
                 for unique_atom_index, unique_bonded_list in bonded3.items():
                     atom_index = atom_map[unique_atom_index] + base_atom_index
                     atom_bonded2 = [
-                        atom_map[unique_bonded_index]+base_atom_index for unique_bonded_index in unique_bonded_list
+                        atom_map[unique_bonded_index] + base_atom_index
+                        for unique_bonded_index in unique_bonded_list
                     ]
-                    force.setCovalentMap(atom_index, openmm.AmoebaMultipoleForce.Covalent13, atom_bonded2)
+                    force.setCovalentMap(
+                        atom_index, openmm.AmoebaMultipoleForce.Covalent13, atom_bonded2
+                    )
 
                 for unique_atom_index, unique_bonded_list in bonded4.items():
                     atom_index = atom_map[unique_atom_index] + base_atom_index
                     atom_bonded2 = [
-                        atom_map[unique_bonded_index]+base_atom_index for unique_bonded_index in unique_bonded_list
+                        atom_map[unique_bonded_index] + base_atom_index
+                        for unique_bonded_index in unique_bonded_list
                     ]
-                    force.setCovalentMap(atom_index, openmm.AmoebaMultipoleForce.Covalent14, atom_bonded2)
+                    force.setCovalentMap(
+                        atom_index, openmm.AmoebaMultipoleForce.Covalent14, atom_bonded2
+                    )
 
                 for unique_atom_index, unique_bonded_list in bonded5.items():
                     atom_index = atom_map[unique_atom_index] + base_atom_index
                     atom_bonded2 = [
-                        atom_map[unique_bonded_index]+base_atom_index for unique_bonded_index in unique_bonded_list
+                        atom_map[unique_bonded_index] + base_atom_index
+                        for unique_bonded_index in unique_bonded_list
                     ]
-                    force.setCovalentMap(atom_index, openmm.AmoebaMultipoleForce.Covalent15, atom_bonded2)
+                    force.setCovalentMap(
+                        atom_index, openmm.AmoebaMultipoleForce.Covalent15, atom_bonded2
+                    )
 
-                for unique_atom_index, unique_bonded_list in polarization_bonded.items():
+                for (
+                    unique_atom_index,
+                    unique_bonded_list,
+                ) in polarization_bonded.items():
                     atom_index = atom_map[unique_atom_index] + base_atom_index
                     atom_pol_bonded = [
-                        atom_map[unique_bonded_index]+base_atom_index for unique_bonded_index in unique_bonded_list
+                        atom_map[unique_bonded_index] + base_atom_index
+                        for unique_bonded_index in unique_bonded_list
                     ]
-                    force.setCovalentMap(atom_index, openmm.AmoebaMultipoleForce.PolarizationCovalent11, atom_pol_bonded)
+                    force.setCovalentMap(
+                        atom_index,
+                        openmm.AmoebaMultipoleForce.PolarizationCovalent11,
+                        atom_pol_bonded,
+                    )
 
     def modify_parameters(
         self,
@@ -756,8 +836,7 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
         parameter_handler: DampedExp6810Handler,
         topology: Topology,
     ) -> T:
-        handler = cls(
-        )
+        handler = cls()
 
         handler.store_matches(parameter_handler=parameter_handler, topology=topology)
         handler.store_potentials(parameter_handler=parameter_handler)

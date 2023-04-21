@@ -1,10 +1,15 @@
 import abc
 
 from openff.toolkit.typing.engines.smirnoff.parameters import (
+    ElectrostaticsHandler,
+    LibraryChargeHandler,
     ParameterAttribute,
     ParameterHandler,
     ParameterType,
-    _allow_only, VirtualSiteHandler, vdWHandler, ElectrostaticsHandler, ToolkitAM1BCCHandler, LibraryChargeHandler,
+    ToolkitAM1BCCHandler,
+    VirtualSiteHandler,
+    _allow_only,
+    vdWHandler,
 )
 from openff.toolkit.utils.exceptions import IncompatibleParameterError
 from openff.units import unit
@@ -99,6 +104,7 @@ class DoubleExponentialHandler(_CustomNonbondedHandler):
     alpha = ParameterAttribute(default=18.7)
     beta = ParameterAttribute(default=3.3)
 
+
 class DampedExp6810Handler(_CustomNonbondedHandler):
     """
     Damped exponential-6-8-10 potential used in <https://doi.org/10.1021/acs.jctc.0c00837>
@@ -116,15 +122,22 @@ class DampedExp6810Handler(_CustomNonbondedHandler):
 
         rho = ParameterAttribute(default=None, unit=unit.nanometers)
         beta = ParameterAttribute(default=None, unit=unit.nanometers**-1)
-        c6 = ParameterAttribute(default=None, unit=unit.kilojoule_per_mole * unit.nanometer**6)
-        c8 = ParameterAttribute(default=None, unit=unit.kilojoule_per_mole * unit.nanometer**8)
-        c10 = ParameterAttribute(default=None, unit=unit.kilojoule_per_mole * unit.nanometer**10)
+        c6 = ParameterAttribute(
+            default=None, unit=unit.kilojoule_per_mole * unit.nanometer**6
+        )
+        c8 = ParameterAttribute(
+            default=None, unit=unit.kilojoule_per_mole * unit.nanometer**8
+        )
+        c10 = ParameterAttribute(
+            default=None, unit=unit.kilojoule_per_mole * unit.nanometer**10
+        )
 
     _TAGNAME = "DampedExp6810"
     _INFOTYPE = DampedExp6810Type
 
-    forceAtZero = ParameterAttribute(default=49.6144931952,
-                                     unit=unit.kilojoules_per_mole * unit.nanometer**-1)
+    forceAtZero = ParameterAttribute(
+        default=49.6144931952, unit=unit.kilojoules_per_mole * unit.nanometer**-1
+    )
 
 
 class AxilrodTellerHandler(ParameterHandler, abc.ABC):
@@ -134,7 +147,8 @@ class AxilrodTellerHandler(ParameterHandler, abc.ABC):
 
     cutoff = ParameterAttribute(default=9.0 * unit.angstroms, unit=unit.angstrom)
     method = ParameterAttribute(
-        default="cutoff", converter=_allow_only(["cutoff", "cutoffperiodic", "cutoffnonperiodic"])
+        default="cutoff",
+        converter=_allow_only(["cutoff", "cutoffperiodic", "cutoffnonperiodic"]),
     )
 
     class AxilrodTellerType(ParameterType):
@@ -143,7 +157,9 @@ class AxilrodTellerHandler(ParameterHandler, abc.ABC):
         _VALENCE_TYPE = "Atom"
         _ELEMENT_NAME = "Atom"
 
-        c9 = ParameterAttribute(default=None, unit=unit.kilojoule_per_mole * unit.nanometer**9)
+        c9 = ParameterAttribute(
+            default=None, unit=unit.kilojoule_per_mole * unit.nanometer**9
+        )
 
     _TAGNAME = "AxilrodTeller"
     _INFOTYPE = AxilrodTellerType
@@ -177,7 +193,8 @@ class MultipoleHandler(ParameterHandler, abc.ABC):
         default="PME", converter=_allow_only(["NoCutoff", "PME"])
     )
     polarizationType = ParameterAttribute(
-        default="Extrapolated", converter=_allow_only(["Mutual", "Direct", "Extrapolated"])
+        default="Extrapolated",
+        converter=_allow_only(["Mutual", "Direct", "Extrapolated"]),
     )
     ewaldErrorTolerance = ParameterAttribute(default=0.0001, converter=float)
     thole = ParameterAttribute(default=0.39, converter=float)

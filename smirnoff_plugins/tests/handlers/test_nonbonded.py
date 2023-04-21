@@ -3,7 +3,7 @@ import openmm.unit
 import pytest
 from openff.interchange import Interchange
 from openff.toolkit import Topology
-from openff.toolkit.topology import Molecule, Atom
+from openff.toolkit.topology import Atom, Molecule
 from openff.toolkit.typing.engines.smirnoff import ForceField
 from openff.units import unit
 from openff.units.openmm import from_openmm, to_openmm
@@ -238,11 +238,15 @@ def test_scaled_de_energy():
 def test_dampedexp6810_assignment():
     ff = ForceField(load_plugins=True)
 
-    ff.get_parameter_handler("Electrostatics", {"version": "0.4",
-                                                "periodic_potential": "Ewald3D-ConductingBoundary",
-                                                "nonperiodic_potential": "Coulomb",
-                                                "exception_potential": "Coulomb",
-                                                })
+    ff.get_parameter_handler(
+        "Electrostatics",
+        {
+            "version": "0.4",
+            "periodic_potential": "Ewald3D-ConductingBoundary",
+            "nonperiodic_potential": "Coulomb",
+            "exception_potential": "Coulomb",
+        },
+    )
     ff.get_parameter_handler(
         "ChargeIncrementModel",
         {"version": "0.3", "partial_charge_method": "formal_charge"},
@@ -294,17 +298,21 @@ def test_dampedexp6810_assignment():
 
     assert custom_nonbonded_force.getNumParticles() == 15
 
-    h_params = [0.15 * unit.nanometer,
-                30.0 * unit.nanometer ** -1,
-                1.0 * unit.kilojoule_per_mole * unit.nanometer ** 6,
-                10.0 * unit.kilojoule_per_mole * unit.nanometer ** 8,
-                100.0 * unit.kilojoule_per_mole * unit.nanometer ** 10]
+    h_params = [
+        0.15 * unit.nanometer,
+        30.0 * unit.nanometer**-1,
+        1.0 * unit.kilojoule_per_mole * unit.nanometer**6,
+        10.0 * unit.kilojoule_per_mole * unit.nanometer**8,
+        100.0 * unit.kilojoule_per_mole * unit.nanometer**10,
+    ]
 
-    c_params = [0.3 * unit.angstrom,
-                30.0 * unit.angstrom ** -1,
-                10.0 * unit.kilojoule_per_mole * unit.nanometer ** 6,
-                100.0 * unit.kilojoule_per_mole * unit.nanometer ** 8,
-                1000.0 * unit.kilojoule_per_mole * unit.nanometer ** 10]
+    c_params = [
+        0.3 * unit.angstrom,
+        30.0 * unit.angstrom**-1,
+        10.0 * unit.kilojoule_per_mole * unit.nanometer**6,
+        100.0 * unit.kilojoule_per_mole * unit.nanometer**8,
+        1000.0 * unit.kilojoule_per_mole * unit.nanometer**10,
+    ]
 
     expected_params = [c_params] * 7 + [h_params] * 8
 
@@ -359,24 +367,26 @@ def test_dampedexp6810_energies():
 
     distances = [2.0, 2.5, 3.0, 3.5, 5.0, 10.0]
     energies = [
-                   45.2528254748291,
-                   2.1502482653564474,
-                   -0.33967518201408164,
-                   -0.22670463612613456,
-                   -0.026142436548445384,
-                   -5.0305419899633764e-06,
-               ] * unit.kilojoule_per_mole
+        45.2528254748291,
+        2.1502482653564474,
+        -0.33967518201408164,
+        -0.22670463612613456,
+        -0.026142436548445384,
+        -5.0305419899633764e-06,
+    ] * unit.kilojoule_per_mole
 
-    omm_integrator: openmm.LangevinMiddleIntegrator = openmm.LangevinMiddleIntegrator(298, 1.0, 0.002)
+    omm_integrator: openmm.LangevinMiddleIntegrator = openmm.LangevinMiddleIntegrator(
+        298, 1.0, 0.002
+    )
     omm_simulation: openmm.app.Simulation = openmm.app.Simulation(
-        off_top.to_openmm(),
-        omm_system,
-        omm_integrator
+        off_top.to_openmm(), omm_system, omm_integrator
     )
     omm_context: openmm.Context = omm_simulation.context
 
     for energy, distance in zip(energies, distances):
-        omm_context.setPositions(to_openmm([[0, 0, 0], [distance, 0, 0]] * unit.angstrom))
+        omm_context.setPositions(
+            to_openmm([[0, 0, 0], [distance, 0, 0]] * unit.angstrom)
+        )
         omm_state: openmm.State = omm_context.getState(getEnergy=True)
         assert from_openmm(omm_state.getPotentialEnergy()).m == pytest.approx(energy)
 
@@ -389,21 +399,21 @@ def test_axilrodteller_assignment():
     handler.add_parameter(
         {
             "smirks": "[#1:1]",
-            "c9": 100.0 * unit.kilojoule_per_mole * unit.angstrom ** 9,
+            "c9": 100.0 * unit.kilojoule_per_mole * unit.angstrom**9,
         }
     )
 
     handler.add_parameter(
         {
             "smirks": "[#6:1]",
-            "c9": 1000.0 * unit.kilojoule_per_mole * unit.angstrom ** 9,
+            "c9": 1000.0 * unit.kilojoule_per_mole * unit.angstrom**9,
         }
     )
 
     handler.add_parameter(
         {
             "smirks": "[#8:1]",
-            "c9": 500.0 * unit.kilojoule_per_mole * unit.angstrom ** 9,
+            "c9": 500.0 * unit.kilojoule_per_mole * unit.angstrom**9,
         }
     )
 
@@ -429,16 +439,16 @@ def test_axilrodteller_assignment():
 
     assert force.getNumParticles() == 30
 
-    c_param = 1000.0 * unit.kilojoule_per_mole * unit.angstrom ** 9
-    h_param = 100.0 * unit.kilojoule_per_mole * unit.angstrom ** 9
-    expected_params = (
-            [c_param] * 7 + [h_param] * 8 + [c_param] * 7 + [h_param] * 8
-    )
+    c_param = 1000.0 * unit.kilojoule_per_mole * unit.angstrom**9
+    h_param = 100.0 * unit.kilojoule_per_mole * unit.angstrom**9
+    expected_params = [c_param] * 7 + [h_param] * 8 + [c_param] * 7 + [h_param] * 8
 
     for atom_idx in range(force.getNumParticles()):
         expected_param = expected_params[atom_idx]
         actual_param = force.getParticleParameters(atom_idx)[0][0]
-        assert actual_param == expected_param.m_as("kilojoule_per_mole * nanometer ** 9")
+        assert actual_param == expected_param.m_as(
+            "kilojoule_per_mole * nanometer ** 9"
+        )
 
 
 def test_axilrodteller_energies():
@@ -450,10 +460,10 @@ def test_axilrodteller_energies():
         {
             "smirks": "[#10:1]",
             "rho": 0.0 * unit.angstrom,
-            "beta": 0.0 * unit.angstrom ** -1,
-            "c6": 0.0 * unit.kilojoule_per_mole * unit.nanometer ** 6,
-            "c8": 0.0 * unit.kilojoule_per_mole * unit.nanometer ** 8,
-            "c10": 0.0 * unit.kilojoule_per_mole * unit.nanometer ** 10,
+            "beta": 0.0 * unit.angstrom**-1,
+            "c6": 0.0 * unit.kilojoule_per_mole * unit.nanometer**6,
+            "c8": 0.0 * unit.kilojoule_per_mole * unit.nanometer**8,
+            "c10": 0.0 * unit.kilojoule_per_mole * unit.nanometer**10,
         }
     )
 
@@ -492,22 +502,26 @@ def test_axilrodteller_energies():
 
     distances = [3.0, 3.5, 5.0, 10.0]
     energies = [
-                   -3810.3935546875,
-                   -951.5879516601562,
-                   -38.400001525878906,
-                   -0.07500000298023224,
-               ] * unit.kilojoule_per_mole
+        -3810.3935546875,
+        -951.5879516601562,
+        -38.400001525878906,
+        -0.07500000298023224,
+    ] * unit.kilojoule_per_mole
 
-    omm_integrator: openmm.LangevinMiddleIntegrator = openmm.LangevinMiddleIntegrator(298, 1.0, 0.002)
+    omm_integrator: openmm.LangevinMiddleIntegrator = openmm.LangevinMiddleIntegrator(
+        298, 1.0, 0.002
+    )
     omm_simulation: openmm.app.Simulation = openmm.app.Simulation(
-        off_top.to_openmm(),
-        omm_system,
-        omm_integrator
+        off_top.to_openmm(), omm_system, omm_integrator
     )
     omm_context: openmm.Context = omm_simulation.context
 
     for energy, distance in zip(energies, distances):
-        omm_context.setPositions(to_openmm([[0, 0, 0], [distance, 0, 0], [2*distance, 0, 0]] * unit.angstrom))
+        omm_context.setPositions(
+            to_openmm(
+                [[0, 0, 0], [distance, 0, 0], [2 * distance, 0, 0]] * unit.angstrom
+            )
+        )
         omm_state: openmm.State = omm_context.getState(getEnergy=True)
         assert from_openmm(omm_state.getPotentialEnergy()).m == pytest.approx(energy)
 
@@ -515,11 +529,15 @@ def test_axilrodteller_energies():
 def test_multipole_assignment():
     ff = ForceField(load_plugins=True)
 
-    ff.get_parameter_handler("Electrostatics", {"version": "0.4",
-                                                "periodic_potential": "Ewald3D-ConductingBoundary",
-                                                "nonperiodic_potential": "Coulomb",
-                                                "exception_potential": "Coulomb",
-                                                })
+    ff.get_parameter_handler(
+        "Electrostatics",
+        {
+            "version": "0.4",
+            "periodic_potential": "Ewald3D-ConductingBoundary",
+            "nonperiodic_potential": "Coulomb",
+            "exception_potential": "Coulomb",
+        },
+    )
     ff.get_parameter_handler(
         "ChargeIncrementModel",
         {"version": "0.3", "partial_charge_method": "formal_charge"},
@@ -530,14 +548,14 @@ def test_multipole_assignment():
     multipole_handler.add_parameter(
         {
             "smirks": "[#1:1]",
-            "polarity": 0.301856 * unit.angstrom ** 3,
+            "polarity": 0.301856 * unit.angstrom**3,
         }
     )
 
     multipole_handler.add_parameter(
         {
             "smirks": "[#6:1]",
-            "polarity": 1.243042 * unit.angstrom ** 3,
+            "polarity": 1.243042 * unit.angstrom**3,
         }
     )
 
@@ -547,10 +565,10 @@ def test_multipole_assignment():
         {
             "smirks": "[#1:1]",
             "rho": 1.5 * unit.angstrom,
-            "beta": 3.0 * unit.angstrom ** -1,
-            "c6": 1.0 * unit.kilojoule_per_mole * unit.nanometer ** 6,
-            "c8": 10.0 * unit.kilojoule_per_mole * unit.nanometer ** 8,
-            "c10": 100.0 * unit.kilojoule_per_mole * unit.nanometer ** 10,
+            "beta": 3.0 * unit.angstrom**-1,
+            "c6": 1.0 * unit.kilojoule_per_mole * unit.nanometer**6,
+            "c8": 10.0 * unit.kilojoule_per_mole * unit.nanometer**8,
+            "c10": 100.0 * unit.kilojoule_per_mole * unit.nanometer**10,
         }
     )
 
@@ -558,10 +576,10 @@ def test_multipole_assignment():
         {
             "smirks": "[#6:1]",
             "rho": 3.0 * unit.angstrom,
-            "beta": 3.0 * unit.angstrom ** -1,
-            "c6": 10.0 * unit.kilojoule_per_mole * unit.nanometer ** 6,
-            "c8": 100.0 * unit.kilojoule_per_mole * unit.nanometer ** 8,
-            "c10": 1000.0 * unit.kilojoule_per_mole * unit.nanometer ** 10,
+            "beta": 3.0 * unit.angstrom**-1,
+            "c6": 10.0 * unit.kilojoule_per_mole * unit.nanometer**6,
+            "c8": 100.0 * unit.kilojoule_per_mole * unit.nanometer**8,
+            "c10": 1000.0 * unit.kilojoule_per_mole * unit.nanometer**10,
         }
     )
 
@@ -597,14 +615,16 @@ def test_multipole_assignment():
     for particle_idx in range(amoeba_force.getNumMultipoles()):
         multipole_parameters = amoeba_force.getMultipoleParameters(particle_idx)
         expected_polarity = expected_polarities[particle_idx].m_as(unit.nanometer**3)
-        assigned_polarity = from_openmm(multipole_parameters[-1]).m_as(unit.nanometer**3)
+        assigned_polarity = from_openmm(multipole_parameters[-1]).m_as(
+            unit.nanometer**3
+        )
         assert assigned_polarity == expected_polarity
 
         for degree, omm_kw in [
             (1, amoeba_force.Covalent12),
             (2, amoeba_force.Covalent13),
             (3, amoeba_force.Covalent14),
-            (4, amoeba_force.Covalent15)
+            (4, amoeba_force.Covalent15),
         ]:
             amoeba_neighs = amoeba_force.getCovalentMap(particle_idx, omm_kw)
             molecule_neighs = []
@@ -625,10 +645,10 @@ def test_multipole_energies():
         {
             "smirks": "[*:1]",
             "rho": 0.0 * unit.angstrom,
-            "beta": 0.0 * unit.angstrom ** -1,
-            "c6": 0.0 * unit.kilojoule_per_mole * unit.nanometer ** 6,
-            "c8": 0.0 * unit.kilojoule_per_mole * unit.nanometer ** 8,
-            "c10": 0.0 * unit.kilojoule_per_mole * unit.nanometer ** 10,
+            "beta": 0.0 * unit.angstrom**-1,
+            "c6": 0.0 * unit.kilojoule_per_mole * unit.nanometer**6,
+            "c8": 0.0 * unit.kilojoule_per_mole * unit.nanometer**8,
+            "c10": 0.0 * unit.kilojoule_per_mole * unit.nanometer**10,
         }
     )
 
@@ -642,12 +662,8 @@ def test_multipole_energies():
     )
 
     multipole_handler = ff.get_parameter_handler("Multipole")
-    multipole_handler.add_parameter(
-        {"smirks": "[#1:1]", "polarity": "0 * angstrom**3"}
-    )
-    multipole_handler.add_parameter(
-        {"smirks": "[#9:1]", "polarity": "1 * angstrom**3"}
-    )
+    multipole_handler.add_parameter({"smirks": "[#1:1]", "polarity": "0 * angstrom**3"})
+    multipole_handler.add_parameter({"smirks": "[#9:1]", "polarity": "1 * angstrom**3"})
 
     hf = Molecule.from_smiles("[F:1][H:2]")
     hf.generate_conformers(n_conformers=1)
@@ -672,29 +688,31 @@ def test_multipole_energies():
 
     distances = [3.0, 3.5, 5.0, 10.0]
     energies = [
-                   22.40427721075912,
-                   15.698527699040369,
-                   6.565745716618494,
-                   1.051951771305994,
-               ] * unit.kilojoule_per_mole
+        22.40427721075912,
+        15.698527699040369,
+        6.565745716618494,
+        1.051951771305994,
+    ] * unit.kilojoule_per_mole
 
-    omm_integrator: openmm.LangevinMiddleIntegrator = openmm.LangevinMiddleIntegrator(298, 1.0, 0.002)
+    omm_integrator: openmm.LangevinMiddleIntegrator = openmm.LangevinMiddleIntegrator(
+        298, 1.0, 0.002
+    )
     omm_simulation: openmm.app.Simulation = openmm.app.Simulation(
-        off_top.to_openmm(),
-        omm_system,
-        omm_integrator
+        off_top.to_openmm(), omm_system, omm_integrator
     )
     omm_context: openmm.Context = omm_simulation.context
 
     for energy, distance in zip(energies, distances):
-        omm_context.setPositions(to_openmm(
-            [
-                [0, 0, 0],
-                [-1, 0, 0],
-                [distance, 0, 0],
-                [1+distance, 0, 0],
-            ] * unit.angstrom
-        ))
+        omm_context.setPositions(
+            to_openmm(
+                [
+                    [0, 0, 0],
+                    [-1, 0, 0],
+                    [distance, 0, 0],
+                    [1 + distance, 0, 0],
+                ]
+                * unit.angstrom
+            )
+        )
         omm_state: openmm.State = omm_context.getState(getEnergy=True)
         assert from_openmm(omm_state.getPotentialEnergy()).m == pytest.approx(energy)
-
