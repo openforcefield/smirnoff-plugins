@@ -284,7 +284,9 @@ class SMIRNOFFDampedExp6810Collection(_NonbondedPlugin):
         "sigma = 0.5*(rho1+rho2);"
     )
 
-    force_at_zero: FloatQuantity["kilojoules_per_mole * nanometer**-1"] = unit.Quantity(  # noqa
+    force_at_zero: FloatQuantity[
+        "kilojoules_per_mole * nanometer**-1"
+    ] = unit.Quantity(  # noqa
         49.6144931952, unit.kilojoules_per_mole * unit.nanometer**-1  # noqa
     )
 
