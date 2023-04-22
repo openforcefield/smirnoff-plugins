@@ -4,6 +4,7 @@ from typing import Dict, Iterable, Literal, Set, Tuple, Type, TypeVar, Union
 from openff.interchange import Interchange
 from openff.interchange.components.potentials import Potential
 from openff.interchange.exceptions import InvalidParameterHandlerError
+from openff.interchange.models import VirtualSiteKey
 from openff.interchange.smirnoff._base import SMIRNOFFCollection
 from openff.interchange.smirnoff._nonbonded import (
     SMIRNOFFvdWCollection,
@@ -250,7 +251,7 @@ class SMIRNOFFDampedExp6810Collection(_NonbondedPlugin):
 
     expression: str = (
         "repulsion - ttdamp6*c6*invR6 - ttdamp8*c8*invR8 - ttdamp10*c10*invR10;"
-        "repulsion = forceAtZero*invbeta*exp(-beta*(r-sigma));"
+        "repulsion = force_at_zero*invbeta*exp(-beta*(r-sigma));"
         "ttdamp10 = 1.0 - expbr * ttdamp10Sum;"
         "ttdamp8 = 1.0 - expbr * ttdamp8Sum;"
         "ttdamp6 = 1.0 - expbr * ttdamp6Sum;"
@@ -277,13 +278,13 @@ class SMIRNOFFDampedExp6810Collection(_NonbondedPlugin):
         "c6 = sqrt(c61*c62);"
         "c8 = sqrt(c81*c82);"
         "c10 = sqrt(c101*c102);"
-        "invbeta = select(beta, 1.0/beta, 0);"
-        "beta = select(beta_mix, 2.0*beta_mix/(beta1+beta2), 0);"
-        "beta_mix = beta1*beta2;"
+        "invbeta = select(beta_test, 1.0/beta, 0);"
+        "beta = select(beta_test, 2.0*beta_test/(beta1+beta2), 0);"
+        "beta_test = beta1*beta2;"
         "sigma = 0.5*(rho1+rho2);"
     )
 
-    forceAtZero: FloatQuantity["kilojoules_per_mole * nanometer**-1"] = unit.Quantity(
+    force_at_zero: FloatQuantity["kilojoules_per_mole * nanometer**-1"] = unit.Quantity(
         49.6144931952, unit.kilojoules_per_mole * unit.nanometer**-1
     )
 
@@ -310,7 +311,7 @@ class SMIRNOFFDampedExp6810Collection(_NonbondedPlugin):
     @classmethod
     def global_parameters(cls) -> Iterable[str]:
         """Return an iterable of global parameters, i.e. not per-potential parameters."""
-        return ("forceAtZero",)
+        return ("force_at_zero",)
 
     def pre_computed_terms(self) -> Dict[str, unit.Quantity]:
         return {}
@@ -350,7 +351,7 @@ class SMIRNOFFDampedExp6810Collection(_NonbondedPlugin):
             cutoff=parameter_handler.cutoff,
             method=parameter_handler.method.lower(),
             switch_width=parameter_handler.switch_width,
-            forceAtZero=parameter_handler.forceAtZero,
+            force_at_zero=parameter_handler.force_at_zero,
         )
 
         handler.store_matches(parameter_handler=parameter_handler, topology=topology)
@@ -375,7 +376,7 @@ class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
 
     is_plugin: bool = True
     acts_as: str = ""
-    method: Literal["cutoff"] = "cutoff"
+    method: str = "cutoff_periodic"
     cutoff: FloatQuantity["nanometer"] = unit.Quantity(0.9, unit.nanometer)
 
     def store_potentials(self, parameter_handler: AxilrodTellerHandler):
@@ -413,6 +414,14 @@ class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
         force: CustomManyParticleForce = CustomManyParticleForce(3, self.expression)
         force.setPermutationMode(CustomManyParticleForce.UniqueCentralParticle)
         force.addPerParticleParameter("c9")
+
+        method_map = {
+            "cutoff_periodic": openmm.CustomManyParticleForce.CutoffPeriodic,
+            "cutoff_nonperiodic": openmm.CustomManyParticleForce.CutoffNonPeriodic,
+            "no_cutoff": openmm.CustomManyParticleForce.NoCutoff,
+        }
+        force.setNonbondedMethod(method_map[self.method])
+
         system.addForce(force)
 
         topology = interchange.topology
@@ -487,21 +496,21 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
 
     is_plugin: bool = True
 
-    method: Literal["PME"] = "PME"
-    polarizationType: Literal["Extrapolated"] = "Extrapolated"
+    method: str = "pme"
+    polarization_type: str = "extrapolated"
     cutoff: FloatQuantity["nanometer"] = unit.Quantity(0.9, unit.nanometer)
-    ewaldErrorTolerance: FloatQuantity["dimensionless"] = 0.0001
-    targetEpsilon: FloatQuantity["dimensionless"] = 0.00001
-    maxIter: int = 60
+    ewald_error_tolerance: FloatQuantity["dimensionless"] = 0.0001
+    target_epsilon: FloatQuantity["dimensionless"] = 0.00001
+    max_iter: int = 60
     thole: FloatQuantity["dimensionless"] = 0.39
 
     def store_potentials(self, parameter_handler: MultipoleHandler) -> None:
-        self.method = parameter_handler.method
-        self.polarizationType = parameter_handler.polarizationType
+        self.method = parameter_handler.method.lower()
+        self.polarization_type = parameter_handler.polarization_type.lower()
         self.cutoff = parameter_handler.cutoff
-        self.ewaldErrorTolerance = parameter_handler.ewaldErrorTolerance
-        self.targetEpsilon = parameter_handler.targetEpsilon
-        self.maxIter = parameter_handler.maxIter
+        self.ewald_error_tolerance = parameter_handler.ewald_error_tolerance
+        self.target_epsilon = parameter_handler.target_epsilon
+        self.max_iter = parameter_handler.max_iter
         self.thole = parameter_handler.thole
 
         for potential_key in self.key_map.values():
@@ -550,25 +559,39 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
         else:
             force: openmm.AmoebaMultipoleForce = existing_multipole[0]
 
+        existing_nonbonded = [
+            system.getForce(i)
+            for i in range(system.getNumForces())
+            if isinstance(system.getForce(i), openmm.NonbondedForce)
+        ]
+
+        # Zero out charges in nonbonded forces to prevent double counting electrostatic interactions
+        nonbonded_force: openmm.NonbondedForce
+        for nonbonded_force in existing_nonbonded:
+            for i in range(nonbonded_force.getNumParticles()):
+                params = nonbonded_force.getParticleParameters(i)
+                params[0] = 0
+                nonbonded_force.setParticleParameters(i, *params)
+
         topology: Topology = interchange.topology
         charges = interchange.collections["Electrostatics"].charges
 
         # Set options
         method_map = {
-            "NoCutoff": openmm.AmoebaMultipoleForce.NoCutoff,
-            "PME": openmm.AmoebaMultipoleForce.PME,
+            "nocutoff": openmm.AmoebaMultipoleForce.NoCutoff,
+            "pme": openmm.AmoebaMultipoleForce.PME,
         }
         force.setNonbondedMethod(method_map[self.method])
         polarization_type_map = {
-            "Mutual": openmm.AmoebaMultipoleForce.Mutual,
-            "Direct": openmm.AmoebaMultipoleForce.Direct,
-            "Extrapolated": openmm.AmoebaMultipoleForce.Extrapolated,
+            "mutual": openmm.AmoebaMultipoleForce.Mutual,
+            "direct": openmm.AmoebaMultipoleForce.Direct,
+            "extrapolated": openmm.AmoebaMultipoleForce.Extrapolated,
         }
-        force.setPolarizationType(polarization_type_map[self.polarizationType])
+        force.setPolarizationType(polarization_type_map[self.polarization_type])
         force.setCutoffDistance(self.cutoff.m_as("nanometer"))
-        force.setEwaldErrorTolerance(self.ewaldErrorTolerance)
-        force.setMutualInducedTargetEpsilon(self.targetEpsilon)
-        force.setMutualInducedMaxIterations(self.maxIter)
+        force.setEwaldErrorTolerance(self.ewald_error_tolerance)
+        force.setMutualInducedTargetEpsilon(self.target_epsilon)
+        force.setMutualInducedMaxIterations(self.max_iter)
         force.setExtrapolationCoefficients([-0.154, 0.017, 0.658, 0.474])
 
         for _ in range(topology.n_atoms):

@@ -135,7 +135,7 @@ class DampedExp6810Handler(_CustomNonbondedHandler):
     _TAGNAME = "DampedExp6810"
     _INFOTYPE = DampedExp6810Type
 
-    forceAtZero = ParameterAttribute(
+    force_at_zero = ParameterAttribute(
         default=49.6144931952, unit=unit.kilojoules_per_mole * unit.nanometer**-1
     )
 
@@ -147,8 +147,8 @@ class AxilrodTellerHandler(ParameterHandler, abc.ABC):
 
     cutoff = ParameterAttribute(default=9.0 * unit.angstroms, unit=unit.angstrom)
     method = ParameterAttribute(
-        default="cutoff",
-        converter=_allow_only(["cutoff", "cutoffperiodic", "cutoffnonperiodic"]),
+        default="cutoff_periodic",
+        converter=_allow_only(["no_cutoff", "cutoff_periodic", "cutoff_nonperiodic"]),
     )
 
     class AxilrodTellerType(ParameterType):
@@ -190,13 +190,13 @@ class MultipoleHandler(ParameterHandler, abc.ABC):
 
     cutoff = ParameterAttribute(default=0.9 * unit.nanometer, unit=unit.nanometer)
     method = ParameterAttribute(
-        default="PME", converter=_allow_only(["NoCutoff", "PME"])
+        default="PME", converter=_allow_only(["nocutoff", "PME"])
     )
-    polarizationType = ParameterAttribute(
-        default="Extrapolated",
-        converter=_allow_only(["Mutual", "Direct", "Extrapolated"]),
+    polarization_type = ParameterAttribute(
+        default="extrapolated",
+        converter=_allow_only(["mutual", "direct", "extrapolated"]),
     )
-    ewaldErrorTolerance = ParameterAttribute(default=0.0001, converter=float)
+    ewald_error_tolerance = ParameterAttribute(default=0.0001, converter=float)
     thole = ParameterAttribute(default=0.39, converter=float)
-    targetEpsilon = ParameterAttribute(default=0.00001, converter=float)
-    maxIter = ParameterAttribute(default=60, converter=int)
+    target_epsilon = ParameterAttribute(default=0.00001, converter=float)
+    max_iter = ParameterAttribute(default=60, converter=int)
