@@ -284,8 +284,8 @@ class SMIRNOFFDampedExp6810Collection(_NonbondedPlugin):
         "sigma = 0.5*(rho1+rho2);"
     )
 
-    force_at_zero: FloatQuantity["kilojoules_per_mole * nanometer**-1"] = unit.Quantity(
-        49.6144931952, unit.kilojoules_per_mole * unit.nanometer**-1
+    force_at_zero: FloatQuantity["kilojoules_per_mole * nanometer**-1"] = unit.Quantity(  # noqa
+        49.6144931952, unit.kilojoules_per_mole * unit.nanometer**-1  # noqa
     )
 
     @classmethod
@@ -377,7 +377,7 @@ class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
     is_plugin: bool = True
     acts_as: str = ""
     method: str = "cutoff_periodic"
-    cutoff: FloatQuantity["nanometer"] = unit.Quantity(0.9, unit.nanometer)
+    cutoff: FloatQuantity["nanometer"] = unit.Quantity(0.9, unit.nanometer)  # noqa
 
     def store_potentials(self, parameter_handler: AxilrodTellerHandler):
         self.method = parameter_handler.method
@@ -498,11 +498,11 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
 
     method: str = "pme"
     polarization_type: str = "extrapolated"
-    cutoff: FloatQuantity["nanometer"] = unit.Quantity(0.9, unit.nanometer)
-    ewald_error_tolerance: FloatQuantity["dimensionless"] = 0.0001
-    target_epsilon: FloatQuantity["dimensionless"] = 0.00001
+    cutoff: FloatQuantity["nanometer"] = unit.Quantity(0.9, unit.nanometer)  # noqa
+    ewald_error_tolerance: FloatQuantity["dimensionless"] = 0.0001  # noqa
+    target_epsilon: FloatQuantity["dimensionless"] = 0.00001  # noqa
     max_iter: int = 60
-    thole: FloatQuantity["dimensionless"] = 0.39
+    thole: FloatQuantity["dimensionless"] = 0.39  # noqa
 
     def store_potentials(self, parameter_handler: MultipoleHandler) -> None:
         self.method = parameter_handler.method.lower()
