@@ -746,6 +746,8 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
                             atom1.molecule_atom_index
                         )
 
+            """
+            # This code is not functional - otherwise you have inconsistent exceptions
             for atom1, atom2 in unique_mol.nth_degree_neighbors(4):
                 if atom1.molecule_atom_index not in bonded5:
                     bonded5[atom1.molecule_atom_index] = [atom2.molecule_atom_index]
@@ -782,6 +784,7 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
                         polarization_bonded[atom2.molecule_atom_index].append(
                             atom1.molecule_atom_index
                         )
+            """
 
             for mol_index, atom_map in mol_map:
                 base_atom_index = topology.molecule_atom_start_index(
