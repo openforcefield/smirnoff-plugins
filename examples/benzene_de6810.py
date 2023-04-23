@@ -25,13 +25,12 @@ def main():
             "method": "cutoff",
             "cutoff": "0.9 * nanometer",
             "scale13": "1.0",
-            "scale14": "0.8",
-            "scale15": "0.4",
+            "scale14": "0.5",
         },
     )
 
     ff.get_parameter_handler("LibraryCharges")
-    ff.get_parameter_handler("Electrostatics")
+    ff.get_parameter_handler("Electrostatics", {"version": "0.4", "scale14": "0"})
     ff.get_parameter_handler("ToolkitAM1BCC")
 
     # <Atom smirks="[#1:1]"
@@ -99,7 +98,7 @@ def main():
     omm_context: openmm.Context = omm_simulation.context
     omm_context.setPositions(to_openmm(benzene.conformers[0]))
 
-    omm_simulation.step(10)
+    omm_simulation.step(100)
 
 
 if __name__ == "__main__":
