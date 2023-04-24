@@ -405,21 +405,21 @@ def test_axilrodteller_assignment():
     handler.add_parameter(
         {
             "smirks": "[#1:1]",
-            "c9": 100.0 * unit.kilojoule_per_mole * unit.angstrom**9,
+            "c9": 1.0 * unit.kilojoule_per_mole * unit.angstrom**9,
         }
     )
 
     handler.add_parameter(
         {
             "smirks": "[#6:1]",
-            "c9": 1000.0 * unit.kilojoule_per_mole * unit.angstrom**9,
+            "c9": 10.0 * unit.kilojoule_per_mole * unit.angstrom**9,
         }
     )
 
     handler.add_parameter(
         {
             "smirks": "[#8:1]",
-            "c9": 500.0 * unit.kilojoule_per_mole * unit.angstrom**9,
+            "c9": 5.0 * unit.kilojoule_per_mole * unit.angstrom**9,
         }
     )
 
@@ -445,14 +445,14 @@ def test_axilrodteller_assignment():
 
     assert force.getNumParticles() == 30
 
-    c_param = 1000.0 * unit.kilojoule_per_mole * unit.angstrom**9
-    h_param = 100.0 * unit.kilojoule_per_mole * unit.angstrom**9
+    c_param = 10.0 * unit.kilojoule_per_mole * unit.angstrom**9
+    h_param = 1.0 * unit.kilojoule_per_mole * unit.angstrom**9
     expected_params = [c_param] * 7 + [h_param] * 8 + [c_param] * 7 + [h_param] * 8
 
     for atom_idx in range(force.getNumParticles()):
         expected_param = expected_params[atom_idx]
         actual_param = force.getParticleParameters(atom_idx)[0][0]
-        assert actual_param == expected_param.m_as(
+        assert pytest.approx(actual_param) == expected_param.m_as(
             "kilojoule_per_mole * nanometer ** 9"
         )
 
@@ -510,12 +510,10 @@ def test_axilrodteller_energies():
 
     assert custom_manyp_force.getNumParticles() == 3
 
-    distances = [3.0, 3.5, 5.0, 10.0]
+    distances = [3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 7.0]
     energies = [
-        -3810.3935546875,
-        -951.5879516601562,
-        -38.400001525878906,
-        -0.07500000298023224,
+        -3 * 2 * 0.1 / ((distance / 10) ** 6 * (2 * distance / 10) ** 3)
+        for distance in distances
     ] * unit.kilojoule_per_mole
 
     omm_integrator: openmm.LangevinMiddleIntegrator = openmm.LangevinMiddleIntegrator(
