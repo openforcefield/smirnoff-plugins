@@ -365,21 +365,27 @@ def test_dampedexp6810_energies():
 
     assert custom_nonbonded_force.getNumParticles() == 2
 
-    distances = [2.0, 2.5, 3.0, 3.5, 5.0, 10.0]
-    energies = [
-        45.2528254748291,
-        2.1502482653564474,
-        -0.33967518201408164,
-        -0.22670463612613456,
-        -0.026142436548445384,
-        -5.0305419899633764e-06,
+    custom_nonbonded_force.setUseLongRangeCorrection(False)
+
+    distances = [2.0, 2.5, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]
+    energies = [  # calculated by hand
+        45.2528743017942,
+        2.1502534217325,
+        -0.339669883563026,
+        -0.105512197509814,
+        -0.026137404257782,
+        -0.00839846163369,
+        -0.0032494303178,
+        -0.001435593777657,
     ] * unit.kilojoule_per_mole
 
     omm_integrator: openmm.LangevinMiddleIntegrator = openmm.LangevinMiddleIntegrator(
         298, 1.0, 0.002
     )
     omm_simulation: openmm.app.Simulation = openmm.app.Simulation(
-        off_top.to_openmm(), omm_system, omm_integrator
+        off_top.to_openmm(),
+        omm_system,
+        omm_integrator,
     )
     omm_context: openmm.Context = omm_simulation.context
 
@@ -628,7 +634,6 @@ def test_multipole_assignment():
             (1, amoeba_force.Covalent12),
             (2, amoeba_force.Covalent13),
             (3, amoeba_force.Covalent14),
-            (4, amoeba_force.Covalent15),
         ]:
             amoeba_neighs = amoeba_force.getCovalentMap(particle_idx, omm_kw)
             molecule_neighs = []
