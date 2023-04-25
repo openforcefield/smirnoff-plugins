@@ -667,15 +667,29 @@ def test_multipole_energies():
     library_charge.add_parameter(
         {"smirks": "[#9:1]", "charge1": -0.5 * unit.elementary_charge}
     )
+    library_charge.add_parameter(
+        {"smirks": "[#10:1]", "charge1": 0.0 * unit.elementary_charge}
+    )
 
-    multipole_handler = ff.get_parameter_handler("Multipole")
+    multipole_handler = ff.get_parameter_handler(
+        "Multipole",
+        {
+            "version": "0.3",
+            "method": "PME",
+            "polarization_type": "direct",
+        },
+    )
     multipole_handler.add_parameter({"smirks": "[#1:1]", "polarity": "0 * angstrom**3"})
-    multipole_handler.add_parameter({"smirks": "[#9:1]", "polarity": "1 * angstrom**3"})
+    multipole_handler.add_parameter({"smirks": "[#9:1]", "polarity": "0 * angstrom**3"})
+    multipole_handler.add_parameter(
+        {"smirks": "[#10:1]", "polarity": "1 * angstrom**3"}
+    )
 
     hf = Molecule.from_smiles("[F:1][H:2]")
     hf.generate_conformers(n_conformers=1)
     off_top = hf.to_topology()
-    off_top.add_molecule(hf)
+    neon = Molecule.from_smiles("[Ne]")
+    off_top.add_molecule(neon)
     off_top.box_vectors = [10, 10, 10] * unit.nanometer
 
     interchange = Interchange.from_smirnoff(ff, off_top)
@@ -691,15 +705,9 @@ def test_multipole_energies():
 
     multipole_force: openmm.AmoebaMultipoleForce = multipole_forces[0]
 
-    assert multipole_force.getNumMultipoles() == 4
+    assert multipole_force.getNumMultipoles() == 3
 
-    distances = [3.0, 3.5, 5.0, 10.0]
-    energies = [
-        10.826231956481934,
-        7.678676605224609,
-        3.257404327392578,
-        0.5253686904907227,
-    ] * unit.kilojoule_per_mole
+    distances = [0.3, 0.35, 0.4, 0.5, 0.6]
 
     omm_integrator: openmm.LangevinMiddleIntegrator = openmm.LangevinMiddleIntegrator(
         298, 1.0, 0.002
@@ -709,20 +717,31 @@ def test_multipole_energies():
     )
     omm_context: openmm.Context = omm_simulation.context
 
-    for energy, distance in zip(energies, distances):
+    for distance in distances:
         omm_context.setPositions(
             to_openmm(
                 [
                     [0, 0, 0],
-                    [-1, 0, 0],
+                    [-0.1, 0, 0],
                     [distance, 0, 0],
-                    [1 + distance, 0, 0],
                 ]
-                * unit.angstrom
+                * unit.nanometer
             )
         )
         omm_state: openmm.State = omm_context.getState(getEnergy=True)
-        assert from_openmm(omm_state.getPotentialEnergy()).m == pytest.approx(energy)
+        omm_dipoles = multipole_force.getInducedDipoles(omm_context)
+
+        coulomb_constant = 138.935018844  # kj/mol * nm / e**2
+        e_field = -0.5 / distance**2 + 0.5 / (distance + 0.1) ** 2
+        e_field *= coulomb_constant
+        polarizability = 1e-3 / coulomb_constant
+        induced_dipole = polarizability * e_field
+        predicted_energy = -0.5 * induced_dipole * e_field
+
+        assert omm_dipoles[2][0] == pytest.approx(induced_dipole, rel=1e-3)
+        assert from_openmm(omm_state.getPotentialEnergy()).m == pytest.approx(
+            predicted_energy, rel=1e-1
+        )
 
 
 def test_multipole_de6810_axilrod_options():
