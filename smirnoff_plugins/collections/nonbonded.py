@@ -456,7 +456,7 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
     """
     Collection for OpenMM's AmoebaMultipoleForce
 
-    At the moment this code grabs the partial charges from the NonbondedForce after all other handlers are loaded.
+    At the moment this code grabs the partial charges from the Electrostatics collection.
     Support is only provided for the partial charge and induced dipole portion of AmoebaMultipoleForce, all permanent
     dipoles and quadrupoles are set to zero.
 
@@ -530,7 +530,6 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
         particle_map: Dict[Union[int, "VirtualSiteKey"], int],
     ):
         # Sanity checks
-        # TODO: assert no virtual sites
         existing_multipole = [
             system.getForce(i)
             for i in range(system.getNumForces())
@@ -582,6 +581,7 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
         force.setMutualInducedMaxIterations(self.max_iter)
         force.setExtrapolationCoefficients([-0.154, 0.017, 0.658, 0.474])
 
+        # All forces are required to have a number of particles equal to the number of particles in the system
         for _ in range(topology.n_atoms):
             force.addMultipole(
                 0.0,
@@ -596,19 +596,24 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
                 0.0,
             )
 
+        # Copy partial charges from the electrostatics collection
         for key, val in charges.items():
             params = force.getMultipoleParameters(key.atom_indices[0])
             params[0] = val.m_as("elementary_charge")
             force.setMultipoleParameters(key.atom_indices[0], *params)
 
+        # Set the polarity and damping factor
         for key, val in self.key_map.items():
             params = force.getMultipoleParameters(key.atom_indices[0])
+            # the amoeba damping factor is polarity ** 1/6
             params[8] = self.potentials[val].parameters["polarity"].m_as(
                 "nanometer**3"
             ) ** (1 / 6)
+            # this is the actual polarity
             params[9] = self.potentials[val].parameters["polarity"].m_as("nanometer**3")
             force.setMultipoleParameters(key.atom_indices[0], *params)
 
+        # Set exceptions, note that amoeba handles exceptions completely different to every other force, see above
         for unique_mol_index, mol_map in topology.identical_molecule_groups.items():
             unique_mol = topology.molecule(unique_mol_index)
             # bonded2, bonded3, etc is a dict of molecule_atom_index -> list of molecule_atom_indexs 1 (2, 3) bonds away
