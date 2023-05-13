@@ -632,6 +632,7 @@ def test_multipole_assignment():
             (1, amoeba_force.Covalent12),
             (2, amoeba_force.Covalent13),
             (3, amoeba_force.Covalent14),
+            (4, amoeba_force.Covalent15),
         ]:
             amoeba_neighs = amoeba_force.getCovalentMap(particle_idx, omm_kw)
             molecule_neighs = []

@@ -580,6 +580,7 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
         force.setMutualInducedTargetEpsilon(self.target_epsilon)
         force.setMutualInducedMaxIterations(self.max_iter)
         force.setExtrapolationCoefficients([-0.154, 0.017, 0.658, 0.474])
+        force.setForceGroup(1)
 
         # All forces are required to have a number of particles equal to the number of particles in the system
         for _ in range(topology.n_atoms):
@@ -737,7 +738,6 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
                             atom1.molecule_atom_index
                         )
 
-            """
             # This code is not functional - otherwise you have inconsistent exceptions
             for atom1, atom2 in unique_mol.nth_degree_neighbors(4):
                 if atom1.molecule_atom_index not in bonded5:
@@ -775,7 +775,6 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
                         polarization_bonded[atom2.molecule_atom_index].append(
                             atom1.molecule_atom_index
                         )
-            """
 
             for mol_index, atom_map in mol_map:
                 base_atom_index = topology.molecule_atom_start_index(
