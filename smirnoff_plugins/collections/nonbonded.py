@@ -811,6 +811,7 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
                         atom_index, openmm.AmoebaMultipoleForce.Covalent14, atom_bonded2
                     )
 
+                """
                 for unique_atom_index, unique_bonded_list in bonded5.items():
                     atom_index = atom_map[unique_atom_index] + base_atom_index
                     atom_bonded2 = [
@@ -835,6 +836,7 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
                         openmm.AmoebaMultipoleForce.PolarizationCovalent11,
                         atom_pol_bonded,
                     )
+                """
 
     def modify_parameters(
         self,
