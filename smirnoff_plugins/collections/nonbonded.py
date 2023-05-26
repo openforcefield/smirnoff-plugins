@@ -400,7 +400,7 @@ class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
         particle_map: Dict[Union[int, "VirtualSiteKey"], int],
     ):
         force: CustomManyParticleForce = CustomManyParticleForce(3, self.expression)
-        force.setPermutationMode(CustomManyParticleForce.UniqueCentralParticle)
+        force.setPermutationMode(CustomManyParticleForce.SinglePermutation)
         force.addPerParticleParameter("c9")
 
         method_map = {
@@ -409,8 +409,6 @@ class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
             "no_cutoff": openmm.CustomManyParticleForce.NoCutoff,
         }
         force.setNonbondedMethod(method_map[self.method])
-
-        system.addForce(force)
 
         topology = interchange.topology
 
@@ -427,6 +425,32 @@ class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
                 ],
                 0,
             )
+
+        existing_nonbondeds = [
+            system.getForce(i)
+            for i in range(system.getNumForces())
+            if isinstance(system.getForce(i), openmm.NonbondedForce)
+        ]
+
+        existing_custom_nonbondeds = [
+            system.getForce(i)
+            for i in range(system.getNumForces())
+            if isinstance(system.getForce(i), openmm.CustomNonbondedForce)
+        ]
+
+        if len(existing_nonbondeds) > 0:
+            nonbonded: openmm.NonbondedForce = existing_nonbondeds[0]
+            for idx in range(nonbonded.getNumExceptions()):
+                i, j, _, _, _ = nonbonded.getExceptionParameters(idx)
+                force.addExclusion(i, j)
+
+        elif len(existing_custom_nonbondeds) > 0:
+            nonbonded: openmm.CustomNonbondedForce = existing_custom_nonbondeds[0]
+            for idx in nonbonded.getNumExclusions():
+                i, j = nonbonded.getExclusionParticles(idx)
+                force.addExclusion(i, j)
+
+        system.addForce(force)
 
     def modify_parameters(
         self,
