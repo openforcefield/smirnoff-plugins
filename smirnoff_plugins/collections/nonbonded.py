@@ -446,7 +446,7 @@ class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
 
         elif len(existing_custom_nonbondeds) > 0:
             nonbonded: openmm.CustomNonbondedForce = existing_custom_nonbondeds[0]
-            for idx in nonbonded.getNumExclusions():
+            for idx in range(nonbonded.getNumExclusions()):
                 i, j = nonbonded.getExclusionParticles(idx)
                 force.addExclusion(i, j)
 
