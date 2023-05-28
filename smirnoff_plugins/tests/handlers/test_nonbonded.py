@@ -482,7 +482,8 @@ def test_axilrodteller_energies():
     )
 
     axilrod_handler = ff.get_parameter_handler(
-        "AxilrodTeller", {"version": "0.3", "method": "cutoff_periodic", "cutoff": "2 * nanometer"}
+        "AxilrodTeller",
+        {"version": "0.3", "method": "cutoff_periodic", "cutoff": "2 * nanometer"},
     )
     axilrod_handler.add_parameter(
         {"smirks": "[#10:1]", "c9": 0.1 * unit.kilojoule_per_mole * unit.nanometer**9}
@@ -512,7 +513,7 @@ def test_axilrodteller_energies():
 
     distances = [3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 7.0]
     energies = [
-        - 2 * 0.1 / ((distance / 10) ** 6 * (2 * distance / 10) ** 3)
+        -2 * 0.1 / ((distance / 10) ** 6 * (2 * distance / 10) ** 3)
         for distance in distances
     ] * unit.kilojoule_per_mole
 

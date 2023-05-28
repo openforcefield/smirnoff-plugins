@@ -836,9 +836,9 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
                     )
 
                 """
-                
+
                 # This code is not functional - otherwise you have inconsistent exceptions
-                
+
                 for unique_atom_index, unique_bonded_list in bonded5.items():
                     atom_index = atom_map[unique_atom_index] + base_atom_index
                     atom_bonded2 = [
