@@ -409,6 +409,7 @@ class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
             "no_cutoff": openmm.CustomManyParticleForce.NoCutoff,
         }
         force.setNonbondedMethod(method_map[self.method])
+        force.setCutoffDistance(self.cutoff.m_as("nanometer"))
 
         topology = interchange.topology
 
