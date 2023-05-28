@@ -763,7 +763,6 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
                             atom1.molecule_atom_index
                         )
 
-            # This code is not functional - otherwise you have inconsistent exceptions
             for atom1, atom2 in unique_mol.nth_degree_neighbors(4):
                 if atom1.molecule_atom_index not in bonded5:
                     bonded5[atom1.molecule_atom_index] = [atom2.molecule_atom_index]
@@ -837,6 +836,9 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
                     )
 
                 """
+                
+                # This code is not functional - otherwise you have inconsistent exceptions
+                
                 for unique_atom_index, unique_bonded_list in bonded5.items():
                     atom_index = atom_map[unique_atom_index] + base_atom_index
                     atom_bonded2 = [
