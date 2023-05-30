@@ -513,7 +513,7 @@ def test_axilrodteller_energies():
 
     distances = [3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 7.0]
     energies = [
-        -2 * 0.1 / ((distance / 10) ** 6 * (2 * distance / 10) ** 3)
+        -2 / 3 * 0.1 / ((distance / 10) ** 6 * (2 * distance / 10) ** 3)
         for distance in distances
     ] * unit.kilojoule_per_mole
 
