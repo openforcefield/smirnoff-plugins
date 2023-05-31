@@ -140,7 +140,30 @@ force_field.to_file("buckingham-force-field.offxml")
 For a more detailed example of how to use this force field to actually simulate a box of water, see the 
 [`buckingham-water` example](examples/buckingham-water.py) in the `examples` directory.
 
+## Purpose and contributing
+
+This repository is intended to help nucleate scientific research in the force field community which the OpenFF consortium team doesn't have the resources to fully support, but where it can provide assistance to greatly reduce the barrier to others initiating new research.
+
+There is no expectation that researchers using OpenFF infrastructure or standards will contribute to this repo.
+Researchers who want to publish SMIRNOFF plugins elsewhere should find it straightforward to replicate the structure of this repo and the MIT license permits fully reuse of the code under its terms.
+(We intend to adopt a formal [Contributor License Agreement](https://opensource.org/faq/#contributor-agreements) throughout our ecosystem in the future to provide legal clarity, and we will seek the approval of former contributors if and when that happens.)
+
+This is not a "core package" like the OpenFF Toolkit or Interchange, and so the OpenFF Consortium does not take responsibility for correct, accurate, or performant behavior of the plugins in this repository. While OpenFF will help where it can, the responsibility for these behaviors ultimately lies with the plugin author. 
+
+The OpenFF infrastructure team handles versioning and packaging of this repo, and will perform technical maintenance to ensure that continuous integration testing runs (but not necessarily that it passes).
+The OpenFF infrastructure team may remove plugins or turn off tests in this repo if behavior is broken by upstream changes or bugs are reported. In such cases, pull requests fixing behavior are welcome.
+
+All plugin PRs require one approving review from a previous contributor to merge. 
+The reviewer pool consists of everyone who has authored a merged PR. 
+The PR submitter is responsible for recruiting a reviewer. 
+To ensure that reviewers are readily available, we encourage contributors to plan to review one more PR than they author.
+
+Since this package contains multiple independent plugins, semantic versioning is unable to convey the state of each contained plugin. 
+Instead, this package will use [Calendar Versioning](https://calver.org/), specifically `YYYY.MM.MICRO` (for example `2023.08.1`.)
+This should support the use of this repo in scholarly work, since there will be a particular calendar version that can be cited for reproducibility, and which will correspond to a single state of the plugin code. 
+Since different plugins may require different versions of dependencies, the conda package for this repo will be minimally pinned and researchers should plan to communicate versions of major dependencies used when providing instructions on how to reproduce results. 
+
 ## Copyright
 
-Copyright (c) 2021, Open Force Field Consortium
+Copyright (c) 2023, Open Force Field Consortium
  
