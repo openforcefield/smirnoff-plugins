@@ -148,7 +148,7 @@ There is no expectation that researchers using OpenFF infrastructure or standard
 Researchers who want to publish SMIRNOFF plugins elsewhere should find it straightforward to replicate the structure of this repo and the MIT license permits fully reuse of the code under its terms.
 (We may adopt a formal [Contributor License Agreement](https://opensource.org/faq/#contributor-agreements) in the future to provide legal clarity, but we will seek the approval of former contributors if and when that happens.)
 
-The OpenFF consortium does not guarantee correct, accurate, or performant behavior of the plugins in this repository. 
+This is not a "core package" like the OpenFF Toolkit or Interchange, and so the OpenFF Consortium does not take responsibility for correct, accurate, or performant behavior of the plugins in this repository. While OpenFF will help where it can, the responsibility for these behaviors ultimately lies with the plugin author. 
 
 Upon request by a contributor, the OpenFF infrastructure team is responsible for publishing releases of this repo, creating a conda package for each release, and performing technical maintenance to ensure that continuous integration tests continue running
 The OpenFF infrastructure team may remove plugins or turn off tests in this repo if behavior is broken by upstream changes or bugs are reported. In such cases, pull requests fixing behavior are welcome.
