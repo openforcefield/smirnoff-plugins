@@ -146,7 +146,6 @@ This repository is intended to help nucleate scientific research in the force fi
 
 There is no expectation that researchers using OpenFF infrastructure or standards will contribute to this repo.
 Researchers who want to publish SMIRNOFF plugins elsewhere should find it straightforward to replicate the structure of this repo and the MIT license permits fully reuse of the code under its terms.
-Likewise, there is no expectation that contributing to this repo comes with any formal obligation to OpenFF.
 (We may adopt a formal [Contributor License Agreement](https://opensource.org/faq/#contributor-agreements) in the future to provide legal clarity, but we will seek the approval of former contributors if and when that happens.)
 
 The OpenFF consortium does not guarantee correct, accurate, or performant behavior of the plugins in this repository. 
