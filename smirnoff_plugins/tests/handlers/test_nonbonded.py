@@ -511,9 +511,11 @@ def test_axilrodteller_energies():
 
     assert custom_manyp_force.getNumParticles() == 3
 
+    # Particles in a line
+
     distances = [3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 7.0]
     energies = [
-        -2 / 3 * 0.1 / ((distance / 10) ** 6 * (2 * distance / 10) ** 3)
+        -2 * 0.1 / ((distance / 10) ** 6 * (2 * distance / 10) ** 3)
         for distance in distances
     ] * unit.kilojoule_per_mole
 
@@ -529,6 +531,26 @@ def test_axilrodteller_energies():
         omm_context.setPositions(
             to_openmm(
                 [[0, 0, 0], [distance, 0, 0], [2 * distance, 0, 0]] * unit.angstrom
+            )
+        )
+        omm_state: openmm.State = omm_context.getState(getEnergy=True)
+        assert from_openmm(omm_state.getPotentialEnergy()).m == pytest.approx(energy)
+
+    # Particles in an equilateral triangle
+
+    distances = [3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 7.0]
+
+    energies = [0.1 * 11 / 8 * (r / 10) ** (-9) for r in distances]
+
+    for energy, distance in zip(energies, distances):
+        omm_context.setPositions(
+            to_openmm(
+                [
+                    [0, 0, 0],
+                    [distance, 0, 0],
+                    [distance / 2, distance * 3 ** (1 / 2) / 2, 0],
+                ]
+                * unit.angstrom
             )
         )
         omm_state: openmm.State = omm_context.getState(getEnergy=True)
