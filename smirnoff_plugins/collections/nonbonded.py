@@ -647,7 +647,6 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
             bonded2: dict[int, list[int]] = {}
             bonded3: dict[int, list[int]] = {}
             bonded4: dict[int, list[int]] = {}
-            bonded5: dict[int, list[int]] = {}
             polarization_bonded: dict[int, list[int]] = {}
 
             atom1: Atom
@@ -763,17 +762,6 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
                             atom1.molecule_atom_index
                         )
 
-            for atom1, atom2 in unique_mol.nth_degree_neighbors(4):
-                if atom1.molecule_atom_index not in bonded5:
-                    bonded5[atom1.molecule_atom_index] = [atom2.molecule_atom_index]
-                else:
-                    bonded5[atom1.molecule_atom_index].append(atom2.molecule_atom_index)
-
-                if atom2.molecule_atom_index not in bonded5:
-                    bonded5[atom2.molecule_atom_index] = [atom1.molecule_atom_index]
-                else:
-                    bonded5[atom2.molecule_atom_index].append(atom1.molecule_atom_index)
-
                 if atom1.molecule_atom_index not in polarization_bonded:
                     polarization_bonded[atom1.molecule_atom_index] = [
                         atom2.molecule_atom_index
@@ -834,36 +822,6 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
                     force.setCovalentMap(
                         atom_index, openmm.AmoebaMultipoleForce.Covalent14, atom_bonded2
                     )
-
-                """
-
-                # This code is not functional - otherwise you have inconsistent exceptions
-
-                for unique_atom_index, unique_bonded_list in bonded5.items():
-                    atom_index = atom_map[unique_atom_index] + base_atom_index
-                    atom_bonded2 = [
-                        atom_map[unique_bonded_index] + base_atom_index
-                        for unique_bonded_index in unique_bonded_list
-                    ]
-                    force.setCovalentMap(
-                        atom_index, openmm.AmoebaMultipoleForce.Covalent15, atom_bonded2
-                    )
-
-                for (
-                    unique_atom_index,
-                    unique_bonded_list,
-                ) in polarization_bonded.items():
-                    atom_index = atom_map[unique_atom_index] + base_atom_index
-                    atom_pol_bonded = [
-                        atom_map[unique_bonded_index] + base_atom_index
-                        for unique_bonded_index in unique_bonded_list
-                    ]
-                    force.setCovalentMap(
-                        atom_index,
-                        openmm.AmoebaMultipoleForce.PolarizationCovalent11,
-                        atom_pol_bonded,
-                    )
-                """
 
     def modify_parameters(
         self,
