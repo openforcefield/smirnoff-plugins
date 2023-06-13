@@ -585,6 +585,22 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
                 params[0] = 0
                 nonbonded_force.setParticleParameters(i, *params)
 
+        existing_custom_bonds = [
+            system.getForce(i)
+            for i in range(system.getNumForces())
+            if isinstance(system.getForce(i), openmm.CustomBondForce)
+            and system.getForce(i).getEnergyFunction() == "138.935456*qq/r"
+        ]
+
+        # Zero out charges in custom bond forces with a Coulomb's law expression to prevent double counting
+        # electrostatic interactions
+        custom_bond_force: openmm.CustomBondForce
+        for custom_bond_force in existing_custom_bonds:
+            for i in range(custom_bond_force.getNumBonds()):
+                params = custom_bond_force.getBondParameters(i)
+                params[2] = (0.0,)
+                custom_bond_force.setBondParameters(i, *params)
+
         topology: Topology = interchange.topology
         charges = interchange.collections["Electrostatics"].charges
 
