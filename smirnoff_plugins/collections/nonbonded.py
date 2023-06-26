@@ -821,22 +821,37 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
 
                 for unique_atom_index, unique_bonded_list in bonded3.items():
                     atom_index = atom_map[unique_atom_index] + base_atom_index
-                    atom_bonded2 = [
+                    atom_bonded3 = [
                         atom_map[unique_bonded_index] + base_atom_index
                         for unique_bonded_index in unique_bonded_list
                     ]
                     force.setCovalentMap(
-                        atom_index, openmm.AmoebaMultipoleForce.Covalent13, atom_bonded2
+                        atom_index, openmm.AmoebaMultipoleForce.Covalent13, atom_bonded3
                     )
 
                 for unique_atom_index, unique_bonded_list in bonded4.items():
                     atom_index = atom_map[unique_atom_index] + base_atom_index
-                    atom_bonded2 = [
+                    atom_bonded4 = [
                         atom_map[unique_bonded_index] + base_atom_index
                         for unique_bonded_index in unique_bonded_list
                     ]
                     force.setCovalentMap(
-                        atom_index, openmm.AmoebaMultipoleForce.Covalent14, atom_bonded2
+                        atom_index, openmm.AmoebaMultipoleForce.Covalent14, atom_bonded4
+                    )
+
+                for (
+                    unique_atom_index,
+                    unique_bonded_list,
+                ) in polarization_bonded.items():
+                    atom_index = atom_map[unique_atom_index] + base_atom_index
+                    atom_polarization_bonded = [
+                        atom_map[unique_bonded_index] + base_atom_index
+                        for unique_bonded_index in unique_bonded_list
+                    ]
+                    force.setCovalentMap(
+                        atom_index,
+                        openmm.AmoebaMultipoleForce.PolarizationCovalent11,
+                        atom_polarization_bonded,
                     )
 
     def modify_parameters(
