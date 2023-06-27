@@ -11,6 +11,9 @@ Currently, these include:
 
 * `DampedBuckingham68` - a damped version of the 6-8 buckingham potential proposed by [Tang and Toennies](https://aip.scitation.org/doi/10.1063/1.447150).
 * `DoubleExponential` - a double exponential van der Waals potential proposed by [Man et al](https://doi.org/10.1021/acs.jctc.0c01267)
+* `DampedExp6810` - a damped version of the 6-8-10 exponential repulsion proposed by [Tang and Toennies](https://aip.scitation.org/doi/10.1063/1.447150) with mixing rules from [Smith](https://doi.org/10.1103/PhysRevA.5.1708)
+* `Multipole` - an induced dipole polarizability potential implemented with the AmoebaMultipoleForce in OpenMM
+* `AxilrodTeller` - a three-body dispersion potential proposed by [Axilrod and Teller](https://doi.org/10.1063%2F1.1723844)
 
 ## Installation
 
