@@ -52,7 +52,7 @@ class _NonbondedPlugin(_SMIRNOFFNonbondedCollection):
     store_potentials = SMIRNOFFvdWCollection.store_potentials
 
     @classmethod
-    def create(  # type: ignore[override]
+    def create(
         cls: Type[T],
         parameter_handler: ParameterHandler,
         topology: Topology,
@@ -80,7 +80,7 @@ class _NonbondedPlugin(_SMIRNOFFNonbondedCollection):
         handler = cls(**_args)
 
         handler.store_matches(parameter_handler=parameter_handler, topology=topology)
-        handler.store_potentials(parameter_handler=parameter_handler)
+        handler.store_potentials(parameter_handler=parameter_handler)  # type: ignore[misc]
 
         return handler
 
