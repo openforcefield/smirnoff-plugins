@@ -24,7 +24,9 @@ class _NonbondedPlugin(_SMIRNOFFNonbondedCollection):
     is_plugin: bool = True
     acts_as: str = "vdW"
 
-    method: str = "cutoff"
+    periodic_method: str = "cutoff"
+    nonperiodic_method: str = "no-cutoff"
+
     mixing_rule: str = ""
     switch_width: FloatQuantity["angstrom"] = unit.Quantity(1.0, unit.angstrom)  # noqa
 
@@ -62,7 +64,8 @@ class _NonbondedPlugin(_SMIRNOFFNonbondedCollection):
             "scale_14": parameter_handler.scale14,
             "scale_15": parameter_handler.scale15,
             "cutoff": parameter_handler.cutoff,
-            "method": parameter_handler.method.lower(),
+            "periodic_method": parameter_handler.periodic_method.lower(),
+            "nonperiodic_method": parameter_handler.nonperiodic_method.lower(),
             "switch_width": parameter_handler.switch_width,
         }
 
