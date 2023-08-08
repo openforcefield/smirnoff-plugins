@@ -2,7 +2,7 @@ import logging
 import math
 import os
 import time
-from typing import List, Literal, Optional, Tuple
+from typing import Literal, Optional
 
 import numpy
 import openmm
@@ -199,7 +199,7 @@ def simulate(
         )
 
 
-def water_box(n_molecules: int) -> Tuple[Topology, openmm.unit.Quantity]:
+def water_box(n_molecules: int) -> tuple[Topology, openmm.unit.Quantity]:
     """
     Build a water box with the requested number of water molecules.
 
@@ -243,8 +243,8 @@ def water_box(n_molecules: int) -> Tuple[Topology, openmm.unit.Quantity]:
 
 
 def evaluate_water_energy_at_distances(
-    force_field: ForceField, distances: List[float]
-) -> List[float]:
+    force_field: ForceField, distances: list[float]
+) -> list[float]:
     """
     Evaluate the energy of a system of two water molecules at the requested distances using the provided force field.
 
