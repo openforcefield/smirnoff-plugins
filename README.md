@@ -5,7 +5,7 @@
 
 This framework provides parameter handlers that enable using custom force field functional forms in [SMIRNOFF](
 https://github.com/openforcefield/openff-toolkit/blob/master/The-SMIRNOFF-force-field-format.md) based force fields
-via the OpenFF toolkits built-in plugin system.
+via the OpenFF Toolkit's built-in plugin system.
 
 Currently, these include:
 
@@ -16,14 +16,14 @@ Currently, these include:
 
 This framework and its required dependencies can be installed using `conda`:
 
-```
-conda env create --name smirnoff-plugins --file devtools/conda-envs/test_env.yaml
+```shell
+mamba env create --name smirnoff-plugins --file devtools/conda-envs/test_env.yaml
 python setup.py develop
 ```
 
 ## Getting Started
 
-The custom parameter handlers are made available to the [OpenFF toolkit](https://github.com/openforcefield/openff-toolkit) 
+The custom parameter handlers are made available to the [OpenFF Toolkit](https://github.com/openforcefield/openff-toolkit)
 via the plugin system it exposes, and so in most cases users should be able to install this package and have the 
 different functional forms be automatically available.
 
@@ -31,17 +31,19 @@ Here we will demonstrate parameterizing a 4-site water model using a custom `Buc
 parameters presented by [Mohebifar and Rowley](https://aip.scitation.org/doi/10.1063/5.0014469) in their *'An 
 efficient and accurate model for water with an improved non-bonded potential'* publication.
 
-To begin with we create a new, empty force field object. We need to specify that the object should load plugins it 
+To begin with we create a new, empty `ForceField` object. We need to specify that the object should load plugins it 
 finds, including the custom handler shipped with this package.
 
 ```python
-from openff.toolkit.typing.engines.smirnoff import ForceField
+from openff.toolkit import ForceField
 force_field = ForceField(load_plugins=True)
 ```
 
 Add the standard bond and angle constraints to ensure the correct rigid geometry of the water model.
 
 ```python
+from openff.units import unit
+
 constraint_handler = force_field.get_parameter_handler("Constraints")
 # Keep the H-O bond length fixed at 0.9572 angstroms.
 constraint_handler.add_parameter(
@@ -56,8 +58,6 @@ constraint_handler.add_parameter(
 Next we will add a `vdW` parameter handler to the force field with all the water interactions zeroed out:
 
 ```python
-from simtk import unit
-
 vdw_handler = force_field.get_parameter_handler("vdW")
 vdw_handler.add_parameter(
     {
@@ -68,27 +68,16 @@ vdw_handler.add_parameter(
 )
 ```
 
-and a set of electrostatics handlers with all the charges zeroed out: 
+and a set of electrostatics handlers with all the charges zeroed out:
 
 ```python
 force_field.get_parameter_handler("Electrostatics")
-
-force_field.get_parameter_handler(
-    "ChargeIncrementModel",
-    {"version": "0.3", "partial_charge_method": "formal_charge"},
-)
 ```
-
-These extra handlers are currently required due to a quirk of how the OpenFF toolkit builds OpenMM systems which have 
-virtual sites present. Without this, the charges applied by the virtual site handler will likely be incorrect.
-See [openff-toolkit/issues/885](https://github.com/openforcefield/openff-toolkit/issues/885) for more information.
 
 Add the handler which will place a single virtual site on each oxygen atom in each water molecule. Here we have used the 
 virtual site handler to define the charges on the virtual site **and** the hydrogen atoms.
 
 ```python
-from openff.toolkit.typing.engines.smirnoff import ParameterList
-
 virtual_site_handler = force_field.get_parameter_handler("VirtualSites")
 virtual_site_handler.add_parameter(
     {
@@ -102,8 +91,6 @@ virtual_site_handler.add_parameter(
         "charge_increment3": 1.0552 * 0.5 * unit.elementary_charge,
     }
 )
-# Currently required due to OpenFF issue #884
-virtual_site_handler._parameters = ParameterList(virtual_site_handler._parameters)
 ```
 
 We are now finally ready to add the custom damped buckingham potential:
@@ -166,4 +153,3 @@ Since different plugins may require different versions of dependencies, the cond
 ## Copyright
 
 Copyright (c) 2023, Open Force Field Consortium
- 
