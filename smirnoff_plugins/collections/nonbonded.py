@@ -1,4 +1,6 @@
 import math
+from collections.abc import Iterable
+from typing import Literal, Type, TypeVar
 from typing import Dict, Iterable, Literal, Set, Tuple, Type, TypeVar, Union
 
 from openff.interchange import Interchange
@@ -16,6 +18,7 @@ from openff.toolkit.topology import Atom
 from openff.toolkit.typing.engines.smirnoff.parameters import ParameterHandler
 from openff.units import unit
 from openmm import CustomManyParticleForce, openmm
+from openff.units import Quantity, unit
 
 from smirnoff_plugins.handlers.nonbonded import (
     AxilrodTellerHandler,
@@ -32,9 +35,11 @@ class _NonbondedPlugin(_SMIRNOFFNonbondedCollection):
     is_plugin: bool = True
     acts_as: str = "vdW"
 
-    method: str = "cutoff"
+    periodic_method: str = "cutoff"
+    nonperiodic_method: str = "no-cutoff"
+
     mixing_rule: str = ""
-    switch_width: FloatQuantity["angstrom"] = unit.Quantity(1.0, unit.angstrom)  # noqa
+    switch_width: FloatQuantity["angstrom"] = Quantity(1.0, unit.angstrom)  # noqa
 
     @classmethod
     def check_openmm_requirements(cls: Type[T], combine_nonbonded_forces: bool):
@@ -70,7 +75,8 @@ class _NonbondedPlugin(_SMIRNOFFNonbondedCollection):
             "scale_14": parameter_handler.scale14,
             "scale_15": parameter_handler.scale15,
             "cutoff": parameter_handler.cutoff,
-            "method": parameter_handler.method.lower(),
+            "periodic_method": parameter_handler.periodic_method.lower(),
+            "nonperiodic_method": parameter_handler.nonperiodic_method.lower(),
             "switch_width": parameter_handler.switch_width,
         }
 
@@ -80,7 +86,7 @@ class _NonbondedPlugin(_SMIRNOFFNonbondedCollection):
         handler = cls(**_args)
 
         handler.store_matches(parameter_handler=parameter_handler, topology=topology)
-        handler.store_potentials(parameter_handler=parameter_handler)  # type: ignore[misc]
+        handler.store_potentials(parameter_handler=parameter_handler)
 
         return handler
 
@@ -139,7 +145,7 @@ class SMIRNOFFDampedBuckingham68Collection(_NonbondedPlugin):
         """Return an iterable of global parameters, i.e. not per-potential parameters."""
         return ("gamma",)
 
-    def pre_computed_terms(self) -> Dict[str, unit.Quantity]:
+    def pre_computed_terms(self) -> dict[str, Quantity]:
         """Return a dictionary of pre-computed terms for use in the expression."""
         d2 = self.gamma.m**2 * 0.5
         d3 = d2 * self.gamma.m * 0.3333333333
@@ -153,8 +159,8 @@ class SMIRNOFFDampedBuckingham68Collection(_NonbondedPlugin):
 
     def modify_parameters(
         self,
-        original_parameters: Dict[str, unit.Quantity],
-    ) -> Dict[str, float]:
+        original_parameters: dict[str, Quantity],
+    ) -> dict[str, float]:
         """Optionally modify parameters prior to their being stored in a force."""
         _units = {
             "a": unit.kilojoule_per_mole,
@@ -210,7 +216,7 @@ class SMIRNOFFDoubleExponentialCollection(_NonbondedPlugin):
         """Return an iterable of global parameters, i.e. not per-potential parameters."""
         return "alpha", "beta"
 
-    def pre_computed_terms(self) -> Dict[str, float]:
+    def pre_computed_terms(self) -> dict[str, float]:
         """Return a dictionary of pre-computed terms for use in the expression."""
         alpha_min_beta = self.alpha - self.beta
 
@@ -222,8 +228,8 @@ class SMIRNOFFDoubleExponentialCollection(_NonbondedPlugin):
 
     def modify_parameters(
         self,
-        original_parameters: Dict[str, unit.Quantity],
-    ) -> Dict[str, float]:
+        original_parameters: dict[str, Quantity],
+    ) -> dict[str, float]:
         """Optionally modify parameters prior to their being stored in a force."""
         # It's important that these keys are in the order of self.potential_parameters(),
         # consider adding a check somewhere that this is the case.

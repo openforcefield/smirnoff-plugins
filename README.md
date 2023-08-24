@@ -5,7 +5,7 @@
 
 This framework provides parameter handlers that enable using custom force field functional forms in [SMIRNOFF](
 https://github.com/openforcefield/openff-toolkit/blob/master/The-SMIRNOFF-force-field-format.md) based force fields
-via the OpenFF toolkits built-in plugin system.
+via the OpenFF Toolkit's built-in plugin system.
 
 Currently, these include:
 
@@ -19,14 +19,14 @@ Currently, these include:
 
 This framework and its required dependencies can be installed using `conda`:
 
-```
-conda env create --name smirnoff-plugins --file devtools/conda-envs/test_env.yaml
+```shell
+mamba env create --name smirnoff-plugins --file devtools/conda-envs/test_env.yaml
 python setup.py develop
 ```
 
 ## Getting Started
 
-The custom parameter handlers are made available to the [OpenFF toolkit](https://github.com/openforcefield/openff-toolkit) 
+The custom parameter handlers are made available to the [OpenFF Toolkit](https://github.com/openforcefield/openff-toolkit)
 via the plugin system it exposes, and so in most cases users should be able to install this package and have the 
 different functional forms be automatically available.
 
@@ -34,17 +34,19 @@ Here we will demonstrate parameterizing a 4-site water model using a custom `Buc
 parameters presented by [Mohebifar and Rowley](https://aip.scitation.org/doi/10.1063/5.0014469) in their *'An 
 efficient and accurate model for water with an improved non-bonded potential'* publication.
 
-To begin with we create a new, empty force field object. We need to specify that the object should load plugins it 
+To begin with we create a new, empty `ForceField` object. We need to specify that the object should load plugins it 
 finds, including the custom handler shipped with this package.
 
 ```python
-from openff.toolkit.typing.engines.smirnoff import ForceField
+from openff.toolkit import ForceField
 force_field = ForceField(load_plugins=True)
 ```
 
 Add the standard bond and angle constraints to ensure the correct rigid geometry of the water model.
 
 ```python
+from openff.units import unit
+
 constraint_handler = force_field.get_parameter_handler("Constraints")
 # Keep the H-O bond length fixed at 0.9572 angstroms.
 constraint_handler.add_parameter(
@@ -59,8 +61,6 @@ constraint_handler.add_parameter(
 Next we will add a `vdW` parameter handler to the force field with all the water interactions zeroed out:
 
 ```python
-from simtk import unit
-
 vdw_handler = force_field.get_parameter_handler("vdW")
 vdw_handler.add_parameter(
     {
@@ -71,27 +71,16 @@ vdw_handler.add_parameter(
 )
 ```
 
-and a set of electrostatics handlers with all the charges zeroed out: 
+and a set of electrostatics handlers with all the charges zeroed out:
 
 ```python
 force_field.get_parameter_handler("Electrostatics")
-
-force_field.get_parameter_handler(
-    "ChargeIncrementModel",
-    {"version": "0.3", "partial_charge_method": "formal_charge"},
-)
 ```
-
-These extra handlers are currently required due to a quirk of how the OpenFF toolkit builds OpenMM systems which have 
-virtual sites present. Without this, the charges applied by the virtual site handler will likely be incorrect.
-See [openff-toolkit/issues/885](https://github.com/openforcefield/openff-toolkit/issues/885) for more information.
 
 Add the handler which will place a single virtual site on each oxygen atom in each water molecule. Here we have used the 
 virtual site handler to define the charges on the virtual site **and** the hydrogen atoms.
 
 ```python
-from openff.toolkit.typing.engines.smirnoff import ParameterList
-
 virtual_site_handler = force_field.get_parameter_handler("VirtualSites")
 virtual_site_handler.add_parameter(
     {
@@ -105,8 +94,6 @@ virtual_site_handler.add_parameter(
         "charge_increment3": 1.0552 * 0.5 * unit.elementary_charge,
     }
 )
-# Currently required due to OpenFF issue #884
-virtual_site_handler._parameters = ParameterList(virtual_site_handler._parameters)
 ```
 
 We are now finally ready to add the custom damped buckingham potential:
@@ -143,7 +130,29 @@ force_field.to_file("buckingham-force-field.offxml")
 For a more detailed example of how to use this force field to actually simulate a box of water, see the 
 [`buckingham-water` example](examples/buckingham-water.py) in the `examples` directory.
 
+## Purpose and contributing
+
+This repository is intended to help nucleate scientific research in the force field community which the OpenFF consortium team doesn't have the resources to fully support, but where it can provide assistance to greatly reduce the barrier to others initiating new research.
+
+There is no expectation that researchers using OpenFF infrastructure or standards will contribute to this repo.
+Researchers who want to publish SMIRNOFF plugins elsewhere should find it straightforward to replicate the structure of this repo and the MIT license permits fully reuse of the code under its terms.
+(We intend to adopt a formal [Contributor License Agreement](https://opensource.org/faq/#contributor-agreements) throughout our ecosystem in the future to provide legal clarity, and we will seek the approval of former contributors if and when that happens.)
+
+This is not a "core package" like the OpenFF Toolkit or Interchange, and so the OpenFF Consortium does not take responsibility for correct, accurate, or performant behavior of the plugins in this repository. While OpenFF will help where it can, the responsibility for these behaviors ultimately lies with the plugin author. 
+
+The OpenFF infrastructure team handles versioning and packaging of this repo, and will perform technical maintenance to ensure that continuous integration testing runs (but not necessarily that it passes).
+The OpenFF infrastructure team may remove plugins or turn off tests in this repo if behavior is broken by upstream changes or bugs are reported. In such cases, pull requests fixing behavior are welcome.
+
+All plugin PRs require one approving review from a previous contributor to merge. 
+The reviewer pool consists of everyone who has authored a merged PR. 
+The PR submitter is responsible for recruiting a reviewer. 
+To ensure that reviewers are readily available, we encourage contributors to plan to review one more PR than they author.
+
+Since this package contains multiple independent plugins, semantic versioning is unable to convey the state of each contained plugin. 
+Instead, this package will use [Calendar Versioning](https://calver.org/), specifically `YYYY.MM.MICRO` (for example `2023.08.1`.)
+This should support the use of this repo in scholarly work, since there will be a particular calendar version that can be cited for reproducibility, and which will correspond to a single state of the plugin code. 
+Since different plugins may require different versions of dependencies, the conda package for this repo will be minimally pinned and researchers should plan to communicate versions of major dependencies used when providing instructions on how to reproduce results. 
+
 ## Copyright
 
-Copyright (c) 2021, Open Force Field Consortium
- 
+Copyright (c) 2023, Open Force Field Consortium

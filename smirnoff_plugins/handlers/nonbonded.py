@@ -24,8 +24,11 @@ class _CustomNonbondedHandler(ParameterHandler, abc.ABC):
     scale15 = ParameterAttribute(default=1.0, converter=float)
 
     cutoff = ParameterAttribute(default=9.0 * unit.angstroms, unit=unit.angstrom)
-    method = ParameterAttribute(
-        default="cutoff", converter=_allow_only(["cutoff", "PME"])
+    periodic_method = ParameterAttribute(
+        default="cutoff", converter=_allow_only(["cutoff"])
+    )
+    nonperiodic_method = ParameterAttribute(
+        default="no-cutoff", converter=_allow_only(["no-cutoff"])
     )
     switch_width = ParameterAttribute(default=1.0 * unit.angstroms, unit=unit.angstrom)
 
