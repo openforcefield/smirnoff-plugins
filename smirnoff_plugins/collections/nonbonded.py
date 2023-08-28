@@ -1,6 +1,4 @@
 import math
-from collections.abc import Iterable
-from typing import Literal, Type, TypeVar
 from typing import Dict, Iterable, Literal, Set, Tuple, Type, TypeVar, Union
 
 from openff.interchange import Interchange
@@ -16,9 +14,8 @@ from openff.models.types import FloatQuantity
 from openff.toolkit import Topology
 from openff.toolkit.topology import Atom
 from openff.toolkit.typing.engines.smirnoff.parameters import ParameterHandler
-from openff.units import unit
-from openmm import CustomManyParticleForce, openmm
 from openff.units import Quantity, unit
+from openmm import CustomManyParticleForce, openmm
 
 from smirnoff_plugins.handlers.nonbonded import (
     AxilrodTellerHandler,
@@ -332,27 +329,6 @@ class SMIRNOFFDampedExp6810Collection(_NonbondedPlugin):
             "c10": original_parameters["c10"].m_as(_units["c10"]),
         }
 
-    @classmethod
-    def create(  # type: ignore[override]
-        cls: Type[T],
-        parameter_handler: DampedExp6810Handler,
-        topology: Topology,
-    ) -> T:
-        handler = cls(
-            scale_13=parameter_handler.scale13,
-            scale_14=parameter_handler.scale14,
-            scale_15=parameter_handler.scale15,
-            cutoff=parameter_handler.cutoff,
-            method=parameter_handler.method.lower(),
-            switch_width=parameter_handler.switch_width,
-            force_at_zero=parameter_handler.force_at_zero,
-        )
-
-        handler.store_matches(parameter_handler=parameter_handler, topology=topology)
-        handler.store_potentials(parameter_handler=parameter_handler)
-
-        return handler
-
 
 class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
     """
@@ -370,11 +346,13 @@ class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
 
     is_plugin: bool = True
     acts_as: str = ""
-    method: str = "cutoff_periodic"
+    periodic_method: str = "cutoff-periodic"
+    nonperiodic_method: str = "cutoff-nonperiodic"
     cutoff: FloatQuantity["nanometer"] = unit.Quantity(0.9, unit.nanometer)  # noqa
 
     def store_potentials(self, parameter_handler: AxilrodTellerHandler):
-        self.method = parameter_handler.method
+        self.nonperiodic_method = parameter_handler.nonperiodic_method
+        self.periodic_method = parameter_handler.periodic_method
         self.cutoff = parameter_handler.cutoff
 
         for potential_key in self.key_map.values():
@@ -410,11 +388,14 @@ class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
         force.addPerParticleParameter("c9")
 
         method_map = {
-            "cutoff_periodic": openmm.CustomManyParticleForce.CutoffPeriodic,
-            "cutoff_nonperiodic": openmm.CustomManyParticleForce.CutoffNonPeriodic,
-            "no_cutoff": openmm.CustomManyParticleForce.NoCutoff,
+            "cutoff-periodic": openmm.CustomManyParticleForce.CutoffPeriodic,
+            "cutoff-nonperiodic": openmm.CustomManyParticleForce.CutoffNonPeriodic,
+            "no-cutoff": openmm.CustomManyParticleForce.NoCutoff,
         }
-        force.setNonbondedMethod(method_map[self.method])
+        if interchange.box is None:
+            force.setNonbondedMethod(method_map[self.nonperiodic_method])
+        else:
+            force.setNonbondedMethod(method_map[self.periodic_method])
         force.setCutoffDistance(self.cutoff.m_as("nanometer"))
 
         topology = interchange.topology
@@ -469,19 +450,6 @@ class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
 
         return {"c9": original_parameters["c9"].m_as(_units["c9"])}
 
-    @classmethod
-    def create(  # type: ignore[override]
-        cls: Type[T],
-        parameter_handler: AxilrodTellerHandler,
-        topology: Topology,
-    ) -> T:
-        handler = cls()
-
-        handler.store_matches(parameter_handler=parameter_handler, topology=topology)
-        handler.store_potentials(parameter_handler=parameter_handler)
-
-        return handler
-
 
 class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
     """
@@ -515,7 +483,8 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
 
     is_plugin: bool = True
 
-    method: str = "pme"
+    periodic_method: str = "pme"
+    nonperiodic_method: str = "no-cutoff"
     polarization_type: str = "extrapolated"
     cutoff: FloatQuantity["nanometer"] = unit.Quantity(0.9, unit.nanometer)  # noqa
     ewald_error_tolerance: FloatQuantity["dimensionless"] = 0.0001  # noqa
@@ -524,7 +493,8 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
     thole: FloatQuantity["dimensionless"] = 0.39  # noqa
 
     def store_potentials(self, parameter_handler: MultipoleHandler) -> None:
-        self.method = parameter_handler.method.lower()
+        self.nonperiodic_method = parameter_handler.nonperiodic_method.lower()
+        self.periodic_method = parameter_handler.periodic_method.lower()
         self.polarization_type = parameter_handler.polarization_type.lower()
         self.cutoff = parameter_handler.cutoff
         self.ewald_error_tolerance = parameter_handler.ewald_error_tolerance
@@ -612,10 +582,13 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
 
         # Set options
         method_map = {
-            "nocutoff": openmm.AmoebaMultipoleForce.NoCutoff,
+            "no-cutoff": openmm.AmoebaMultipoleForce.NoCutoff,
             "pme": openmm.AmoebaMultipoleForce.PME,
         }
-        force.setNonbondedMethod(method_map[self.method])
+        if interchange.box is None:
+            force.setNonbondedMethod(method_map[self.nonperiodic_method])
+        else:
+            force.setNonbondedMethod(method_map[self.periodic_method])
         polarization_type_map = {
             "mutual": openmm.AmoebaMultipoleForce.Mutual,
             "direct": openmm.AmoebaMultipoleForce.Direct,
@@ -869,16 +842,3 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
         _units = {"polarity": unit.nanometer**3}
 
         return {"polarity": original_parameters["polarity"].m_as(_units["polarity"])}
-
-    @classmethod
-    def create(  # type: ignore[override]
-        cls: Type[T],
-        parameter_handler: DampedExp6810Handler,
-        topology: Topology,
-    ) -> T:
-        handler = cls()
-
-        handler.store_matches(parameter_handler=parameter_handler, topology=topology)
-        handler.store_potentials(parameter_handler=parameter_handler)
-
-        return handler

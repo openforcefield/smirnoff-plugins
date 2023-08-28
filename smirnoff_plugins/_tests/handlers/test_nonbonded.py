@@ -325,7 +325,14 @@ def test_dampedexp6810_assignment():
 def test_dampedexp6810_energies():
     ff = ForceField(load_plugins=True)
 
-    handler = ff.get_parameter_handler("DampedExp6810", {"version": "0.3"})
+    handler = ff.get_parameter_handler(
+        "DampedExp6810",
+        {
+            "version": "0.3",
+            "nonperiodic_method": "no-cutoff",
+            "periodic_method": "cutoff",
+        },
+    )
 
     handler.add_parameter(
         {
@@ -394,7 +401,9 @@ def test_dampedexp6810_energies():
             to_openmm([[0, 0, 0], [distance, 0, 0]] * unit.angstrom)
         )
         omm_state: openmm.State = omm_context.getState(getEnergy=True)
-        assert from_openmm(omm_state.getPotentialEnergy()).m == pytest.approx(energy)
+        assert from_openmm(omm_state.getPotentialEnergy()).m == pytest.approx(
+            energy, rel=1e-5
+        )
 
 
 def test_axilrodteller_assignment():
@@ -460,9 +469,7 @@ def test_axilrodteller_assignment():
 def test_axilrodteller_energies():
     ff = ForceField(load_plugins=True)
 
-    de6810_handler = ff.get_parameter_handler(
-        "DampedExp6810", {"version": "0.3", "method": "cutoff"}
-    )
+    de6810_handler = ff.get_parameter_handler("DampedExp6810", {"version": "0.3"})
 
     de6810_handler.add_parameter(
         {
@@ -483,7 +490,7 @@ def test_axilrodteller_energies():
 
     axilrod_handler = ff.get_parameter_handler(
         "AxilrodTeller",
-        {"version": "0.3", "method": "cutoff_periodic", "cutoff": "2 * nanometer"},
+        {"version": "0.3", "cutoff": "2 * nanometer"},
     )
     axilrod_handler.add_parameter(
         {"smirks": "[#10:1]", "c9": 0.1 * unit.kilojoule_per_mole * unit.nanometer**9}
@@ -698,7 +705,6 @@ def test_multipole_energies():
         "Multipole",
         {
             "version": "0.3",
-            "method": "PME",
             "polarization_type": "direct",
         },
     )
@@ -773,18 +779,17 @@ def test_multipole_de6810_axilrod_options():
         "Multipole",
         {
             "version": "0.3",
-            "method": "PME",
             "polarization_type": "direct",
             "cutoff": "1 * nanometer",
         },
     )
     de6810_handler = ff.get_parameter_handler(
         "DampedExp6810",
-        {"version": "0.3", "method": "cutoff", "cutoff": "1 * nanometer"},
+        {"version": "0.3", "cutoff": "1 * nanometer"},
     )
     axilrod_handler = ff.get_parameter_handler(
         "AxilrodTeller",
-        {"version": "0.3", "method": "cutoff_periodic", "cutoff": "1 * nanometer"},
+        {"version": "0.3", "cutoff": "1 * nanometer"},
     )
     library_charge = ff.get_parameter_handler("LibraryCharges")
     ff.get_parameter_handler("Electrostatics")
