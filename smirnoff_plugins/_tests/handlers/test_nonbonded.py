@@ -355,7 +355,7 @@ def test_dampedexp6810_energies():
     neon.generate_conformers(n_conformers=1)
     off_top = neon.to_topology()
     off_top.add_molecule(neon)
-    off_top.box_vectors = [10, 10, 10] * unit.nanometer
+    off_top.box_vectors = None
 
     interchange = Interchange.from_smirnoff(ff, off_top)
     omm_system = interchange.to_openmm(combine_nonbonded_forces=False)
