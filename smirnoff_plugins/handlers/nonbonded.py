@@ -151,7 +151,7 @@ class AxilrodTellerHandler(ParameterHandler, abc.ABC):
     cutoff = ParameterAttribute(default=9.0 * unit.angstroms, unit=unit.angstrom)
     periodic_method = ParameterAttribute(
         default="cutoff-periodic",
-        converter=_allow_only(["no-cutoff", "cutoff-periodic"]),
+        converter=_allow_only(["cutoff-periodic"]),
     )
     nonperiodic_method = ParameterAttribute(
         default="cutoff-nonperiodic",
@@ -197,7 +197,7 @@ class MultipoleHandler(ParameterHandler, abc.ABC):
 
     cutoff = ParameterAttribute(default=0.9 * unit.nanometer, unit=unit.nanometer)
     periodic_method = ParameterAttribute(
-        default="PME", converter=_allow_only(["no-cutoff", "PME"])
+        default="PME", converter=_allow_only(["PME"])
     )
     nonperiodic_method = ParameterAttribute(
         default="no-cutoff", converter=_allow_only(["no-cutoff"])
