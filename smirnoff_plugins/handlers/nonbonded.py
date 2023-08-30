@@ -196,9 +196,7 @@ class MultipoleHandler(ParameterHandler, abc.ABC):
     ]
 
     cutoff = ParameterAttribute(default=0.9 * unit.nanometer, unit=unit.nanometer)
-    periodic_method = ParameterAttribute(
-        default="PME", converter=_allow_only(["PME"])
-    )
+    periodic_method = ParameterAttribute(default="PME", converter=_allow_only(["PME"]))
     nonperiodic_method = ParameterAttribute(
         default="no-cutoff", converter=_allow_only(["no-cutoff"])
     )
