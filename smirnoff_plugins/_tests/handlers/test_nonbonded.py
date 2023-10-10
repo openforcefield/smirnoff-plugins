@@ -402,7 +402,7 @@ def test_dampedexp6810_energies():
         )
         omm_state: openmm.State = omm_context.getState(getEnergy=True)
         assert from_openmm(omm_state.getPotentialEnergy()).m == pytest.approx(
-            energy, rel=1e-5
+            energy.m, rel=1e-5
         )
 
 
@@ -541,7 +541,7 @@ def test_axilrodteller_energies():
             )
         )
         omm_state: openmm.State = omm_context.getState(getEnergy=True)
-        assert from_openmm(omm_state.getPotentialEnergy()).m == pytest.approx(energy)
+        assert from_openmm(omm_state.getPotentialEnergy()).m == pytest.approx(energy.m)
 
     # Particles in an equilateral triangle
 
@@ -561,7 +561,7 @@ def test_axilrodteller_energies():
             )
         )
         omm_state: openmm.State = omm_context.getState(getEnergy=True)
-        assert from_openmm(omm_state.getPotentialEnergy()).m == pytest.approx(energy)
+        assert from_openmm(omm_state.getPotentialEnergy()).m == pytest.approx(energy.m)
 
 
 def test_multipole_assignment():
