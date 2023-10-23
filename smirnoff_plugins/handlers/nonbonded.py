@@ -1,10 +1,15 @@
 import abc
 
 from openff.toolkit.typing.engines.smirnoff.parameters import (
+    ElectrostaticsHandler,
+    LibraryChargeHandler,
     ParameterAttribute,
     ParameterHandler,
     ParameterType,
+    ToolkitAM1BCCHandler,
+    VirtualSiteHandler,
     _allow_only,
+    vdWHandler,
 )
 from openff.toolkit.utils.exceptions import IncompatibleParameterError
 from openff.units import unit
@@ -101,3 +106,105 @@ class DoubleExponentialHandler(_CustomNonbondedHandler):
     # as being unit-bearing even if that means using `unit.dimensionless`
     alpha = ParameterAttribute(default=18.7)
     beta = ParameterAttribute(default=3.3)
+
+
+class DampedExp6810Handler(_CustomNonbondedHandler):
+    """
+    Damped exponential-6-8-10 potential used in <https://doi.org/10.1021/acs.jctc.0c00837>
+
+    Essentially a Buckingham-6-8-10 potential with mixing rules from
+    <https://journals.aps.org/pra/abstract/10.1103/PhysRevA.5.1708>
+    and a physically reasonable parameter form from Stone, et al.
+    """
+
+    class DampedExp6810Type(ParameterType):
+        """A custom SMIRNOFF type for dampedexp6810 interactions."""
+
+        _VALENCE_TYPE = "Atom"
+        _ELEMENT_NAME = "Atom"
+
+        rho = ParameterAttribute(default=None, unit=unit.nanometers)
+        beta = ParameterAttribute(default=None, unit=unit.nanometers**-1)
+        c6 = ParameterAttribute(
+            default=None, unit=unit.kilojoule_per_mole * unit.nanometer**6
+        )
+        c8 = ParameterAttribute(
+            default=None, unit=unit.kilojoule_per_mole * unit.nanometer**8
+        )
+        c10 = ParameterAttribute(
+            default=None, unit=unit.kilojoule_per_mole * unit.nanometer**10
+        )
+
+    _TAGNAME = "DampedExp6810"
+    _INFOTYPE = DampedExp6810Type
+
+    force_at_zero = ParameterAttribute(
+        default=49.6144931952, unit=unit.kilojoules_per_mole * unit.nanometer**-1
+    )
+
+
+class AxilrodTellerHandler(ParameterHandler, abc.ABC):
+    """
+    Standard Axilrod-Teller potential from <https://aip.scitation.org/doi/10.1063/1.1723844>.
+    """
+
+    cutoff = ParameterAttribute(default=9.0 * unit.angstroms, unit=unit.angstrom)
+    periodic_method = ParameterAttribute(
+        default="cutoff-periodic",
+        converter=_allow_only(["cutoff-periodic"]),
+    )
+    nonperiodic_method = ParameterAttribute(
+        default="cutoff-nonperiodic",
+        converter=_allow_only(["no-cutoff", "cutoff-nonperiodic"]),
+    )
+
+    class AxilrodTellerType(ParameterType):
+        """A custom SMIRNOFF type for Axilrod-Teller interactions."""
+
+        _VALENCE_TYPE = "Atom"
+        _ELEMENT_NAME = "Atom"
+
+        c9 = ParameterAttribute(
+            default=None, unit=unit.kilojoule_per_mole * unit.nanometer**9
+        )
+
+    _TAGNAME = "AxilrodTeller"
+    _INFOTYPE = AxilrodTellerType
+
+
+class MultipoleHandler(ParameterHandler, abc.ABC):
+    """
+    Amoeba multipole handler from openmm
+    """
+
+    class MultipoleType(ParameterType):
+        """A custom SMIRNOFF type for multipole interactions."""
+
+        _VALENCE_TYPE = "Atom"
+        _ELEMENT_NAME = "Atom"
+
+        polarity = ParameterAttribute(default=None, unit=unit.nanometers**3)
+
+    _TAGNAME = "Multipole"
+    _INFOTYPE = MultipoleType
+    _DEPENDENCIES = [
+        VirtualSiteHandler,
+        vdWHandler,
+        ElectrostaticsHandler,
+        ToolkitAM1BCCHandler,
+        LibraryChargeHandler,
+    ]
+
+    cutoff = ParameterAttribute(default=0.9 * unit.nanometer, unit=unit.nanometer)
+    periodic_method = ParameterAttribute(default="PME", converter=_allow_only(["PME"]))
+    nonperiodic_method = ParameterAttribute(
+        default="no-cutoff", converter=_allow_only(["no-cutoff"])
+    )
+    polarization_type = ParameterAttribute(
+        default="extrapolated",
+        converter=_allow_only(["mutual", "direct", "extrapolated"]),
+    )
+    ewald_error_tolerance = ParameterAttribute(default=0.0001, converter=float)
+    thole = ParameterAttribute(default=0.39, converter=float)
+    target_epsilon = ParameterAttribute(default=0.00001, converter=float)
+    max_iter = ParameterAttribute(default=60, converter=int)
