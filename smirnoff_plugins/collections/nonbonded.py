@@ -232,6 +232,7 @@ class SMIRNOFFDampedBuckingham68Collection(_NonbondedPlugin):
     ):
         self._recombine_electrostatics_1_4(system)
 
+
 class SMIRNOFFDoubleExponentialCollection(_NonbondedPlugin):
     """Handler storing vdW potentials as produced by a SMIRNOFF force field."""
 
