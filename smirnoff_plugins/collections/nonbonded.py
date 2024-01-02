@@ -120,7 +120,7 @@ class _NonbondedPlugin(_SMIRNOFFNonbondedCollection):
             elif isinstance(force, openmm.NonbondedForce):
                 electrostatics_force = force
 
-        for exception_index in electrostatics_force.getNumExceptions():
+        for exception_index in range(electrostatics_force.getNumExceptions()):
             particle1, particle2, *_ = electrostatics_force.getExceptionParameters(
                 exception_index
             )
@@ -133,6 +133,8 @@ class _NonbondedPlugin(_SMIRNOFFNonbondedCollection):
                 particle1,
                 particle2,
                 charge1 * charge2 * self.scale_14,
+                0.0,
+                0.0,
             )
 
         system.removeForce(electrostatics_14_force_index)
