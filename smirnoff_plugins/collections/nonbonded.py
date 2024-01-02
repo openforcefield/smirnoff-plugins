@@ -222,6 +222,15 @@ class SMIRNOFFDampedBuckingham68Collection(_NonbondedPlugin):
             for name in self.potential_parameters()
         }
 
+    def modify_openmm_forces(
+        self,
+        interchange: Interchange,
+        system: openmm.System,
+        add_constrained_forces: bool,
+        constrained_pairs: Set[Tuple[int, ...]],
+        particle_map: Dict[Union[int, "VirtualSiteKey"], int],
+    ):
+        self._recombine_electrostatics_1_4(system)
 
 class SMIRNOFFDoubleExponentialCollection(_NonbondedPlugin):
     """Handler storing vdW potentials as produced by a SMIRNOFF force field."""
@@ -390,16 +399,6 @@ class SMIRNOFFDampedExp6810Collection(_NonbondedPlugin):
             "c8": original_parameters["c8"].m_as(_units["c8"]),
             "c10": original_parameters["c10"].m_as(_units["c10"]),
         }
-
-    def modify_openmm_forces(
-        self,
-        interchange: Interchange,
-        system: openmm.System,
-        add_constrained_forces: bool,
-        constrained_pairs: Set[Tuple[int, ...]],
-        particle_map: Dict[Union[int, "VirtualSiteKey"], int],
-    ):
-        self._recombine_electrostatics_1_4(system)
 
 
 class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
