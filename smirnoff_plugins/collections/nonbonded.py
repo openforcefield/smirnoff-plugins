@@ -104,7 +104,9 @@ class _NonbondedPlugin(_SMIRNOFFNonbondedCollection):
         """
         import re
 
-        for force_index, force in enumerate(system.getForces()):
+        for force_index in range(system.getNumForces()):
+            force = system.getForce(force_index)
+
             if isinstance(force, openmm.CustomBondForce):
                 if bool(
                     re.match(
