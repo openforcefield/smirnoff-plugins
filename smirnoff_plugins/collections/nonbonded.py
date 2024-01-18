@@ -102,20 +102,10 @@ class _NonbondedPlugin(_SMIRNOFFNonbondedCollection):
             The system to modify.
         See for context: https://github.com/openforcefield/openff-interchange/issues/863
         """
-        import re
 
-        for force_index in range(system.getNumForces()):
-            force = system.getForce(force_index)
-
-            if isinstance(force, openmm.CustomBondForce):
-                if bool(
-                    re.match(
-                        "138.*qq/r",
-                        force.getEnergyFunction(),
-                    )
-                ):
-                    electrostatics_14_force_index = force_index
-                    continue
+        for force_index, force in enumerate(system.getForces()):
+            if force.getName() == "Electrostatics 1-4 force":
+                electrostatics_14_force_index = force_index
 
             elif isinstance(force, openmm.NonbondedForce):
                 electrostatics_force = force
