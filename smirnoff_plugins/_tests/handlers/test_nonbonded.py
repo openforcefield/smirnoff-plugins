@@ -547,7 +547,9 @@ def test_axilrodteller_energies():
 
     distances = [3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 7.0]
 
-    energies = [0.1 * 11 / 8 * (r / 10) ** (-9) for r in distances] * unit.kilojoule_per_mole
+    energies = [
+        0.1 * 11 / 8 * (r / 10) ** (-9) for r in distances
+    ] * unit.kilojoule_per_mole
 
     for energy, distance in zip(energies, distances):
         omm_context.setPositions(

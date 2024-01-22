@@ -19,5 +19,6 @@ dependencies:
   - pytest
   - pytest-cov
   - pytest-xdist
+  - pytest-randomly
 
   - mypy =1.2

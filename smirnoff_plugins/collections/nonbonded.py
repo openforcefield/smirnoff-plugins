@@ -87,6 +87,48 @@ class _NonbondedPlugin(_SMIRNOFFNonbondedCollection):
 
         return handler
 
+    def _recombine_electrostatics_1_4(
+        self,
+        system: openmm.System,
+    ):
+        """
+        Re-combine the CustomBondForce holding 1-4 electrostatics interactions into the NonbondedForce holding the
+        pairwise intermolecule electrostatics interactions. Leave intact the CustomNonbondedForce and CustomBondForce
+        holding the intermolecular and intramolecular (1-4) vdW interactions.
+
+        Parameters
+        ----------
+        system : openmm.System
+            The system to modify.
+        See for context: https://github.com/openforcefield/openff-interchange/issues/863
+        """
+
+        for force_index, force in enumerate(system.getForces()):
+            if force.getName() == "Electrostatics 1-4 force":
+                electrostatics_14_force_index = force_index
+
+            elif isinstance(force, openmm.NonbondedForce):
+                electrostatics_force = force
+
+        for exception_index in range(electrostatics_force.getNumExceptions()):
+            particle1, particle2, *_ = electrostatics_force.getExceptionParameters(
+                exception_index
+            )
+
+            charge1 = electrostatics_force.getParticleParameters(particle1)[0]
+            charge2 = electrostatics_force.getParticleParameters(particle2)[0]
+
+            electrostatics_force.setExceptionParameters(
+                exception_index,
+                particle1,
+                particle2,
+                charge1 * charge2 * self.scale_14,
+                0.0,
+                0.0,
+            )
+
+        system.removeForce(electrostatics_14_force_index)
+
 
 class SMIRNOFFDampedBuckingham68Collection(_NonbondedPlugin):
     """Collection storing damped Buckingham potentials."""
@@ -170,6 +212,16 @@ class SMIRNOFFDampedBuckingham68Collection(_NonbondedPlugin):
             for name in self.potential_parameters()
         }
 
+    def modify_openmm_forces(
+        self,
+        interchange: Interchange,
+        system: openmm.System,
+        add_constrained_forces: bool,
+        constrained_pairs: Set[Tuple[int, ...]],
+        particle_map: Dict[Union[int, "VirtualSiteKey"], int],
+    ):
+        self._recombine_electrostatics_1_4(system)
+
 
 class SMIRNOFFDoubleExponentialCollection(_NonbondedPlugin):
     """Handler storing vdW potentials as produced by a SMIRNOFF force field."""
@@ -237,6 +289,16 @@ class SMIRNOFFDoubleExponentialCollection(_NonbondedPlugin):
                 original_parameters["epsilon"].m_as(_units["epsilon"]),
             ),
         }
+
+    def modify_openmm_forces(
+        self,
+        interchange: Interchange,
+        system: openmm.System,
+        add_constrained_forces: bool,
+        constrained_pairs: Set[Tuple[int, ...]],
+        particle_map: Dict[Union[int, "VirtualSiteKey"], int],
+    ):
+        self._recombine_electrostatics_1_4(system)
 
 
 class SMIRNOFFDampedExp6810Collection(_NonbondedPlugin):
