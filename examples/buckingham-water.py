@@ -96,13 +96,6 @@ def main():
 
     n_molecules = 216
 
-    conformer = molecule.conformers[0].m_as(unit.angstrom)
-
-    # Remove the conformers from the molecule to work around an Interchange bug,
-    # otherwise the hand-crafted positions defined later would be ignored.
-    # https://github.com/openforcefield/openff-interchange/issues/616
-    molecule._conformers = None
-
     topology: Topology = Topology.from_molecules([molecule] * n_molecules)
 
     # Create some coordinates (without the v-sites) and estimate box vectors.
@@ -114,7 +107,7 @@ def main():
     positions = openmm.unit.Quantity(
         numpy.vstack(
             [
-                (conformer + numpy.array([[x, y, z]]) * 2.5)
+                (molecule.conformers[0].m_as(unit.angstrom) + numpy.array([[x, y, z]]) * 2.5)
                 for x in range(math.ceil(n_molecules ** (1 / 3)))
                 for y in range(math.ceil(n_molecules ** (1 / 3)))
                 for z in range(math.ceil(n_molecules ** (1 / 3)))
