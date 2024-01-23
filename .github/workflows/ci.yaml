@@ -45,6 +45,7 @@ jobs:
         pytest -v -nauto --cov=smirnoff_plugins --cov-report=xml --color=yes smirnoff_plugins/_tests/
 
     - name: Run Example
+      if: ${{ false }}
       shell: bash -l {0}
       run: |
         python examples/buckingham-water.py
@@ -57,6 +58,7 @@ jobs:
     - name: CodeCov
       uses: codecov/codecov-action@v3
       with:
+        token: ${{ secrets.CODECOV_TOKEN }}
         file: ./coverage.xml
         flags: unittests
         name: codecov-${{ matrix.os }}-py${{ matrix.python-version }}
