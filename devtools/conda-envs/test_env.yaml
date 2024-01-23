@@ -11,7 +11,7 @@ dependencies:
   - numpy
   - openmm
   - openff-toolkit >=0.14.3
-  - openff-interchange ==0.3.13
+  - openff-interchange >=0.3.18
   - openff-utilities
   - openff-models
 

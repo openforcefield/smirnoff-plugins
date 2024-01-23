@@ -1,4 +1,5 @@
 import openmm
+from typing import Union
 import openmm.unit
 import pytest
 from openff.interchange import Interchange
@@ -405,6 +406,42 @@ def test_dampedexp6810_energies():
             energy.m, rel=1e-5
         )
 
+
+def test_14_recombining_energies_match(monkeypatch):
+    from smirnoff_plugins.collections.nonbonded import SMIRNOFFDoubleExponentialCollection
+    from openff.interchange.drivers.openmm import get_openmm_energies
+
+    def mock_modify_openmm_forces(
+        self,
+        interchange: Interchange,
+        system: openmm.System,
+        add_constrained_forces: bool,
+        constrained_pairs: set[tuple[int, ...]],
+        particle_map: dict[Union[int, "VirtualSiteKey"], int],
+    ):
+        # Existing method combines the 1-4 and main electrostatics forces
+        pass
+
+    ligand = Molecule.from_smiles("CC[C@@](/C=C\\Cl)(C=C)O")
+    ligand.generate_conformers(n_conformers=1)
+
+    de = ForceField("de-force-1.0.1.offxml", load_plugins=True)
+
+    combined_energies = get_openmm_energies(
+        interchange = de.create_interchange(ligand.to_topology()),
+        combine_nonbonded_forces=False,
+        detailed=True,
+    )
+
+    monkeypatch.setattr(SMIRNOFFDoubleExponentialCollection, "modify_openmm_forces", mock_modify_openmm_forces)
+
+    split_energies = get_openmm_energies(
+        interchange = de.create_interchange(ligand.to_topology()),
+        combine_nonbonded_forces=False,
+        detailed=True,
+    )
+
+    assert split_energies.total_energy == combined_energies.total_energy
 
 def test_axilrodteller_assignment():
     ff = ForceField(load_plugins=True)
