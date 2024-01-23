@@ -114,7 +114,6 @@ class _NonbondedPlugin(_SMIRNOFFNonbondedCollection):
 
             elif isinstance(force, openmm.NonbondedForce):
                 electrostatics_force = force
-        print(electrostatics_force.getNumExceptions())
 
         # The main force should keep exceptions between 1-2 and 1-3 neighbors,
         # which must not get intramolecular electrostatics added back. Since the

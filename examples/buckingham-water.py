@@ -7,7 +7,7 @@ import numpy
 import openmm.unit
 from openff.toolkit.topology import Molecule, Topology
 from openff.toolkit.typing.engines.smirnoff import ForceField, ParameterList
-from openff.units import unit
+from openff.units import Quantity, unit
 
 from smirnoff_plugins.utilities.openmm import simulate
 
@@ -60,7 +60,7 @@ def build_force_field() -> ForceField:
         "DampedBuckingham68",
         {
             "version": "0.3",
-            "gamma": unit.Quantity(35.8967 / unit.nanometer),
+            "gamma": Quantity(35.8967 / unit.nanometer),
         },
     )
     buckingham_handler.add_parameter(
@@ -94,7 +94,7 @@ def main():
     molecule: Molecule = Molecule.from_mapped_smiles("[H:2][O:1][H:3]")
     molecule.generate_conformers(n_conformers=1)
 
-    n_molecules = 256
+    n_molecules = 216
 
     conformer = molecule.conformers[0].m_as(unit.angstrom)
 
@@ -106,7 +106,7 @@ def main():
     topology: Topology = Topology.from_molecules([molecule] * n_molecules)
 
     # Create some coordinates (without the v-sites) and estimate box vectors.
-    topology.box_vectors = unit.Quantity(
+    topology.box_vectors = Quantity(
         numpy.eye(3) * math.ceil(n_molecules ** (1 / 3) + 2) * 2.5,
         unit.angstrom,
     )
