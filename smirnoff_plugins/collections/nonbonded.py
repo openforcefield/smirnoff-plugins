@@ -90,6 +90,7 @@ class _NonbondedPlugin(_SMIRNOFFNonbondedCollection):
     def _recombine_electrostatics_1_4(
         self,
         system: openmm.System,
+        scale_14: float = 0.5,
     ):
         """
         Re-combine the CustomBondForce holding 1-4 electrostatics interactions into the NonbondedForce holding the
@@ -98,33 +99,57 @@ class _NonbondedPlugin(_SMIRNOFFNonbondedCollection):
 
         Parameters
         ----------
-        system : openmm.System
+        system
             The system to modify.
+        scale_14
+            The factor by which to scale the 1-4 electrostatics interactions.
+
         See for context: https://github.com/openforcefield/openff-interchange/issues/863
         """
 
         for force_index, force in enumerate(system.getForces()):
             if force.getName() == "Electrostatics 1-4 force":
                 electrostatics_14_force_index = force_index
+                electrostatics_14_force = force
 
             elif isinstance(force, openmm.NonbondedForce):
                 electrostatics_force = force
+        print(electrostatics_force.getNumExceptions())
+
+        # The main force should keep exceptions between 1-2 and 1-3 neighbors,
+        # which must not get intramolecular electrostatics added back. Since the
+        # 1-4 vdW interactions are stored in a separate force, we must look up
+        # 1-4 pairs by checking their membership in the CustomBondForce
+        pairs = [
+            tuple(sorted(electrostatics_14_force.getBondParameters(index)[:2]))
+            for index in range(electrostatics_14_force.getNumBonds())
+        ]
 
         for exception_index in range(electrostatics_force.getNumExceptions()):
             particle1, particle2, *_ = electrostatics_force.getExceptionParameters(
                 exception_index
             )
 
+            if tuple(sorted([particle1, particle2])) not in pairs:
+                pass
+
             charge1 = electrostatics_force.getParticleParameters(particle1)[0]
             charge2 = electrostatics_force.getParticleParameters(particle2)[0]
 
+            # It is still useful to add the exception to the force, but set its charge to zero
+            effective_charge = (
+                charge1 * charge2 * scale_14
+                if tuple(sorted([particle1, particle2])) in pairs
+                else 0.0
+            )
+
             electrostatics_force.setExceptionParameters(
-                exception_index,
-                particle1,
-                particle2,
-                charge1 * charge2 * self.scale_14,
-                0.0,
-                0.0,
+                index=exception_index,
+                particle1=particle1,
+                particle2=particle2,
+                chargeProd=effective_charge,
+                sigma=0.0,
+                epsilon=0.0,
             )
 
         system.removeForce(electrostatics_14_force_index)
@@ -220,7 +245,9 @@ class SMIRNOFFDampedBuckingham68Collection(_NonbondedPlugin):
         constrained_pairs: Set[Tuple[int, ...]],
         particle_map: Dict[Union[int, "VirtualSiteKey"], int],
     ):
-        self._recombine_electrostatics_1_4(system)
+        self._recombine_electrostatics_1_4(
+            system, interchange["Electrostatics"].scale_14
+        )
 
 
 class SMIRNOFFDoubleExponentialCollection(_NonbondedPlugin):
@@ -298,7 +325,9 @@ class SMIRNOFFDoubleExponentialCollection(_NonbondedPlugin):
         constrained_pairs: Set[Tuple[int, ...]],
         particle_map: Dict[Union[int, "VirtualSiteKey"], int],
     ):
-        self._recombine_electrostatics_1_4(system)
+        self._recombine_electrostatics_1_4(
+            system, interchange["Electrostatics"].scale_14
+        )
 
 
 class SMIRNOFFDampedExp6810Collection(_NonbondedPlugin):

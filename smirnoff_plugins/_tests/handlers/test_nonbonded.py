@@ -1,5 +1,4 @@
 import openmm
-from typing import Union
 import openmm.unit
 import pytest
 from openff.interchange import Interchange
@@ -8,7 +7,7 @@ from openff.toolkit.topology import Molecule
 from openff.toolkit.typing.engines.smirnoff import ForceField
 from openff.units import unit
 from openff.units.openmm import from_openmm, to_openmm
-
+from openff.utilities import get_data_file_path
 from smirnoff_plugins.utilities.openmm import (
     evaluate_energy,
     evaluate_water_energy_at_distances,
@@ -408,16 +407,19 @@ def test_dampedexp6810_energies():
 
 
 def test_14_recombining_energies_match(monkeypatch):
-    from smirnoff_plugins.collections.nonbonded import SMIRNOFFDoubleExponentialCollection
     from openff.interchange.drivers.openmm import get_openmm_energies
+
+    from smirnoff_plugins.collections.nonbonded import (
+        SMIRNOFFDoubleExponentialCollection,
+    )
 
     def mock_modify_openmm_forces(
         self,
-        interchange: Interchange,
-        system: openmm.System,
-        add_constrained_forces: bool,
-        constrained_pairs: set[tuple[int, ...]],
-        particle_map: dict[Union[int, "VirtualSiteKey"], int],
+        interchange,
+        system,
+        add_constrained_forces,
+        constrained_pairs,
+        particle_map,
     ):
         # Existing method combines the 1-4 and main electrostatics forces
         pass
@@ -425,23 +427,32 @@ def test_14_recombining_energies_match(monkeypatch):
     ligand = Molecule.from_smiles("CC[C@@](/C=C\\Cl)(C=C)O")
     ligand.generate_conformers(n_conformers=1)
 
-    de = ForceField("de-force-1.0.1.offxml", load_plugins=True)
+    de = ForceField(
+        get_data_file_path("_tests/data/de-force-1.0.1.offxml", "smirnoff_plugins"),
+        load_plugins=True)
 
     combined_energies = get_openmm_energies(
-        interchange = de.create_interchange(ligand.to_topology()),
+        interchange=de.create_interchange(ligand.to_topology()),
         combine_nonbonded_forces=False,
         detailed=True,
     )
 
-    monkeypatch.setattr(SMIRNOFFDoubleExponentialCollection, "modify_openmm_forces", mock_modify_openmm_forces)
+    monkeypatch.setattr(
+        SMIRNOFFDoubleExponentialCollection,
+        "modify_openmm_forces",
+        mock_modify_openmm_forces,
+    )
 
     split_energies = get_openmm_energies(
-        interchange = de.create_interchange(ligand.to_topology()),
+        interchange=de.create_interchange(ligand.to_topology()),
         combine_nonbonded_forces=False,
         detailed=True,
     )
 
-    assert split_energies.total_energy == combined_energies.total_energy
+    assert split_energies.total_energy.m == pytest.approx(
+        combined_energies.total_energy.m
+    )
+
 
 def test_axilrodteller_assignment():
     ff = ForceField(load_plugins=True)
