@@ -429,7 +429,7 @@ def test_14_recombining_energies_match(monkeypatch):
 
     sage_interchange = ForceField("openff-2.1.0.offxml").create_interchange(ligand.to_topology())
     sage_interchange.minimize()
-    ligand.conformers = [sage_interchange.positions]
+    ligand._conformers = [sage_interchange.positions]
 
     de = ForceField(
         get_data_file_path("_tests/data/de-force-1.0.1.offxml", "smirnoff_plugins"),
