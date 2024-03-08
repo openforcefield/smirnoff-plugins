@@ -7,7 +7,7 @@ from openff.interchange.components.potentials import Potential
 from openff.interchange.components.toolkit import _validated_list_to_array
 from openff.interchange.models import PotentialKey
 import abc
-from smirnoff_plugins.handlers.vsites import DoubleExponentialVsiteHandler
+from smirnoff_plugins.handlers.vsites import DoubleExponentialVirtualSiteHandler
 
 
 class _VsitePlugin(SMIRNOFFVirtualSiteCollection, abc.ABC):
@@ -100,7 +100,7 @@ class SMIRNOFFDoubleExponentialVirtualSiteCollection(_VsitePlugin):
 
     @classmethod
     def allowed_parameter_handlers(cls):
-        return [DoubleExponentialVsiteHandler]
+        return [DoubleExponentialVirtualSiteHandler]
 
     @classmethod
     def specific_parameters(cls) -> list[str]:
