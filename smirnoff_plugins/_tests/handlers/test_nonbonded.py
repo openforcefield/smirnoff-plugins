@@ -429,7 +429,8 @@ def test_14_recombining_energies_match(monkeypatch):
 
     de = ForceField(
         get_data_file_path("_tests/data/de-force-1.0.1.offxml", "smirnoff_plugins"),
-        load_plugins=True)
+        load_plugins=True,
+    )
 
     combined_energies = get_openmm_energies(
         interchange=de.create_interchange(ligand.to_topology()),
