@@ -21,3 +21,7 @@ dependencies:
   - pytest-randomly
 
   - mypy
+
+  - pip:
+    - git+https://github.com/openforcefield/openff-toolkit.git@base-virtual-site-type
+    - git+https://github.com/openforcefield/openff-interchange.git@base-virtual-site-type
