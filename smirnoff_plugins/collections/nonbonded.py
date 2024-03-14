@@ -11,10 +11,9 @@ from openff.interchange.smirnoff._nonbonded import (
     _SMIRNOFFNonbondedCollection,
 )
 from openff.models.types import FloatQuantity
-from openff.toolkit import Topology
+from openff.toolkit import Quantity, Topology, unit
 from openff.toolkit.topology import Atom
 from openff.toolkit.typing.engines.smirnoff.parameters import ParameterHandler
-from openff.units import Quantity, unit
 from openmm import CustomManyParticleForce, openmm
 
 from smirnoff_plugins.handlers.nonbonded import (

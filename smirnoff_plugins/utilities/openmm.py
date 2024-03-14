@@ -10,8 +10,7 @@ import openmm.app
 import openmm.unit
 from openff.interchange import Interchange
 from openff.interchange.interop.openmm._positions import to_openmm_positions
-from openff.toolkit import ForceField, Molecule, Topology
-from openff.units import unit
+from openff.toolkit import ForceField, Molecule, Topology, unit
 from openff.units.openmm import ensure_quantity
 from openff.utilities import temporary_cd
 
