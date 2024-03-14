@@ -40,7 +40,10 @@ jobs:
       run: python -m pip install -e .
 
     - name: Run Tests
-      run: python -m pytest smirnoff_plugins/_tests/ -v -n logical cov=smirnoff_plugins --cov-report=xml
+      run: |
+        pytest -v -n logical smirnoff_plugins/_tests/ \
+        --cov=smirnoff_plugins --cov-report=xml \
+        --color=yes
 
     - name: Run Example
       if: ${{ false }}
