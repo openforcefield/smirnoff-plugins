@@ -2,12 +2,10 @@ import openmm
 import openmm.unit
 import pytest
 from openff.interchange import Interchange
-from openff.toolkit import Topology
-from openff.toolkit.topology import Molecule
-from openff.toolkit.typing.engines.smirnoff import ForceField
-from openff.units import unit
+from openff.toolkit import ForceField, Molecule, Topology, unit
 from openff.units.openmm import from_openmm, to_openmm
 from openff.utilities import get_data_file_path
+
 from smirnoff_plugins.utilities.openmm import (
     evaluate_energy,
     evaluate_water_energy_at_distances,
@@ -429,7 +427,8 @@ def test_14_recombining_energies_match(monkeypatch):
 
     de = ForceField(
         get_data_file_path("_tests/data/de-force-1.0.1.offxml", "smirnoff_plugins"),
-        load_plugins=True)
+        load_plugins=True,
+    )
 
     combined_energies = get_openmm_energies(
         interchange=de.create_interchange(ligand.to_topology()),
@@ -764,7 +763,7 @@ def test_multipole_energies():
         {"smirks": "[#10:1]", "polarity": "1 * angstrom**3"}
     )
 
-    hf = Molecule.from_smiles("[F:1][H:2]")
+    hf = Molecule.from_mapped_smiles("[F:1][H:2]")
     hf.generate_conformers(n_conformers=1)
     off_top = hf.to_topology()
     neon = Molecule.from_smiles("[Ne]")
