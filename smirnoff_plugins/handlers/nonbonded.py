@@ -1,7 +1,9 @@
 import abc
 
+from openff.toolkit import unit
 from openff.toolkit.typing.engines.smirnoff.parameters import (
     ElectrostaticsHandler,
+    IncompatibleParameterError,
     LibraryChargeHandler,
     ParameterAttribute,
     ParameterHandler,
@@ -11,8 +13,6 @@ from openff.toolkit.typing.engines.smirnoff.parameters import (
     _allow_only,
     vdWHandler,
 )
-from openff.toolkit.utils.exceptions import IncompatibleParameterError
-from openff.units import unit
 
 
 class _CustomNonbondedHandler(ParameterHandler, abc.ABC):

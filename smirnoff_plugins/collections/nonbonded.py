@@ -11,10 +11,9 @@ from openff.interchange.smirnoff._nonbonded import (
     _SMIRNOFFNonbondedCollection,
 )
 from openff.models.types import FloatQuantity
-from openff.toolkit import Topology
+from openff.toolkit import Quantity, Topology, unit
 from openff.toolkit.topology import Atom
 from openff.toolkit.typing.engines.smirnoff.parameters import ParameterHandler
-from openff.units import Quantity, unit
 from openmm import CustomManyParticleForce, openmm
 
 from smirnoff_plugins.handlers.nonbonded import (
@@ -363,10 +362,10 @@ class SMIRNOFFDampedExp6810Collection(_NonbondedPlugin):
         "rho = 0.5*(rho1+rho2);"
     )
 
-    force_at_zero: FloatQuantity[
-        "kilojoules_per_mole * nanometer**-1"  # noqa
-    ] = unit.Quantity(
-        49.6144931952, unit.kilojoules_per_mole * unit.nanometer**-1  # noqa
+    force_at_zero: FloatQuantity["kilojoules_per_mole * nanometer**-1"] = (  # noqa
+        unit.Quantity(
+            49.6144931952, unit.kilojoules_per_mole * unit.nanometer**-1  # noqa
+        )
     )
 
     @classmethod

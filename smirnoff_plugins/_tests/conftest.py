@@ -2,9 +2,8 @@ import math
 
 import numpy
 import pytest
-from openff.toolkit.topology import Molecule, Topology
-from openff.toolkit.typing.engines.smirnoff import ForceField, ParameterList
-from openff.units import unit
+from openff.toolkit import ForceField, Molecule, Topology, unit
+from openff.toolkit.typing.engines.smirnoff.parameters import ParameterList
 
 
 @pytest.fixture()
