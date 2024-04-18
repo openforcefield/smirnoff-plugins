@@ -10,7 +10,7 @@ dependencies:
   - numpy
   - openmm
   - openff-toolkit =0.16
-  - openff-interchange
+  - openff-interchange ~=0.3.25
   - openff-utilities
   - openff-models
 

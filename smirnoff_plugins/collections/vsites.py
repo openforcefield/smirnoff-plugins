@@ -1,5 +1,6 @@
 from openff.interchange.smirnoff._virtual_sites import SMIRNOFFVirtualSiteCollection
 from openff.toolkit.typing.engines.smirnoff.parameters import (
+    _lookup_virtual_site_parameter,
     VirtualSiteHandler,
 )
 
@@ -54,9 +55,13 @@ class _VsitePlugin(SMIRNOFFVirtualSiteCollection, abc.ABC):
             self.potentials = dict()
         for virtual_site_key, potential_key in self.key_map.items():
             # TODO: This logic assumes no spaces in the SMIRKS pattern, name or `match` attribute
-            smirks, _, _ = potential_key.id.split(" ")
-            parameter = parameter_handler.parameters[smirks]
-
+            smirks, name, match = potential_key.id.split(" ")
+            parameter = _lookup_virtual_site_parameter(
+                parameter_handler=parameter_handler,
+                smirks=smirks,
+                name=name,
+                match=match,
+            )
             virtual_site_potential = Potential(
                 parameters={
                     "distance": parameter.distance,
