@@ -22,7 +22,7 @@ def main():
     molecule = Molecule.from_mapped_smiles("[H:2][O:1][H:3]")
     molecule.generate_conformers(n_conformers=1)
 
-    n_molecules = 1  # 216
+    n_molecules = 216
 
     topology: Topology = Topology.from_molecules([molecule] * n_molecules)
 
