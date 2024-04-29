@@ -1,13 +1,16 @@
-from openff.interchange.smirnoff._virtual_sites import SMIRNOFFVirtualSiteCollection
-from openff.toolkit.typing.engines.smirnoff.parameters import (
-    _lookup_virtual_site_parameter,
-    VirtualSiteHandler,
-)
+import abc
 
 from openff.interchange.components.potentials import Potential
 from openff.interchange.components.toolkit import _validated_list_to_array
+from openff.interchange.exceptions import InvalidParameterHandlerError
 from openff.interchange.models import PotentialKey
-import abc
+from openff.interchange.smirnoff._nonbonded import SMIRNOFFElectrostaticsCollection
+from openff.interchange.smirnoff._virtual_sites import (
+    SMIRNOFFVirtualSiteCollection,
+    _lookup_virtual_site_parameter,
+)
+from openff.toolkit.typing.engines.smirnoff.parameters import VirtualSiteHandler
+
 from smirnoff_plugins.handlers.vsites import DoubleExponentialVirtualSiteHandler
 
 
@@ -36,7 +39,9 @@ class _VsitePlugin(SMIRNOFFVirtualSiteCollection, abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def specific_parameters(cls) -> list[str]: ...
+    def specific_parameters(cls) -> list[str]:
+        """Parameters specific to this type of virtual site."""
+        ...
 
     @classmethod
     @abc.abstractmethod
@@ -47,8 +52,8 @@ class _VsitePlugin(SMIRNOFFVirtualSiteCollection, abc.ABC):
     def store_potentials(  # type: ignore[override]
         self,
         parameter_handler: VirtualSiteHandler,
-        vdw_handler,
-        electrostatics_handler,
+        vdw_collection,
+        electrostatics_collection: SMIRNOFFElectrostaticsCollection,
     ) -> None:
         """Store VirtualSite-specific parameter-like data."""
         if self.potentials:
@@ -81,8 +86,8 @@ class _VsitePlugin(SMIRNOFFVirtualSiteCollection, abc.ABC):
                     for parameter_name in self.specific_parameters()
                 )
             )
-            vdw_handler.key_map[virtual_site_key] = vdw_key
-            vdw_handler.potentials[vdw_key] = vdw_potential
+            vdw_collection.key_map[virtual_site_key] = vdw_key
+            vdw_collection.potentials[vdw_key] = vdw_potential
 
             electrostatics_key = PotentialKey(
                 id=potential_key.id,
@@ -95,10 +100,41 @@ class _VsitePlugin(SMIRNOFFVirtualSiteCollection, abc.ABC):
                     ),
                 },
             )
-            electrostatics_handler.key_map[virtual_site_key] = electrostatics_key
-            electrostatics_handler.potentials[electrostatics_key] = (
+            electrostatics_collection.key_map[virtual_site_key] = electrostatics_key
+            electrostatics_collection.potentials[electrostatics_key] = (
                 electrostatics_potential
             )
+
+    @classmethod
+    def create(
+        cls,
+        parameter_handler,
+        topology,
+        vdw_collection,
+        electrostatics_collection,
+    ):
+        """
+        Create a SMIRNOFFCOllection from toolkit data.
+
+        """
+        if type(parameter_handler) not in cls.allowed_parameter_handlers():
+            raise InvalidParameterHandlerError(type(parameter_handler))
+
+        collection = cls()
+
+        if hasattr(collection, "fractional_bondorder_method"):
+            raise NotImplementedError(
+                "Plugins with fractional bond order not yet supported"
+            )
+
+        collection.store_matches(parameter_handler=parameter_handler, topology=topology)
+        collection.store_potentials(
+            parameter_handler=parameter_handler,
+            vdw_collection=vdw_collection,
+            electrostatics_collection=electrostatics_collection,
+        )
+
+        return collection
 
 
 class SMIRNOFFDoubleExponentialVirtualSiteCollection(_VsitePlugin):

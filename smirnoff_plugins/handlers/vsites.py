@@ -1,8 +1,7 @@
 from openff.toolkit.typing.engines.smirnoff.parameters import (
-    _BaseVirtualSiteType,
     ParameterAttribute,
     VirtualSiteHandler,
-    _validate_units,
+    _BaseVirtualSiteType,
 )
 from openff.units import unit
 
