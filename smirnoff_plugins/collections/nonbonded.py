@@ -230,6 +230,16 @@ class SMIRNOFFDampedBuckingham68Collection(_NonbondedPlugin):
             "c6": unit.kilojoule_per_mole * unit.nanometer**6,
             "c8": unit.kilojoule_per_mole * unit.nanometer**8,
         }
+
+        if "sigma" in original_parameters and "epsilon" in original_parameters:
+            if original_parameters.get("epsilon").m == 0.0:
+                original_parameters = {
+                    key: val * _units[key]
+                    for key, val in zip(
+                        self.potential_parameters(), self.default_parameter_values()
+                    )
+                }
+
         return {
             name: math.sqrt(original_parameters[name].m_as(_units[name]))
             for name in self.potential_parameters()
