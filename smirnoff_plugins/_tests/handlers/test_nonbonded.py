@@ -1013,5 +1013,13 @@ def test_non_lj_on_virtual_site(ideal_water_force_field):
     # calculated by hand (kJ / mol), at r_min the energy should be epsilon
     ref_values = [457.0334854, -0.635968, -0.4893932627]
 
+    failures = list()
+    reported_energies = list()
+
     for i, energy in enumerate(energies):
-        assert energy == pytest.approx(ref_values[i])
+        if energy != pytest.approx(ref_values[i]):
+            failures.append(i)
+            reported_energies.append(energy)
+
+    if len(failures) > 0:
+        pytest.fail(f"failures at indices {failures} with energies {reported_energies}")

@@ -322,11 +322,15 @@ def evaluate_water_energy_at_distances(
             openmm.unit.angstrom,
         )
 
+        if n_positions_per_water == 4:
+            new_positions = new_positions[[0, 1, 2, 4, 5, 6, 3, 7]]
+
         simulation.context.setPositions(
             new_positions.value_in_unit(openmm.unit.nanometer)
         )
         simulation.context.computeVirtualSites()
         state = simulation.context.getState(getEnergy=True)
+
         energies.append(
             state.getPotentialEnergy().value_in_unit(openmm.unit.kilojoule_per_mole)
         )
