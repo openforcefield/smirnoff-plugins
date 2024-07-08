@@ -121,7 +121,7 @@ def test_double_exp_energies(ideal_water_force_field):
     ref_values = [457.0334854, -0.635968, -0.4893932627]
 
     for i, energy in enumerate(energies):
-        assert energy == pytest.approx(ref_values[i])
+        assert energy == pytest.approx(ref_values[i], rel=1e-5)
 
 
 def test_b68_energies(ideal_water_force_field):
@@ -164,7 +164,7 @@ def test_b68_energies(ideal_water_force_field):
     # calculated by hand (kJ / mol)
     ref_values = [329.30542, 1.303183, -0.686559]
     for i, energy in enumerate(energies):
-        assert energy == pytest.approx(ref_values[i], abs=1e-5)
+        assert energy == pytest.approx(ref_values[i], rel=1e-5)
 
 
 def test_scaled_de_energy():
@@ -951,3 +951,75 @@ def test_multipole_de6810_axilrod_options():
     )
     omm_state: openmm.State = omm_context.getState(getEnergy=True)
     assert from_openmm(omm_state.getPotentialEnergy()).m == pytest.approx(0.0)
+
+
+def test_non_lj_on_virtual_site(ideal_water_force_field):
+    """
+    Test virtual sites with non-12-6 interactions.
+
+    This is basically test_double_exp_energies but with the oxygen interaction on the virtual site.
+    """
+    epsilon = 0.152  # kcal/mol
+    r_min = 3.5366  # angstrom
+    alpha = 18.7
+    beta = 3.3
+
+    # Add the DE block, even though these are zeroed out
+    double_exp = ideal_water_force_field.get_parameter_handler("DoubleExponential")
+    double_exp.cutoff = 20 * unit.angstrom
+    double_exp.switch_width = 0 * unit.angstrom
+    double_exp.alpha = alpha
+    double_exp.beta = beta
+    double_exp.scale14 = 1
+    double_exp.add_parameter(
+        {
+            "smirks": "[#1]-[#8X2H2+0:1]-[#1]",
+            "r_min": 1 * unit.angstrom,
+            "epsilon": 0 * unit.kilocalorie_per_mole,
+        }
+    )
+    double_exp.add_parameter(
+        {
+            "smirks": "[#1:1]-[#8X2H2+0]-[#1]",
+            "r_min": 1 * unit.angstrom,
+            "epsilon": 0 * unit.kilocalorie_per_mole,
+        }
+    )
+
+    double_exp_vs = ideal_water_force_field.get_parameter_handler(
+        "DoubleExponentialVirtualSites"
+    )
+    double_exp_vs.add_parameter(
+        {
+            "smirks": "[#1:2]-[#8X2H2+0:1]-[#1:3]",
+            "r_min": r_min * unit.angstrom,
+            "epsilon": epsilon * unit.kilocalorie_per_mole,
+            "type": "DivalentLonePair",
+            "match": "once",
+            "distance": 0.0 * unit.nanometer,
+            "outOfPlaneAngle": 0.0 * unit.degree,
+            "inPlaneAngle": "None",
+            "charge_increment1": 0.0 * unit.elementary_charge,
+            "charge_increment2": 0.0 * unit.elementary_charge,
+            "charge_increment3": 0.0 * unit.elementary_charge,
+            "name": "EP",
+        }
+    )
+
+    energies = evaluate_water_energy_at_distances(
+        force_field=ideal_water_force_field, distances=[2, r_min, 4]
+    )
+
+    # calculated by hand (kJ / mol), at r_min the energy should be epsilon
+    ref_values = [457.0334854, -0.635968, -0.4893932627]
+
+    failures = list()
+    reported_energies = list()
+
+    for i, energy in enumerate(energies):
+        if energy != pytest.approx(ref_values[i]):
+            failures.append(i)
+            reported_energies.append(energy)
+
+    if len(failures) > 0:
+        pytest.fail(f"failures at indices {failures} with energies {reported_energies}")

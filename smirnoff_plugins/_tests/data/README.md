@@ -1,0 +1,1 @@
+`de-vdw-1.0.1.offxml`: Taken from `de-force-1.0.1.offxml`, but with the double exponential interaction of oxygen water shifted to the virtual site. This is probably bogus for modeling water, but useful for testing that virtual sites can store custom vdW interactions.

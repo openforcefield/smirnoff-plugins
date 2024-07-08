@@ -9,8 +9,8 @@ dependencies:
     # Core dependencies
   - numpy
   - openmm
-  - openff-toolkit =0.15
-  - openff-interchange
+  - openff-toolkit =0.16
+  - openff-interchange ~=0.3.25
   - openff-utilities
   - openff-models
 
