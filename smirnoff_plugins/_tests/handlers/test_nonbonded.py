@@ -996,12 +996,12 @@ def test_non_lj_on_virtual_site(ideal_water_force_field):
             "epsilon": epsilon * unit.kilocalorie_per_mole,
             "type": "DivalentLonePair",
             "match": "once",
-            "distance": -0.010743 * unit.nanometer,
+            "distance": 0.0 * unit.nanometer,
             "outOfPlaneAngle": 0.0 * unit.degree,
             "inPlaneAngle": "None",
             "charge_increment1": 0.0 * unit.elementary_charge,
-            "charge_increment2": 0.53254 * unit.elementary_charge,
-            "charge_increment3": 0.53254 * unit.elementary_charge,
+            "charge_increment2": 0.0 * unit.elementary_charge,
+            "charge_increment3": 0.0 * unit.elementary_charge,
             "name": "EP",
         }
     )
