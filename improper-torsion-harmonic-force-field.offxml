@@ -1,0 +1,5 @@
+<SMIRNOFF version="0.3">
+    <ImproperTorsions version="0.3">
+        <Improper smirks="[*:1]-[*:2](~[*:3])~[*:4]" id="it1" k="5.0 * kilocalories_per_mole" length_eq="1.5 * angstrom" />
+       </ImproperTorsions>
+</SMIRNOFF>
