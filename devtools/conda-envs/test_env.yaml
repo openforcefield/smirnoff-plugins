@@ -12,7 +12,6 @@ dependencies:
   - openff-toolkit =0.16
   - openff-interchange ~=0.4.0rc1
   - openff-utilities
-  - openff-models
 
     # Testing
   - pytest

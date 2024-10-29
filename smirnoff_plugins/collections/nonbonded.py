@@ -10,12 +10,17 @@ from openff.interchange.smirnoff._nonbonded import (
     SMIRNOFFvdWCollection,
     _SMIRNOFFNonbondedCollection,
 )
-from openff.models.types import FloatQuantity
 from openff.toolkit import Quantity, Topology, unit
 from openff.toolkit.topology import Atom
 from openff.toolkit.typing.engines.smirnoff.parameters import ParameterHandler
 from openmm import CustomManyParticleForce, openmm
 
+from smirnoff_plugins._types import (
+    _DimensionlessQuantity,
+    _DistanceQuantity,
+    _InverseDistanceQuantity,
+    _kJMolNanometerQuantity,
+)
 from smirnoff_plugins.handlers.nonbonded import (
     AxilrodTellerHandler,
     DampedBuckingham68Handler,
@@ -35,7 +40,7 @@ class _NonbondedPlugin(_SMIRNOFFNonbondedCollection):
     nonperiodic_method: str = "no-cutoff"
 
     mixing_rule: str = ""
-    switch_width: FloatQuantity["angstrom"] = Quantity(1.0, unit.angstrom)  # noqa
+    switch_width: _DistanceQuantity = Quantity("1.0 angstrom")
 
     @classmethod
     def check_openmm_requirements(cls: Type[T], combine_nonbonded_forces: bool):
@@ -180,7 +185,7 @@ class SMIRNOFFDampedBuckingham68Collection(_NonbondedPlugin):
         "mdr=-gamma*r;"
     )
 
-    gamma: FloatQuantity["nanometer ** -1"]  # noqa
+    gamma: _InverseDistanceQuantity
 
     @classmethod
     def allowed_parameter_handlers(cls) -> Iterable[Type[ParameterHandler]]:
@@ -272,8 +277,8 @@ class SMIRNOFFDoubleExponentialCollection(_NonbondedPlugin):
         "CombinedR=r_min1+r_min2;"
     )
 
-    alpha: FloatQuantity["dimensionless"]  # noqa
-    beta: FloatQuantity["dimensionless"]  # noqa
+    alpha: _DimensionlessQuantity
+    beta: _DimensionlessQuantity
 
     @classmethod
     def allowed_parameter_handlers(cls) -> Iterable[Type[ParameterHandler]]:
@@ -372,10 +377,9 @@ class SMIRNOFFDampedExp6810Collection(_NonbondedPlugin):
         "rho = 0.5*(rho1+rho2);"
     )
 
-    force_at_zero: FloatQuantity["kilojoules_per_mole * nanometer**-1"] = (  # noqa
-        unit.Quantity(
-            49.6144931952, unit.kilojoules_per_mole * unit.nanometer**-1  # noqa
-        )
+    force_at_zero: _kJMolNanometerQuantity = Quantity(
+        49.6144931952,
+        "kilojoules_per_mole * nanometer**-1",
     )
 
     @classmethod
@@ -403,12 +407,12 @@ class SMIRNOFFDampedExp6810Collection(_NonbondedPlugin):
         """Return an iterable of global parameters, i.e. not per-potential parameters."""
         return ("force_at_zero",)
 
-    def pre_computed_terms(self) -> Dict[str, unit.Quantity]:
+    def pre_computed_terms(self) -> Dict[str, Quantity]:
         return {}
 
     def modify_parameters(
         self,
-        original_parameters: Dict[str, unit.Quantity],
+        original_parameters: Dict[str, Quantity],
     ) -> Dict[str, float]:
         # It's important that these keys are in the order of self.potential_parameters(),
         # consider adding a check somewhere that this is the case.
@@ -447,7 +451,7 @@ class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
     acts_as: str = ""
     periodic_method: str = "cutoff-periodic"
     nonperiodic_method: str = "cutoff-nonperiodic"
-    cutoff: FloatQuantity["nanometer"] = unit.Quantity(0.9, unit.nanometer)  # noqa
+    cutoff: _DistanceQuantity = Quantity("0.9 nanometer")
 
     def store_potentials(self, parameter_handler: AxilrodTellerHandler):
         self.nonperiodic_method = parameter_handler.nonperiodic_method
@@ -541,7 +545,7 @@ class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
 
     def modify_parameters(
         self,
-        original_parameters: Dict[str, unit.Quantity],
+        original_parameters: Dict[str, Quantity],
     ) -> Dict[str, float]:
         # It's important that these keys are in the order of self.potential_parameters(),
         # consider adding a check somewhere that this is the case.
@@ -585,11 +589,11 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
     periodic_method: str = "pme"
     nonperiodic_method: str = "no-cutoff"
     polarization_type: str = "extrapolated"
-    cutoff: FloatQuantity["nanometer"] = unit.Quantity(0.9, unit.nanometer)  # noqa
-    ewald_error_tolerance: FloatQuantity["dimensionless"] = 0.0001  # noqa
-    target_epsilon: FloatQuantity["dimensionless"] = 0.00001  # noqa
+    cutoff: _DistanceQuantity = Quantity("0.9 nanometer")
+    ewald_error_tolerance: float = 0.0001
+    target_epsilon: float = 0.00001
     max_iter: int = 60
-    thole: FloatQuantity["dimensionless"] = 0.39  # noqa
+    thole: float = 0.39
 
     def store_potentials(self, parameter_handler: MultipoleHandler) -> None:
         self.nonperiodic_method = parameter_handler.nonperiodic_method.lower()
@@ -934,7 +938,7 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
 
     def modify_parameters(
         self,
-        original_parameters: Dict[str, unit.Quantity],
+        original_parameters: Dict[str, Quantity],
     ) -> Dict[str, float]:
         # It's important that these keys are in the order of self.potential_parameters(),
         # consider adding a check somewhere that this is the case.
