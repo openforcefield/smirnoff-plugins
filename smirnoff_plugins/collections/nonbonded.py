@@ -14,6 +14,7 @@ from openff.toolkit import Quantity, Topology, unit
 from openff.toolkit.topology import Atom
 from openff.toolkit.typing.engines.smirnoff.parameters import ParameterHandler
 from openmm import CustomManyParticleForce, openmm
+from typing_extensions import Self
 
 from smirnoff_plugins._types import (
     _DimensionlessQuantity,
@@ -55,14 +56,14 @@ class _NonbondedPlugin(_SMIRNOFFNonbondedCollection):
     # This method could be copy-pasted intead of monkey-patched. It's defined in the default
     # vdW class (SMIRNOFFvdWCollection), not the base non-bonded class
     # (_SMIRNOFF_NonbondedCollection) so it's not brought in by _NonbondedPlugin.
-    store_potentials = SMIRNOFFvdWCollection.store_potentials
+    store_potentials = SMIRNOFFvdWCollection.store_potentials  # type: ignore
 
     @classmethod
     def create(
-        cls: Type[T],
+        cls,
         parameter_handler: ParameterHandler,
         topology: Topology,
-    ) -> T:
+    ) -> Self:
         if type(parameter_handler) not in cls.allowed_parameter_handlers():
             raise InvalidParameterHandlerError(
                 f"Found parameter handler type {type(parameter_handler)}, which is not "
@@ -87,7 +88,7 @@ class _NonbondedPlugin(_SMIRNOFFNonbondedCollection):
         handler = cls(**_args)
 
         handler.store_matches(parameter_handler=parameter_handler, topology=topology)
-        handler.store_potentials(parameter_handler=parameter_handler)
+        handler.store_potentials(parameter_handler=parameter_handler)  # type: ignore
 
         return handler
 
@@ -237,7 +238,7 @@ class SMIRNOFFDampedBuckingham68Collection(_NonbondedPlugin):
         }
 
         if "sigma" in original_parameters and "epsilon" in original_parameters:
-            if original_parameters.get("epsilon").m == 0.0:
+            if original_parameters.get("epsilon").m == 0.0:  # type: ignore[union-attr]
                 original_parameters = {
                     key: val * _units[key]
                     for key, val in zip(
@@ -536,7 +537,7 @@ class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
                 force.addExclusion(i, j)
 
         elif len(existing_custom_nonbondeds) > 0:
-            nonbonded: openmm.CustomNonbondedForce = existing_custom_nonbondeds[0]
+            nonbonded: openmm.CustomNonbondedForce = existing_custom_nonbondeds[0]  # type: ignore[no-redef]
             for idx in range(nonbonded.getNumExclusions()):
                 i, j = nonbonded.getExclusionParticles(idx)
                 force.addExclusion(i, j)
@@ -648,7 +649,7 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
             force: openmm.AmoebaMultipoleForce = openmm.AmoebaMultipoleForce()
             system.addForce(force)
         else:
-            force: openmm.AmoebaMultipoleForce = existing_multipole[0]
+            force = existing_multipole[0]
 
         existing_nonbonded = [
             system.getForce(i)
@@ -681,7 +682,7 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
                 custom_bond_force.setBondParameters(i, *params)
 
         topology: Topology = interchange.topology
-        charges = interchange.collections["Electrostatics"].charges
+        charges = interchange.collections["Electrostatics"].charges  # type: ignore[attr-defined]
 
         # Set options
         method_map = {
