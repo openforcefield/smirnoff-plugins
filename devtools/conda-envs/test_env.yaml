@@ -1,7 +1,7 @@
 name: smirnoff-plugins-test
 channels:
+  - conda-forge/label/openff-interchange_rc
   - conda-forge
-
 dependencies:
     # Base depends
   - python
@@ -10,7 +10,7 @@ dependencies:
   - numpy
   - openmm
   - openff-toolkit =0.16
-  - openff-interchange ~=0.3.25
+  - openff-interchange ~=0.4.0rc1
   - openff-utilities
   - openff-models
 
