@@ -6,9 +6,9 @@ import math
 
 import numpy
 import openmm.unit
-from openff.toolkit.typing.engines.smirnoff import ParameterList
-from openff.toolkit import Quantity, unit, Molecule, Topology, ForceField
+from openff.toolkit import ForceField, Molecule, Quantity, Topology, unit
 from openff.utilities import get_data_file_path
+
 from smirnoff_plugins.utilities.openmm import simulate
 
 
@@ -52,7 +52,11 @@ def main():
         force_field=force_field,
         topology=topology,
         positions=positions,
-        box_vectors=Quantity(2 * numpy.eye(3), "nanometer").to_openmm() if n_molecules == 1 else topology.box_vectors.to_openmm(),
+        box_vectors=(
+            Quantity(2 * numpy.eye(3), "nanometer").to_openmm()
+            if n_molecules == 1
+            else topology.box_vectors.to_openmm()
+        ),
         n_steps=2000,
         temperature=300.0,
         pressure=None if n_molecules == 1 else 1.0 * openmm.unit.atmosphere,

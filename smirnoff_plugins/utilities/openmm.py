@@ -310,10 +310,10 @@ def evaluate_water_energy_at_distances(
         translated_positons = numpy.vstack(
             [
                 openmm_positions[:3, :].value_in_unit(
-                    openmm.unit.angstrom
+                    openmm.unit.angstrom,
                 ),
                 openmm_positions[:3, :].value_in_unit(
-                    openmm.unit.angstrom
+                    openmm.unit.angstrom,
                 )
                 # only translate the second water in x
                 + numpy.array([distance, 0, 0]),
@@ -324,7 +324,7 @@ def evaluate_water_energy_at_distances(
             vsites = numpy.zeros((2 * (n_positions_per_water - 3), 3))
             new_positions = openmm.unit.Quantity(
                 numpy.vstack([translated_positons, vsites]),
-                openmm.unit.angstrom
+                openmm.unit.angstrom,
             )
         else:
             new_positions = translated_positons * openmm.unit.angstrom

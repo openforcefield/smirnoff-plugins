@@ -19,8 +19,8 @@ class _VsitePlugin(SMIRNOFFVirtualSiteCollection, abc.ABC):
     A general vsite plugin class used to make vsite collections compatible with a non-bonded collection
     """
 
-    is_plugin = True
-    acts_as = "VirtualSites"
+    is_plugin: bool = True
+    acts_as: str = "VirtualSites"
 
     @classmethod
     def supported_parameters(cls):
