@@ -238,7 +238,7 @@ class SMIRNOFFDampedBuckingham68Collection(_NonbondedPlugin):
         }
 
         if "sigma" in original_parameters and "epsilon" in original_parameters:
-            if original_parameters.get("epsilon").m == 0.0:  # type: ignore[union-attr]
+            if original_parameters["epsilon"].m == 0.0:
                 original_parameters = {
                     key: val * _units[key]
                     for key, val in zip(
