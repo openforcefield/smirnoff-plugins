@@ -531,13 +531,13 @@ class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
         ]
 
         if len(existing_nonbondeds) > 0:
-            nonbonded: openmm.NonbondedForce = existing_nonbondeds[0]
+            nonbonded = existing_nonbondeds[0]
             for idx in range(nonbonded.getNumExceptions()):
                 i, j, _, _, _ = nonbonded.getExceptionParameters(idx)
                 force.addExclusion(i, j)
 
         elif len(existing_custom_nonbondeds) > 0:
-            nonbonded: openmm.CustomNonbondedForce = existing_custom_nonbondeds[0]  # type: ignore[no-redef]
+            nonbonded = existing_custom_nonbondeds[0]
             for idx in range(nonbonded.getNumExclusions()):
                 i, j = nonbonded.getExclusionParticles(idx)
                 force.addExclusion(i, j)

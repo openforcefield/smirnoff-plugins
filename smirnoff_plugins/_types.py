@@ -1,4 +1,5 @@
 """Type annotations of quantity dimensionality not yet provided by upstreams."""
+
 from typing import Annotated
 
 from openff.interchange._annotations import (
