@@ -84,7 +84,10 @@ class DampedBuckingham68Handler(_CustomNonbondedHandler):
     _TAGNAME = "DampedBuckingham68"
     _INFOTYPE = DampedBuckingham68Type
 
-    gamma = ParameterAttribute(default=35.8967, unit=unit.nanometer**-1)
+    gamma = ParameterAttribute(
+        default=35.8967 * unit.nanometer**-1,
+        unit=unit.nanometer**-1,
+    )
 
 
 class DoubleExponentialHandler(_CustomNonbondedHandler):
@@ -102,10 +105,11 @@ class DoubleExponentialHandler(_CustomNonbondedHandler):
     _TAGNAME = "DoubleExponential"
     _INFOTYPE = DoubleExponentialType
 
-    # These are defined as dimensionless, we should consider enforcing global parameters
-    # as being unit-bearing even if that means using `unit.dimensionless`
-    alpha = ParameterAttribute(default=18.7)
-    beta = ParameterAttribute(default=3.3)
+    alpha = ParameterAttribute(
+        default=18.7 * unit.dimensionless,
+        unit=unit.dimensionless,
+    )
+    beta = ParameterAttribute(default=3.3 * unit.dimensionless, unit=unit.dimensionless)
 
 
 class DampedExp6810Handler(_CustomNonbondedHandler):
@@ -139,7 +143,8 @@ class DampedExp6810Handler(_CustomNonbondedHandler):
     _INFOTYPE = DampedExp6810Type
 
     force_at_zero = ParameterAttribute(
-        default=49.6144931952, unit=unit.kilojoules_per_mole * unit.nanometer**-1
+        default=49.6144931952 * unit.kilojoules_per_mole * unit.nanometer**-1,
+        unit=unit.kilojoules_per_mole * unit.nanometer**-1,
     )
 
 

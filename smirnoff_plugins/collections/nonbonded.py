@@ -10,12 +10,18 @@ from openff.interchange.smirnoff._nonbonded import (
     SMIRNOFFvdWCollection,
     _SMIRNOFFNonbondedCollection,
 )
-from openff.models.types import FloatQuantity
 from openff.toolkit import Quantity, Topology, unit
 from openff.toolkit.topology import Atom
 from openff.toolkit.typing.engines.smirnoff.parameters import ParameterHandler
 from openmm import CustomManyParticleForce, openmm
+from typing_extensions import Self
 
+from smirnoff_plugins._types import (
+    _DimensionlessQuantity,
+    _DistanceQuantity,
+    _InverseDistanceQuantity,
+    _kJMolNanometerQuantity,
+)
 from smirnoff_plugins.handlers.nonbonded import (
     AxilrodTellerHandler,
     DampedBuckingham68Handler,
@@ -35,7 +41,7 @@ class _NonbondedPlugin(_SMIRNOFFNonbondedCollection):
     nonperiodic_method: str = "no-cutoff"
 
     mixing_rule: str = ""
-    switch_width: FloatQuantity["angstrom"] = Quantity(1.0, unit.angstrom)  # noqa
+    switch_width: _DistanceQuantity = Quantity("1.0 angstrom")
 
     @classmethod
     def check_openmm_requirements(cls: Type[T], combine_nonbonded_forces: bool):
@@ -50,14 +56,14 @@ class _NonbondedPlugin(_SMIRNOFFNonbondedCollection):
     # This method could be copy-pasted intead of monkey-patched. It's defined in the default
     # vdW class (SMIRNOFFvdWCollection), not the base non-bonded class
     # (_SMIRNOFF_NonbondedCollection) so it's not brought in by _NonbondedPlugin.
-    store_potentials = SMIRNOFFvdWCollection.store_potentials
+    store_potentials = SMIRNOFFvdWCollection.store_potentials  # type: ignore
 
     @classmethod
     def create(
-        cls: Type[T],
+        cls,
         parameter_handler: ParameterHandler,
         topology: Topology,
-    ) -> T:
+    ) -> Self:
         if type(parameter_handler) not in cls.allowed_parameter_handlers():
             raise InvalidParameterHandlerError(
                 f"Found parameter handler type {type(parameter_handler)}, which is not "
@@ -82,7 +88,7 @@ class _NonbondedPlugin(_SMIRNOFFNonbondedCollection):
         handler = cls(**_args)
 
         handler.store_matches(parameter_handler=parameter_handler, topology=topology)
-        handler.store_potentials(parameter_handler=parameter_handler)
+        handler.store_potentials(parameter_handler=parameter_handler)  # type: ignore
 
         return handler
 
@@ -180,7 +186,7 @@ class SMIRNOFFDampedBuckingham68Collection(_NonbondedPlugin):
         "mdr=-gamma*r;"
     )
 
-    gamma: FloatQuantity["nanometer ** -1"]  # noqa
+    gamma: _InverseDistanceQuantity
 
     @classmethod
     def allowed_parameter_handlers(cls) -> Iterable[Type[ParameterHandler]]:
@@ -232,7 +238,7 @@ class SMIRNOFFDampedBuckingham68Collection(_NonbondedPlugin):
         }
 
         if "sigma" in original_parameters and "epsilon" in original_parameters:
-            if original_parameters.get("epsilon").m == 0.0:
+            if original_parameters["epsilon"].m == 0.0:
                 original_parameters = {
                     key: val * _units[key]
                     for key, val in zip(
@@ -272,8 +278,8 @@ class SMIRNOFFDoubleExponentialCollection(_NonbondedPlugin):
         "CombinedR=r_min1+r_min2;"
     )
 
-    alpha: FloatQuantity["dimensionless"]  # noqa
-    beta: FloatQuantity["dimensionless"]  # noqa
+    alpha: _DimensionlessQuantity
+    beta: _DimensionlessQuantity
 
     @classmethod
     def allowed_parameter_handlers(cls) -> Iterable[Type[ParameterHandler]]:
@@ -372,10 +378,9 @@ class SMIRNOFFDampedExp6810Collection(_NonbondedPlugin):
         "rho = 0.5*(rho1+rho2);"
     )
 
-    force_at_zero: FloatQuantity["kilojoules_per_mole * nanometer**-1"] = (  # noqa
-        unit.Quantity(
-            49.6144931952, unit.kilojoules_per_mole * unit.nanometer**-1  # noqa
-        )
+    force_at_zero: _kJMolNanometerQuantity = Quantity(
+        49.6144931952,
+        "kilojoules_per_mole * nanometer**-1",
     )
 
     @classmethod
@@ -403,12 +408,12 @@ class SMIRNOFFDampedExp6810Collection(_NonbondedPlugin):
         """Return an iterable of global parameters, i.e. not per-potential parameters."""
         return ("force_at_zero",)
 
-    def pre_computed_terms(self) -> Dict[str, unit.Quantity]:
+    def pre_computed_terms(self) -> Dict[str, Quantity]:
         return {}
 
     def modify_parameters(
         self,
-        original_parameters: Dict[str, unit.Quantity],
+        original_parameters: Dict[str, Quantity],
     ) -> Dict[str, float]:
         # It's important that these keys are in the order of self.potential_parameters(),
         # consider adding a check somewhere that this is the case.
@@ -447,7 +452,7 @@ class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
     acts_as: str = ""
     periodic_method: str = "cutoff-periodic"
     nonperiodic_method: str = "cutoff-nonperiodic"
-    cutoff: FloatQuantity["nanometer"] = unit.Quantity(0.9, unit.nanometer)  # noqa
+    cutoff: _DistanceQuantity = Quantity("0.9 nanometer")
 
     def store_potentials(self, parameter_handler: AxilrodTellerHandler):
         self.nonperiodic_method = parameter_handler.nonperiodic_method
@@ -526,13 +531,13 @@ class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
         ]
 
         if len(existing_nonbondeds) > 0:
-            nonbonded: openmm.NonbondedForce = existing_nonbondeds[0]
+            nonbonded = existing_nonbondeds[0]
             for idx in range(nonbonded.getNumExceptions()):
                 i, j, _, _, _ = nonbonded.getExceptionParameters(idx)
                 force.addExclusion(i, j)
 
         elif len(existing_custom_nonbondeds) > 0:
-            nonbonded: openmm.CustomNonbondedForce = existing_custom_nonbondeds[0]
+            nonbonded = existing_custom_nonbondeds[0]
             for idx in range(nonbonded.getNumExclusions()):
                 i, j = nonbonded.getExclusionParticles(idx)
                 force.addExclusion(i, j)
@@ -541,7 +546,7 @@ class SMIRNOFFAxilrodTellerCollection(SMIRNOFFCollection):
 
     def modify_parameters(
         self,
-        original_parameters: Dict[str, unit.Quantity],
+        original_parameters: Dict[str, Quantity],
     ) -> Dict[str, float]:
         # It's important that these keys are in the order of self.potential_parameters(),
         # consider adding a check somewhere that this is the case.
@@ -585,11 +590,11 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
     periodic_method: str = "pme"
     nonperiodic_method: str = "no-cutoff"
     polarization_type: str = "extrapolated"
-    cutoff: FloatQuantity["nanometer"] = unit.Quantity(0.9, unit.nanometer)  # noqa
-    ewald_error_tolerance: FloatQuantity["dimensionless"] = 0.0001  # noqa
-    target_epsilon: FloatQuantity["dimensionless"] = 0.00001  # noqa
+    cutoff: _DistanceQuantity = Quantity("0.9 nanometer")
+    ewald_error_tolerance: float = 0.0001
+    target_epsilon: float = 0.00001
     max_iter: int = 60
-    thole: FloatQuantity["dimensionless"] = 0.39  # noqa
+    thole: float = 0.39
 
     def store_potentials(self, parameter_handler: MultipoleHandler) -> None:
         self.nonperiodic_method = parameter_handler.nonperiodic_method.lower()
@@ -644,7 +649,7 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
             force: openmm.AmoebaMultipoleForce = openmm.AmoebaMultipoleForce()
             system.addForce(force)
         else:
-            force: openmm.AmoebaMultipoleForce = existing_multipole[0]
+            force = existing_multipole[0]
 
         existing_nonbonded = [
             system.getForce(i)
@@ -677,7 +682,7 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
                 custom_bond_force.setBondParameters(i, *params)
 
         topology: Topology = interchange.topology
-        charges = interchange.collections["Electrostatics"].charges
+        charges = interchange.collections["Electrostatics"].charges  # type: ignore[attr-defined]
 
         # Set options
         method_map = {
@@ -934,7 +939,7 @@ class SMIRNOFFMultipoleCollection(SMIRNOFFCollection):
 
     def modify_parameters(
         self,
-        original_parameters: Dict[str, unit.Quantity],
+        original_parameters: Dict[str, Quantity],
     ) -> Dict[str, float]:
         # It's important that these keys are in the order of self.potential_parameters(),
         # consider adding a check somewhere that this is the case.

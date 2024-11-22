@@ -2,12 +2,12 @@ ci:
   autoupdate_schedule: "quarterly"
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v4.5.0
+  rev: v5.0.0
   hooks:
   - id: check-yaml
   - id: debug-statements
 - repo: https://github.com/psf/black
-  rev: 24.2.0
+  rev: 24.10.0
   hooks:
   - id: black
 - repo: https://github.com/PyCQA/isort
@@ -15,6 +15,6 @@ repos:
   hooks:
   - id: isort
 - repo: https://github.com/PyCQA/flake8
-  rev: 7.0.0
+  rev: 7.1.1
   hooks:
   - id: flake8
