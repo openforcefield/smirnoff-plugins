@@ -30,7 +30,7 @@ def _cache_urey_bradley_parameter_lookup(
 class SMIRNOFFUreyBradleyCollection(SMIRNOFFCollection):
     is_plugin: bool = True
 
-    type: Literal["UreyBradley"] = "UreyBradley"
+    type: Literal["UreyBradleys"] = "UreyBradleys"
 
     expression: Literal["k/2*(r - length)**2"] = "k/2*(r - length)**2"
 

@@ -28,6 +28,15 @@ def test_urey_bradley_assignment_methane(
     EXPECTED_NUM_BOND_TERMS = 4
     EXPECTED_BOND_ENERGY = 1.727986  # kJ/mol
 
+    # Ensure the positions are always the same.
+    POSITIONS = [
+        [0.00511871, -0.0106205, 0.00601428],
+        [0.54966796, 0.75543841, -0.59698119],
+        [0.7497641, -0.5879439, 0.58528463],
+        [-0.58675256, -0.65213582, -0.67609162],
+        [-0.71779821, 0.4952618, 0.6817739],
+    ] * unit.angstrom
+
     ff = ForceField("openff_unconstrained-2.2.1.offxml", load_plugins=True)
 
     # Add H-C-H Urey-Bradley term, with arbitrary parameters.
@@ -52,14 +61,14 @@ def test_urey_bradley_assignment_methane(
         )
 
     methane = Molecule.from_mapped_smiles("[C:1]([H:2])([H:3])([H:4])([H:5])")
-    methane.generate_conformers(n_conformers=1)
+    methane.add_conformer(POSITIONS)
 
     topology = Topology.from_molecules([methane])
     interchange = Interchange.from_smirnoff(force_field=ff, topology=topology)
 
     # Check that the Urey-Bradley terms are present in the interchange object.
     collection = cast(
-        SMIRNOFFUreyBradleyCollection, interchange.collections["UreyBradley"]
+        SMIRNOFFUreyBradleyCollection, interchange.collections["UreyBradleys"]
     )
     urey_bradley_terms_interchange = list(collection.valence_terms(topology))
 
