@@ -52,7 +52,7 @@ class SMIRNOFFUreyBradleyCollection(SMIRNOFFCollection):
     @classmethod
     def valence_terms(cls, topology):
         """Return all angles in this topology."""
-        return list(topology.angles)
+        return [(angle[0], angle[2]) for angle in topology.angles]
 
     def store_potentials(self, parameter_handler: UreyBradleyHandler) -> None:
         """Store the potentials from the parameter handler."""
