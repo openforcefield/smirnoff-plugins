@@ -10,13 +10,30 @@ from openff.toolkit import ForceField, Molecule, Topology, unit
 from smirnoff_plugins.collections.valence import SMIRNOFFUreyBradleyCollection
 
 
+@pytest.fixture(scope="module")
+def methane_molecule():
+    """Fixture to create a methane molecule with a fixed set of positions."""
+
+    POSITIONS = [
+        [0.00511871, -0.0106205, 0.00601428],
+        [0.54966796, 0.75543841, -0.59698119],
+        [0.7497641, -0.5879439, 0.58528463],
+        [-0.58675256, -0.65213582, -0.67609162],
+        [-0.71779821, 0.4952618, 0.6817739],
+    ] * unit.angstrom
+
+    methane = Molecule.from_mapped_smiles("[C:1]([H:2])([H:3])([H:4])([H:5])")
+    methane.add_conformer(POSITIONS)
+    return methane
+
+
 @pytest.mark.parametrize(
     "angle_constraints",
     [False, True],
     ids=["no_constraints", "with_constraints"],
 )
 def test_urey_bradley_assignment_methane(
-    angle_constraints: bool,
+    angle_constraints: bool, methane_molecule: Molecule
 ):
     """Check that the correct Urey-Bradley terms are assigned to methane."""
 
@@ -26,15 +43,6 @@ def test_urey_bradley_assignment_methane(
     # expected energy is as given below.
     EXPECTED_NUM_UREY_BRADLEY_TERMS = 6
     EXPECTED_UREY_BRADLEY_ENERGY = 0.19684386  # kJ/mol, close to expected value
-
-    # Ensure the positions are always the same.
-    POSITIONS = [
-        [0.00511871, -0.0106205, 0.00601428],
-        [0.54966796, 0.75543841, -0.59698119],
-        [0.7497641, -0.5879439, 0.58528463],
-        [-0.58675256, -0.65213582, -0.67609162],
-        [-0.71779821, 0.4952618, 0.6817739],
-    ] * unit.angstrom
 
     ff = ForceField("openff_unconstrained-2.2.1.offxml", load_plugins=True)
 
@@ -59,10 +67,7 @@ def test_urey_bradley_assignment_methane(
             }
         )
 
-    methane = Molecule.from_mapped_smiles("[C:1]([H:2])([H:3])([H:4])([H:5])")
-    methane.add_conformer(POSITIONS)
-
-    topology = Topology.from_molecules([methane])
+    topology = Topology.from_molecules([methane_molecule])
     interchange = Interchange.from_smirnoff(force_field=ff, topology=topology)
 
     # Check that the Urey-Bradley terms are present in the interchange object.
@@ -142,3 +147,26 @@ def test_urey_bradley_assignment_methane(
             f"Expected Urey-Bradley energy to be {EXPECTED_UREY_BRADLEY_ENERGY} kJ/mol, "
             f"but got {ub_energy} kJ/mol."
         )
+
+
+def test_urey_bradley_incorrect_smirks(methane_molecule: Molecule):
+    """Check that an error is raised for incorrect SMIRKS patterns which return too many atoms."""
+
+    ff = ForceField("openff_unconstrained-2.2.1.offxml", load_plugins=True)
+    urey_bradley_handler = ff.get_parameter_handler("UreyBradleys")
+    urey_bradley_handler.add_parameter(
+        {
+            "smirks": "[#1:1]-[#6X4:2]-[#1:3]",  # Invalid SMIRKS - this specifies three atoms
+            "k": 500 * unit.kilojoule_per_mole / unit.nanometer**2,
+            # Slightly less than equilibrium distance of ~ 1.8 A
+            "length": 0.17 * unit.nanometers,
+        }
+    )
+
+    topology = Topology.from_molecules([methane_molecule])
+    interchange = Interchange.from_smirnoff(force_field=ff, topology=topology)
+
+    with pytest.raises(
+        ValueError, match="Expected 2 indices for Urey-Bradley potential"
+    ):
+        interchange.to_openmm()

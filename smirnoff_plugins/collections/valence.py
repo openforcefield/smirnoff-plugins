@@ -89,12 +89,17 @@ class SMIRNOFFUreyBradleyCollection(SMIRNOFFCollection):
             openff_indices = top_key.atom_indices
             openmm_indices = tuple(particle_map[index] for index in openff_indices)
 
+            if len(openmm_indices) != 2:
+                raise ValueError(
+                    f"Expected 2 indices for Urey-Bradley potential, got {len(openmm_indices)}: {openmm_indices}",
+                )
+
             if has_constraint_handler and not add_constrained_forces:
                 if _is_constrained(
                     constrained_pairs,
                     (openmm_indices[0], openmm_indices[1]),
                 ):
-                    # This 1-3 length is constrained, dpo so not add a bond force
+                    # This 1-3 length is constrained, so not add a bond force
                     continue
 
             params = self.potentials[pot_key].parameters
