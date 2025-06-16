@@ -39,6 +39,7 @@ setup(
     # Make the handler plugins discoverable.
     entry_points={
         "openff.toolkit.plugins.handlers": [
+            "UreyBradleyHandler = smirnoff_plugins.handlers.valence:UreyBradleyHandler",
             "DampedBuckingham68Handler = smirnoff_plugins.handlers.nonbonded:DampedBuckingham68Handler",
             "DoubleExponentialHandler = smirnoff_plugins.handlers.nonbonded:DoubleExponentialHandler",
             "DampedExp6810Handler = smirnoff_plugins.handlers.nonbonded:DampedExp6810Handler",
@@ -47,6 +48,7 @@ setup(
             "DoubleExponentialVirtualSiteHandler = smirnoff_plugins.handlers.vsites:DoubleExponentialVirtualSiteHandler",
         ],
         "openff.interchange.plugins.collections": [
+            "SMIRNOFFUreyBradleyCollection = smirnoff_plugins.collections.valence:SMIRNOFFUreyBradleyCollection",
             "SMIRNOFFDampedBuckingham68Collection = smirnoff_plugins.collections.nonbonded:SMIRNOFFDampedBuckingham68Collection",
             "DoubleExponentialCollection = smirnoff_plugins.collections.nonbonded:SMIRNOFFDoubleExponentialCollection",
             "SMIRNOFFDampedExp6810Collection = smirnoff_plugins.collections.nonbonded:SMIRNOFFDampedExp6810Collection",
