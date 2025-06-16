@@ -22,11 +22,10 @@ def test_urey_bradley_assignment_methane(
 
     # Number of terms and energies (kJ/ mol) expected without constraints (for methane):
     # For equilibriunm distances of ~ 0.181 nM, we expect the energy to be approximately.
-    # 6 * 500 * 0.5 * (0.181 - 0.17)**2 = 0.181 kJ/mol.
+    # 6 * 500 * 0.5 * (0.181 - 0.17)**2 = 0.181 kJ/mol. Using the positions below, the
+    # expected energy is as given below.
     EXPECTED_NUM_UREY_BRADLEY_TERMS = 6
     EXPECTED_UREY_BRADLEY_ENERGY = 0.19684386  # kJ/mol, close to expected value
-    EXPECTED_NUM_BOND_TERMS = 4
-    EXPECTED_BOND_ENERGY = 1.727986  # kJ/mol
 
     # Ensure the positions are always the same.
     POSITIONS = [
@@ -91,49 +90,47 @@ def test_urey_bradley_assignment_methane(
         platform="Reference",
     )
 
-    # Summarise the harmonic bond forces in the OpenMM system.
-    harmonic_bond_forces = {
-        i: {"force": force, "num_bonds": force.getNumBonds(), "energy": raw_energies[i]}
-        for i, force in enumerate(omm_system.getForces())
-        if isinstance(force, openmm.HarmonicBondForce)
-    }
-    num_bonds_set = set(
-        [force_summary["num_bonds"] for force_summary in harmonic_bond_forces.values()]
+    forces = omm_system.getForces()
+    ub_forces = [force for force in forces if force.getName() == "UreyBradleyForce"]
+
+    assert (
+        len(ub_forces) == 1
+    ), "Expected exactly one Urey-Bradley force in the OpenMM system, "
+
+    ub_force = ub_forces[0]
+    num_ub_bonds = ub_force.getNumBonds()
+    ub_force_idx = forces.index(ub_force)
+    ub_energy = raw_energies[ub_force_idx].value_in_unit(
+        openmm.unit.kilojoules_per_mole
     )
-    energies_list = [
-        force_summary["energy"].value_in_unit(openmm.unit.kilojoules_per_mole)
-        for force_summary in harmonic_bond_forces.values()
-    ]
 
     if angle_constraints:
         # If angle constraints are applied, we should not have any Urey-Bradley terms.
-        assert num_bonds_set == {0, EXPECTED_NUM_BOND_TERMS}
+        assert (
+            num_ub_bonds == 0
+        ), "Expected no Urey-Bradley terms when angle constraints are applied."
 
         # The bond energies should be non-zero, as we haven't constrained the bonds,
         # but the Urey-Bradley terms should be zero.
-        assert 0.0 in energies_list
-        assert pytest.approx(EXPECTED_BOND_ENERGY) in energies_list
+        assert (
+            pytest.approx(0.0) == ub_energy
+        ), f"Expected Urey-Bradley energy to be 0.0 kJ/mol, but got {ub_energy} kJ/mol."
 
     else:
         # Check we have the expected number of Urey-Bradley terms.
-        assert num_bonds_set == {
-            EXPECTED_NUM_UREY_BRADLEY_TERMS,
-            EXPECTED_NUM_BOND_TERMS,
-        }
+        assert num_ub_bonds == EXPECTED_NUM_UREY_BRADLEY_TERMS, (
+            f"Expected {EXPECTED_NUM_UREY_BRADLEY_TERMS} Urey-Bradley terms, "
+            f"but got {num_ub_bonds}."
+        )
 
         # Check that the parameters of the Urey-Bradley terms are as expected.
         expected_params = [
             0.17 * openmm.unit.nanometers,
             500 * openmm.unit.kilojoule_per_mole / openmm.unit.nanometer**2,
         ]
-        urey_bradley_force = [
-            force
-            for force in harmonic_bond_forces.values()
-            if force["num_bonds"] == EXPECTED_NUM_UREY_BRADLEY_TERMS
-        ][0]["force"]
 
-        for i in range(urey_bradley_force.getNumBonds()):
-            actual_params = urey_bradley_force.getBondParameters(i)
+        for i in range(num_ub_bonds):
+            actual_params = ub_force.getBondParameters(i)
             actual_params_without_idx = actual_params[2:]
             assert actual_params_without_idx == expected_params, (
                 f"Bond parameters {i} do not match expected values: "
@@ -141,5 +138,7 @@ def test_urey_bradley_assignment_methane(
             )
 
         # Check that the energies are as expected.
-        assert pytest.approx(EXPECTED_BOND_ENERGY) in energies_list
-        assert pytest.approx(EXPECTED_UREY_BRADLEY_ENERGY) in energies_list
+        assert pytest.approx(EXPECTED_UREY_BRADLEY_ENERGY) == ub_energy, (
+            f"Expected Urey-Bradley energy to be {EXPECTED_UREY_BRADLEY_ENERGY} kJ/mol, "
+            f"but got {ub_energy} kJ/mol."
+        )

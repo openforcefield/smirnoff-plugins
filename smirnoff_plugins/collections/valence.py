@@ -80,6 +80,7 @@ class SMIRNOFFUreyBradleyCollection(SMIRNOFFCollection):
         # https://github.com/openforcefield/openff-interchange/blob/83383b8b3af557c167e4a3003495e0e5ffbeff73/openff/interchange/interop/openmm/_valence.py#L50
 
         harmonic_bond_force = openmm.HarmonicBondForce()
+        harmonic_bond_force.setName("UreyBradleyForce")
         system.addForce(harmonic_bond_force)
 
         has_constraint_handler = "Constraints" in interchange.collections
