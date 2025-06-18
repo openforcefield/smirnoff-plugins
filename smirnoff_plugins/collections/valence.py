@@ -32,7 +32,7 @@ class SMIRNOFFUreyBradleyCollection(SMIRNOFFCollection):
 
     type: Literal["UreyBradleys"] = "UreyBradleys"
 
-    expression: Literal["k/2*(r - length)**2"] = "k/2*(r - length)**2"
+    expression: Literal["k/2*(r-length)**2"] = "k/2*(r-length)**2"
 
     @classmethod
     def allowed_parameter_handlers(cls) -> Iterable[Type[ParameterHandler]]:
