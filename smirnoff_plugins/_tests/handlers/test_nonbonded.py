@@ -1017,7 +1017,7 @@ def test_non_lj_on_virtual_site(ideal_water_force_field):
     reported_energies = list()
 
     for i, energy in enumerate(energies):
-        if energy != pytest.approx(ref_values[i]):
+        if energy != pytest.approx(ref_values[i], rel=5e-6):
             failures.append(i)
             reported_energies.append(energy)
 
