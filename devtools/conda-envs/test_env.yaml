@@ -21,6 +21,6 @@ dependencies:
 
   - mypy
 
-  # Temporary workaround to get install interchange branch which fixes the double exponential virtual sites issue
+  # Temporary workaround (until new realease) to install latest interchange with double exponential virtual sites issue fixed
   - pip: 
-    - git+https://github.com/openforcefield/openff-interchange.git@bugfix-double-exponential-virtual-sites
+    - git+https://github.com/openforcefield/openff-interchange.git@main
