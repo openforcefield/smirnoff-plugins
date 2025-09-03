@@ -9,7 +9,7 @@ dependencies:
   - numpy
   - openmm
   - openff-toolkit >=0.17
-  - openff-interchange ~=0.4.0
+  - openff-interchange ~=0.4.6
   - openff-utilities
   - rdkit
 
@@ -20,7 +20,3 @@ dependencies:
   - pytest-randomly
 
   - mypy
-
-  # Temporary workaround (until new realease) to install latest interchange with double exponential virtual sites issue fixed
-  - pip: 
-    - git+https://github.com/openforcefield/openff-interchange.git@main
