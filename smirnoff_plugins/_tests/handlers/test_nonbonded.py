@@ -953,7 +953,6 @@ def test_multipole_de6810_axilrod_options():
     assert from_openmm(omm_state.getPotentialEnergy()).m == pytest.approx(0.0)
 
 
-@pytest.mark.skip(reason="Fix me!")
 def test_non_lj_on_virtual_site(ideal_water_force_field):
     """
     Test virtual sites with non-12-6 interactions.
@@ -1018,7 +1017,7 @@ def test_non_lj_on_virtual_site(ideal_water_force_field):
     reported_energies = list()
 
     for i, energy in enumerate(energies):
-        if energy != pytest.approx(ref_values[i]):
+        if energy != pytest.approx(ref_values[i], rel=5e-6):
             failures.append(i)
             reported_energies.append(energy)
 

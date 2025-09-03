@@ -11,6 +11,7 @@ from openff.interchange.smirnoff._virtual_sites import (
 )
 from openff.toolkit.typing.engines.smirnoff.parameters import VirtualSiteHandler
 
+from smirnoff_plugins.handlers.nonbonded import DoubleExponentialHandler
 from smirnoff_plugins.handlers.vsites import DoubleExponentialVirtualSiteHandler
 
 
@@ -47,6 +48,12 @@ class _VsitePlugin(SMIRNOFFVirtualSiteCollection, abc.ABC):
     @abc.abstractmethod
     def allowed_parameter_handlers(cls):
         """Return a list of allowed types of ParameterHandler classes."""
+        ...
+
+    @classmethod
+    @abc.abstractmethod
+    def allowed_vdw_parameter_handlers(cls):
+        """Return a list of allowed types of vdW ParameterHandler classes."""
         ...
 
     def store_potentials(  # type: ignore[override]
@@ -142,6 +149,10 @@ class SMIRNOFFDoubleExponentialVirtualSiteCollection(_VsitePlugin):
     @classmethod
     def allowed_parameter_handlers(cls):
         return [DoubleExponentialVirtualSiteHandler]
+
+    @classmethod
+    def allowed_vdw_parameter_handlers(cls):
+        return [DoubleExponentialHandler]
 
     @classmethod
     def specific_parameters(cls) -> list[str]:
