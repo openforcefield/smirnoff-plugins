@@ -84,7 +84,7 @@ def __simulate(
         )
 
     if box_vectors is not None:
-        box_vectors = ensure_quantity(box_vectors, "openmm")
+        box_vectors: openmm.unit.Quantity = ensure_quantity(box_vectors, "openmm")  # type: ignore[no-redef]
         simulation.context.setPeriodicBoxVectors(
             box_vectors[0], box_vectors[1], box_vectors[2]
         )
