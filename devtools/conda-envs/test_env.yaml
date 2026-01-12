@@ -6,7 +6,7 @@ dependencies:
   - python
 
     # Core dependencies
-  - numpy <2.4
+  - numpy
   - openmm
   - openff-toolkit >=0.17
   - openff-interchange ~=0.4.6
