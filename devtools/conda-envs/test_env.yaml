@@ -9,7 +9,7 @@ dependencies:
   - numpy
   - openmm
   - openff-toolkit >=0.17
-  - openff-interchange =0.5
+  - openff-interchange >=0.5
   - openff-utilities
   - rdkit
 
