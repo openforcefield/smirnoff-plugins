@@ -1,5 +1,7 @@
+import builtins
+from collections.abc import Iterable
 from functools import lru_cache
-from typing import Dict, Iterable, Literal, Set, Tuple, Type, Union
+from typing import Literal, Union
 
 from openff.interchange import Interchange
 from openff.interchange.components.potentials import Potential
@@ -21,10 +23,7 @@ def _cache_urey_bradley_parameter_lookup(
 ) -> dict[str, Quantity]:
     parameter = parameter_handler.parameters[potential_key.id]
 
-    return {
-        parameter_name: getattr(parameter, parameter_name)
-        for parameter_name in ["k", "length"]
-    }
+    return {parameter_name: getattr(parameter, parameter_name) for parameter_name in ["k", "length"]}
 
 
 class SMIRNOFFUreyBradleyCollection(SMIRNOFFCollection):
@@ -35,7 +34,7 @@ class SMIRNOFFUreyBradleyCollection(SMIRNOFFCollection):
     expression: Literal["k/2*(r-length)**2"] = "k/2*(r-length)**2"
 
     @classmethod
-    def allowed_parameter_handlers(cls) -> Iterable[Type[ParameterHandler]]:
+    def allowed_parameter_handlers(cls) -> Iterable[builtins.type[ParameterHandler]]:
         """Return an iterable of allowed types of ParameterHandler classes."""
         return (UreyBradleyHandler,)
 
@@ -73,8 +72,8 @@ class SMIRNOFFUreyBradleyCollection(SMIRNOFFCollection):
         interchange: Interchange,
         system: openmm.System,
         add_constrained_forces: bool,
-        constrained_pairs: Set[Tuple[int, ...]],
-        particle_map: Dict[Union[int, "VirtualSiteKey"], int],
+        constrained_pairs: set[tuple[int, ...]],
+        particle_map: dict[Union[int, "VirtualSiteKey"], int],
     ) -> None:
         # Mainly taken from
         # https://github.com/openforcefield/openff-interchange/blob/83383b8b3af557c167e4a3003495e0e5ffbeff73/openff/interchange/interop/openmm/_valence.py#L50

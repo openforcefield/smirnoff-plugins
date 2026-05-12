@@ -2,7 +2,7 @@ import logging
 import math
 import os
 import time
-from typing import Literal, Optional
+from typing import Literal
 
 import numpy
 import openmm
@@ -19,12 +19,12 @@ logger = logging.getLogger(__name__)
 
 def __simulate(
     positions: openmm.unit.Quantity,
-    box_vectors: Optional[openmm.unit.Quantity],
+    box_vectors: openmm.unit.Quantity | None,
     omm_topology: openmm.app.Topology,
     omm_system: openmm.System,
     n_steps: int,
     temperature: openmm.unit.Quantity,
-    pressure: Optional[openmm.unit.Quantity],
+    pressure: openmm.unit.Quantity | None,
     platform: Literal["Reference", "OpenCL", "CUDA", "CPU"] = "Reference",
 ):
     """
@@ -75,7 +75,7 @@ def __simulate(
         )
     except openmm.OpenMMException:
         logger.debug(
-            f"Failed to use platform {platform}, trying again and letting OpenMM select platform."
+            f"Failed to use platform {platform}, trying again and letting OpenMM select platform.",
         )
         simulation = openmm.app.Simulation(
             omm_topology,
@@ -86,7 +86,9 @@ def __simulate(
     if box_vectors is not None:
         box_vectors: openmm.unit.Quantity = ensure_quantity(box_vectors, "openmm")  # type: ignore[no-redef]
         simulation.context.setPeriodicBoxVectors(
-            box_vectors[0], box_vectors[1], box_vectors[2]
+            box_vectors[0],
+            box_vectors[1],
+            box_vectors[2],
         )
 
     simulation.context.setPositions(positions)
@@ -126,12 +128,12 @@ def simulate(
     force_field: ForceField,
     topology: Topology,
     positions: openmm.unit.Quantity,
-    box_vectors: Optional[openmm.unit.Quantity],
+    box_vectors: openmm.unit.Quantity | None,
     n_steps: int,
     temperature: openmm.unit.Quantity,
-    pressure: Optional[openmm.unit.Quantity],
+    pressure: openmm.unit.Quantity | None,
     platform: Literal["Reference", "OpenCL", "CUDA", "CPU"] = "Reference",
-    output_directory: Optional[str] = None,
+    output_directory: str | None = None,
 ):
     """A helper function for simulating a system parameterised with a specific OpenFF
     force field using OpenMM.
@@ -158,9 +160,9 @@ def simulate(
         The optional directory to store the simulation outputs in.
     """
 
-    assert pressure is None or (
-        pressure is not None and box_vectors is not None
-    ), "box vectors must be provided when the pressure is specified."
+    assert pressure is None or (pressure is not None and box_vectors is not None), (
+        "box vectors must be provided when the pressure is specified."
+    )
 
     topology.box_vectors = ensure_quantity(box_vectors, "openff")
 
@@ -216,21 +218,16 @@ def water_box(n_molecules: int) -> tuple[Topology, openmm.unit.Quantity]:
 
     topology = Topology.from_molecules([molecule] * n_molecules)
 
-    topology.box_vectors = (
-        numpy.eye(3) * math.ceil(n_molecules ** (1 / 3) + 2) * 2.5 * unit.angstrom
-    )
+    topology.box_vectors = numpy.eye(3) * math.ceil(n_molecules ** (1 / 3) + 2) * 2.5 * unit.angstrom
 
     positions = (
         numpy.vstack(
             [
-                (
-                    molecule.conformers[0].value_in_unit(openmm.unit.angstrom)
-                    + numpy.array([[x, y, z]]) * 2.5
-                )
+                (molecule.conformers[0].value_in_unit(openmm.unit.angstrom) + numpy.array([[x, y, z]]) * 2.5)
                 for x in range(math.ceil(n_molecules ** (1 / 3)))
                 for y in range(math.ceil(n_molecules ** (1 / 3)))
                 for z in range(math.ceil(n_molecules ** (1 / 3)))
-            ]
+            ],
         )[: topology.n_topology_atoms, :]
         * unit.angstrom
     )
@@ -242,7 +239,8 @@ def water_box(n_molecules: int) -> tuple[Topology, openmm.unit.Quantity]:
 
 
 def evaluate_water_energy_at_distances(
-    force_field: ForceField, distances: list[float]
+    force_field: ForceField,
+    distances: list[float],
 ) -> list[float]:
     """
     Evaluate the energy of a system of two water molecules at the requested distances using the provided force field.
@@ -299,14 +297,16 @@ def evaluate_water_energy_at_distances(
     platform = openmm.Platform.getPlatformByName("CPU")
 
     simulation = openmm.app.Simulation(
-        openmm_topology, openmm_system, integrator, platform
+        openmm_topology,
+        openmm_system,
+        integrator,
+        platform,
     )
 
     n_positions_per_water = int(openmm_positions.shape[0] / 2)
 
     energies = []
     for distance in distances:
-
         translated_positons = numpy.vstack(
             [
                 openmm_positions[:3, :].value_in_unit(
@@ -317,7 +317,7 @@ def evaluate_water_energy_at_distances(
                 )
                 # only translate the second water in x
                 + numpy.array([distance, 0, 0]),
-            ]
+            ],
         )
         if n_positions_per_water > 3:
             # add zeros to pad the positions
@@ -330,13 +330,13 @@ def evaluate_water_energy_at_distances(
             new_positions = translated_positons * openmm.unit.angstrom
 
         simulation.context.setPositions(
-            new_positions.value_in_unit(openmm.unit.nanometer)
+            new_positions.value_in_unit(openmm.unit.nanometer),
         )
         simulation.context.computeVirtualSites()
         state = simulation.context.getState(getEnergy=True)
 
         energies.append(
-            state.getPotentialEnergy().value_in_unit(openmm.unit.kilojoule_per_mole)
+            state.getPotentialEnergy().value_in_unit(openmm.unit.kilojoule_per_mole),
         )
 
     return energies

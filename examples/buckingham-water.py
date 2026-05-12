@@ -8,7 +8,7 @@ import numpy
 import openmm.unit
 from openff.toolkit.topology import Molecule, Topology
 from openff.toolkit.typing.engines.smirnoff import ForceField, ParameterList
-from openff.units import Quantity, unit
+from openff.units import Quantity
 
 from smirnoff_plugins.utilities.openmm import simulate
 
@@ -24,11 +24,11 @@ def build_force_field() -> ForceField:
     constraint_handler = force_field.get_parameter_handler("Constraints")
     # Keep the H-O bond length fixed at 0.9572 angstroms.
     constraint_handler.add_parameter(
-        {"smirks": "[#1:1]-[#8X2H2+0:2]-[#1]", "distance": 0.9572 * unit.angstrom}
+        {"smirks": "[#1:1]-[#8X2H2+0:2]-[#1]", "distance": Quantity(0.9572, "angstrom")},
     )
     # Keep the H-O-H angle fixed at 104.52 degrees.
     constraint_handler.add_parameter(
-        {"smirks": "[#1:1]-[#8X2H2+0]-[#1:2]", "distance": 1.5139 * unit.angstrom}
+        {"smirks": "[#1:1]-[#8X2H2+0]-[#1:2]", "distance": Quantity(1.5139, "angstrom")},
     )
 
     # Add a charge handler to zero the charges on water. The charges will be
@@ -46,13 +46,13 @@ def build_force_field() -> ForceField:
         {
             "smirks": "[#1:2]-[#8X2H2+0:1]-[#1:3]",
             "type": "DivalentLonePair",
-            "distance": -0.0106 * unit.nanometers,
-            "outOfPlaneAngle": 0.0 * unit.degrees,
+            "distance": Quantity(-0.0106, "nanometers"),
+            "outOfPlaneAngle": Quantity(0.0, "degrees"),
             "match": "once",
-            "charge_increment1": 0.0 * unit.elementary_charge,
-            "charge_increment2": 1.0552 * 0.5 * unit.elementary_charge,
-            "charge_increment3": 1.0552 * 0.5 * unit.elementary_charge,
-        }
+            "charge_increment1": Quantity(0.0, "elementary_charge"),
+            "charge_increment2": Quantity(1.0552 * 0.5, "elementary_charge"),
+            "charge_increment3": Quantity(1.0552 * 0.5, "elementary_charge"),
+        },
     )
     virtual_site_handler._parameters = ParameterList(virtual_site_handler._parameters)
 
@@ -61,26 +61,26 @@ def build_force_field() -> ForceField:
         "DampedBuckingham68",
         {
             "version": "0.3",
-            "gamma": Quantity(35.8967 / unit.nanometer),
+            "gamma": Quantity(35.8967, "nanometer**-1"),
         },
     )
     buckingham_handler.add_parameter(
         {
             "smirks": "[#1:1]-[#8X2H2+0]-[#1]",
-            "a": 0.0 * unit.kilojoule_per_mole,
-            "b": 0.0 / unit.nanometer,
-            "c6": 0.0 * unit.kilojoule_per_mole * unit.nanometer**6,
-            "c8": 0.0 * unit.kilojoule_per_mole * unit.nanometer**8,
-        }
+            "a": Quantity(0.0, "kilojoule_per_mole"),
+            "b": Quantity(0.0, "nanometer**-1"),
+            "c6": Quantity(0.0, "kilojoule_per_mole * nanometer**6"),
+            "c8": Quantity(0.0, "kilojoule_per_mole * nanometer**8"),
+        },
     )
     buckingham_handler.add_parameter(
         {
             "smirks": "[#1]-[#8X2H2+0:1]-[#1]",
-            "a": 1600000.0 * unit.kilojoule_per_mole,
-            "b": 42.00 / unit.nanometer,
-            "c6": 0.003 * unit.kilojoule_per_mole * unit.nanometer**6,
-            "c8": 0.00003 * unit.kilojoule_per_mole * unit.nanometer**8,
-        }
+            "a": Quantity(1600000.0, "kilojoule_per_mole"),
+            "b": Quantity(42.00, "nanometer**-1"),
+            "c6": Quantity(0.003, "kilojoule_per_mole * nanometer**6"),
+            "c8": Quantity(0.00003, "kilojoule_per_mole * nanometer**8"),
+        },
     )
 
     return force_field
@@ -102,20 +102,17 @@ def main():
     # Create some coordinates (without the v-sites) and estimate box vectors.
     topology.box_vectors = Quantity(
         numpy.eye(3) * math.ceil(n_molecules ** (1 / 3) + 2) * 2.5,
-        unit.angstrom,
+        "angstrom",
     )
 
     positions = openmm.unit.Quantity(
         numpy.vstack(
             [
-                (
-                    molecule.conformers[0].m_as(unit.angstrom)
-                    + numpy.array([[x, y, z]]) * 2.5
-                )
+                (molecule.conformers[0].m_as("angstrom") + numpy.array([[x, y, z]]) * 2.5)
                 for x in range(math.ceil(n_molecules ** (1 / 3)))
                 for y in range(math.ceil(n_molecules ** (1 / 3)))
                 for z in range(math.ceil(n_molecules ** (1 / 3)))
-            ]
+            ],
         ),
         openmm.unit.angstrom,
     )

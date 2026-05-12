@@ -21,11 +21,11 @@ def buckingham_water_force_field() -> ForceField:
     constraint_handler = force_field.get_parameter_handler("Constraints")
     # Keep the H-O bond length fixed at 0.9572 angstroms.
     constraint_handler.add_parameter(
-        {"smirks": "[#1:1]-[#8X2H2+0:2]-[#1]", "distance": 0.9572 * unit.angstrom}
+        {"smirks": "[#1:1]-[#8X2H2+0:2]-[#1]", "distance": 0.9572 * unit.angstrom},
     )
     # Keep the H-O-H angle fixed at 104.52 degrees.
     constraint_handler.add_parameter(
-        {"smirks": "[#1:1]-[#8X2H2+0]-[#1:2]", "distance": 1.5139 * unit.angstrom}
+        {"smirks": "[#1:1]-[#8X2H2+0]-[#1:2]", "distance": 1.5139 * unit.angstrom},
     )
 
     # Add a charge handler to zero the charges on water. The charges will be
@@ -49,7 +49,7 @@ def buckingham_water_force_field() -> ForceField:
             "charge_increment1": 1.0552 * 0.5 * unit.elementary_charge,
             "charge_increment2": 0.0 * unit.elementary_charge,
             "charge_increment3": 1.0552 * 0.5 * unit.elementary_charge,
-        }
+        },
     )
     virtual_site_handler._parameters = ParameterList(virtual_site_handler._parameters)
 
@@ -62,7 +62,7 @@ def buckingham_water_force_field() -> ForceField:
             "b": 0.0 / unit.nanometer,
             "c6": 0.0 * unit.kilojoule_per_mole * unit.nanometer**6,
             "c8": 0.0 * unit.kilojoule_per_mole * unit.nanometer**8,
-        }
+        },
     )
     buckingham_handler.add_parameter(
         {
@@ -71,7 +71,7 @@ def buckingham_water_force_field() -> ForceField:
             "b": 42.00 / unit.nanometer,
             "c6": 0.003 * unit.kilojoule_per_mole * unit.nanometer**6,
             "c8": 0.00003 * unit.kilojoule_per_mole * unit.nanometer**8,
-        }
+        },
     )
     return force_field
 
@@ -106,19 +106,19 @@ def ideal_water_force_field() -> ForceField:
 
     constraint_handler = ff.get_parameter_handler("Constraints")
     constraint_handler.add_parameter(
-        {"smirks": "[#1:1]-[#8X2H2+0:2]-[#1]", "distance": 0.9572 * unit.angstrom}
+        {"smirks": "[#1:1]-[#8X2H2+0:2]-[#1]", "distance": 0.9572 * unit.angstrom},
     )
     constraint_handler.add_parameter(
-        {"smirks": "[#1:1]-[#8X2H2+0]-[#1:2]", "distance": 1.5139 * unit.angstrom}
+        {"smirks": "[#1:1]-[#8X2H2+0]-[#1:2]", "distance": 1.5139 * unit.angstrom},
     )
 
     # add the library charges
     library_charge = ff.get_parameter_handler("LibraryCharges")
     library_charge.add_parameter(
-        {"smirks": "[#1]-[#8X2H2+0:1]-[#1]", "charge1": 0 * unit.elementary_charge}
+        {"smirks": "[#1]-[#8X2H2+0:1]-[#1]", "charge1": 0 * unit.elementary_charge},
     )
     library_charge.add_parameter(
-        {"smirks": "[#1:1]-[#8X2H2+0]-[#1]", "charge1": 0 * unit.elementary_charge}
+        {"smirks": "[#1:1]-[#8X2H2+0]-[#1]", "charge1": 0 * unit.elementary_charge},
     )
 
     return ff

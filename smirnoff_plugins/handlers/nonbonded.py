@@ -25,10 +25,12 @@ class _CustomNonbondedHandler(ParameterHandler, abc.ABC):
 
     cutoff = ParameterAttribute(default=9.0 * unit.angstroms, unit=unit.angstrom)
     periodic_method = ParameterAttribute(
-        default="cutoff", converter=_allow_only(["cutoff"])
+        default="cutoff",
+        converter=_allow_only(["cutoff"]),
     )
     nonperiodic_method = ParameterAttribute(
-        default="no-cutoff", converter=_allow_only(["no-cutoff"])
+        default="no-cutoff",
+        converter=_allow_only(["no-cutoff"]),
     )
     switch_width = ParameterAttribute(default=1.0 * unit.angstroms, unit=unit.angstrom)
 
@@ -48,7 +50,7 @@ class _CustomNonbondedHandler(ParameterHandler, abc.ABC):
 
         if self.__class__ != other_handler.__class__:
             return IncompatibleParameterError(
-                f"{self.__class__} and {other_handler.__class__} are not compatible."
+                f"{self.__class__} and {other_handler.__class__} are not compatible.",
             )
 
         float_attrs_to_compare = ["scale12", "scale13", "scale14", "scale15"]
@@ -75,10 +77,12 @@ class DampedBuckingham68Handler(_CustomNonbondedHandler):
         a = ParameterAttribute(default=None, unit=unit.kilojoule_per_mole)
         b = ParameterAttribute(default=None, unit=unit.nanometer**-1)
         c6 = ParameterAttribute(
-            default=None, unit=unit.kilojoule_per_mole * unit.nanometer**6
+            default=None,
+            unit=unit.kilojoule_per_mole * unit.nanometer**6,
         )
         c8 = ParameterAttribute(
-            default=None, unit=unit.kilojoule_per_mole * unit.nanometer**8
+            default=None,
+            unit=unit.kilojoule_per_mole * unit.nanometer**8,
         )
 
     _TAGNAME = "DampedBuckingham68"
@@ -130,13 +134,16 @@ class DampedExp6810Handler(_CustomNonbondedHandler):
         rho = ParameterAttribute(default=None, unit=unit.nanometers)
         beta = ParameterAttribute(default=None, unit=unit.nanometers**-1)
         c6 = ParameterAttribute(
-            default=None, unit=unit.kilojoule_per_mole * unit.nanometer**6
+            default=None,
+            unit=unit.kilojoule_per_mole * unit.nanometer**6,
         )
         c8 = ParameterAttribute(
-            default=None, unit=unit.kilojoule_per_mole * unit.nanometer**8
+            default=None,
+            unit=unit.kilojoule_per_mole * unit.nanometer**8,
         )
         c10 = ParameterAttribute(
-            default=None, unit=unit.kilojoule_per_mole * unit.nanometer**10
+            default=None,
+            unit=unit.kilojoule_per_mole * unit.nanometer**10,
         )
 
     _TAGNAME = "DampedExp6810"
@@ -170,7 +177,8 @@ class AxilrodTellerHandler(ParameterHandler, abc.ABC):
         _ELEMENT_NAME = "Atom"
 
         c9 = ParameterAttribute(
-            default=None, unit=unit.kilojoule_per_mole * unit.nanometer**9
+            default=None,
+            unit=unit.kilojoule_per_mole * unit.nanometer**9,
         )
 
     _TAGNAME = "AxilrodTeller"
@@ -192,18 +200,19 @@ class MultipoleHandler(ParameterHandler, abc.ABC):
 
     _TAGNAME = "Multipole"
     _INFOTYPE = MultipoleType
-    _DEPENDENCIES = [
+    _DEPENDENCIES = (
         VirtualSiteHandler,
         vdWHandler,
         ElectrostaticsHandler,
         ToolkitAM1BCCHandler,
         LibraryChargeHandler,
-    ]
+    )
 
     cutoff = ParameterAttribute(default=0.9 * unit.nanometer, unit=unit.nanometer)
     periodic_method = ParameterAttribute(default="PME", converter=_allow_only(["PME"]))
     nonperiodic_method = ParameterAttribute(
-        default="no-cutoff", converter=_allow_only(["no-cutoff"])
+        default="no-cutoff",
+        converter=_allow_only(["no-cutoff"]),
     )
     polarization_type = ParameterAttribute(
         default="extrapolated",

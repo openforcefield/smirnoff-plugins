@@ -16,19 +16,11 @@ def test_vsite_exclusions(buckingham_water_force_field, water_box_topology):
     """Make sure the exclusions/exceptions for vsites match in the Nonbonded and Custom Nonbonded force"""
 
     system = buckingham_water_force_field.create_interchange(
-        water_box_topology
+        water_box_topology,
     ).to_openmm(combine_nonbonded_forces=False)
     # check we have the same number of exclusions and exceptions
-    nonbonded_force = [
-        force
-        for force in system.getForces()
-        if isinstance(force, openmm.NonbondedForce)
-    ][0]
-    custom_force = [
-        force
-        for force in system.getForces()
-        if isinstance(force, openmm.CustomNonbondedForce)
-    ][0]
+    nonbonded_force = next(force for force in system.getForces() if isinstance(force, openmm.NonbondedForce))
+    custom_force = next(force for force in system.getForces() if isinstance(force, openmm.CustomNonbondedForce))
     assert nonbonded_force.getNumExceptions() == custom_force.getNumExclusions()
 
 
@@ -40,16 +32,19 @@ def test_vsite_exclusions(buckingham_water_force_field, water_box_topology):
     ],
 )
 def test_use_switch_width(
-    water_box_topology, buckingham_water_force_field, switch_width, use_switch
+    water_box_topology,
+    buckingham_water_force_field,
+    switch_width,
+    use_switch,
 ):
     """Make sure the switch width is respected when requested"""
 
     buckingham_handler = buckingham_water_force_field.get_parameter_handler(
-        "DampedBuckingham68"
+        "DampedBuckingham68",
     )
     buckingham_handler.switch_width = switch_width
     system = buckingham_water_force_field.create_interchange(
-        water_box_topology
+        water_box_topology,
     ).to_openmm(combine_nonbonded_forces=False)
 
     for i in range(system.getNumForces()):
@@ -64,13 +59,13 @@ def test_switch_width(water_box_topology, buckingham_water_force_field):
     """Make sure the switch width is respected when set."""
 
     buckingham_handler = buckingham_water_force_field.get_parameter_handler(
-        "DampedBuckingham68"
+        "DampedBuckingham68",
     )
     buckingham_handler.switch_width = 1.0 * unit.angstroms
     buckingham_handler.cutoff = 8.5 * unit.angstroms
 
     system = buckingham_water_force_field.create_interchange(
-        water_box_topology
+        water_box_topology,
     ).to_openmm(combine_nonbonded_forces=False)
     for i in range(system.getNumForces()):
         force = system.getForce(i)
@@ -79,12 +74,13 @@ def test_switch_width(water_box_topology, buckingham_water_force_field):
             break
 
     # make sure it has been adjusted
-    assert custom_force.getSwitchingDistance() == 7.5 * openmm.unit.angstroms
+    assert custom_force.getSwitchingDistance().value_in_unit(openmm.unit.angstroms) == pytest.approx(7.5)
 
 
 def test_double_exp_energies(ideal_water_force_field):
     """
-    Make sure that energies computed using OpenMM match reference values calculated by hand for two O atoms in water at set distances.
+    Make sure that energies computed using OpenMM match reference values calculated by hand
+    for two O atoms in water at set distances.
     """
     epsilon = 0.152  # kcal/mol
     r_min = 3.5366  # angstrom
@@ -103,18 +99,19 @@ def test_double_exp_energies(ideal_water_force_field):
             "smirks": "[#1]-[#8X2H2+0:1]-[#1]",
             "r_min": r_min * unit.angstrom,
             "epsilon": epsilon * unit.kilocalorie_per_mole,
-        }
+        },
     )
     double_exp.add_parameter(
         {
             "smirks": "[#1:1]-[#8X2H2+0]-[#1]",
             "r_min": 1 * unit.angstrom,
             "epsilon": 0 * unit.kilocalorie_per_mole,
-        }
+        },
     )
 
     energies = evaluate_water_energy_at_distances(
-        force_field=ideal_water_force_field, distances=[2, r_min, 4]
+        force_field=ideal_water_force_field,
+        distances=[2, r_min, 4],
     )
 
     # calculated by hand (kJ / mol), at r_min the energy should be epsilon
@@ -125,7 +122,9 @@ def test_double_exp_energies(ideal_water_force_field):
 
 
 def test_b68_energies(ideal_water_force_field):
-    """Make sure that energies calculated using OpenMM match reference values calculated by hand for two O atoms in water at set distances"""
+    """Make sure that energies calculated using OpenMM match reference values calculated by hand
+    for two O atoms in water at set distances.
+    """
 
     # build the force field with no charges
     gamma = 35.8967
@@ -136,7 +135,7 @@ def test_b68_energies(ideal_water_force_field):
 
     # add the b68 block
     buckingham_handler = ideal_water_force_field.get_parameter_handler(
-        "DampedBuckingham68"
+        "DampedBuckingham68",
     )
     buckingham_handler.gamma = gamma * unit.nanometer**-1
     buckingham_handler.add_parameter(
@@ -146,7 +145,7 @@ def test_b68_energies(ideal_water_force_field):
             "b": 0.0 / unit.nanometer,
             "c6": 0.0 * unit.kilojoule_per_mole * unit.nanometer**6,
             "c8": 0.0 * unit.kilojoule_per_mole * unit.nanometer**8,
-        }
+        },
     )
     buckingham_handler.add_parameter(
         {
@@ -155,11 +154,12 @@ def test_b68_energies(ideal_water_force_field):
             "b": b / unit.nanometer,
             "c6": c6 * unit.kilojoule_per_mole * unit.nanometer**6,
             "c8": c8 * unit.kilojoule_per_mole * unit.nanometer**8,
-        }
+        },
     )
 
     energies = evaluate_water_energy_at_distances(
-        force_field=ideal_water_force_field, distances=[2, 3, 4]
+        force_field=ideal_water_force_field,
+        distances=[2, 3, 4],
     )
     # calculated by hand (kJ / mol)
     ref_values = [329.30542, 1.303183, -0.686559]
@@ -189,14 +189,14 @@ def test_scaled_de_energy():
             "smirks": "[#6X4:1]",
             "r_min": 3.816 * unit.angstrom,
             "epsilon": 0.1094 * unit.kilocalorie_per_mole,
-        }
+        },
     )
     double_exp.add_parameter(
         {
             "smirks": "[#1:1]-[#6X4]",
             "r_min": 2.974 * unit.angstrom,
             "epsilon": 0.0157 * unit.kilocalorie_per_mole,
-        }
+        },
     )
 
     ethane = Molecule.from_smiles("CC")
@@ -209,7 +209,7 @@ def test_scaled_de_energy():
 
     omm_top = off_top.to_openmm()
     system_no_scale = Interchange.from_smirnoff(ff, off_top).to_openmm(
-        combine_nonbonded_forces=False
+        combine_nonbonded_forces=False,
     )
     energy_no_scale = evaluate_energy(
         system=system_no_scale,
@@ -220,7 +220,7 @@ def test_scaled_de_energy():
     # now scale 1-4 by half
     double_exp.scale14 = 0.5
     system_scaled = Interchange.from_smirnoff(ff, off_top).to_openmm(
-        combine_nonbonded_forces=False
+        combine_nonbonded_forces=False,
     )
     energy_scaled = evaluate_energy(
         system=system_scaled,
@@ -260,7 +260,7 @@ def test_dampedexp6810_assignment():
             "c6": 1.0 * unit.kilojoule_per_mole * unit.nanometer**6,
             "c8": 10.0 * unit.kilojoule_per_mole * unit.nanometer**8,
             "c10": 100.0 * unit.kilojoule_per_mole * unit.nanometer**10,
-        }
+        },
     )
 
     handler.add_parameter(
@@ -271,11 +271,11 @@ def test_dampedexp6810_assignment():
             "c6": 10.0 * unit.kilojoule_per_mole * unit.nanometer**6,
             "c8": 100.0 * unit.kilojoule_per_mole * unit.nanometer**8,
             "c10": 1000.0 * unit.kilojoule_per_mole * unit.nanometer**10,
-        }
+        },
     )
 
     toluene = Molecule.from_mapped_smiles(
-        "[H:10][c:3]1[c:2]([c:1]([c:6]([c:5]([c:4]1[H:11])[H:12])[C:7]([H:13])([H:14])[H:15])[H:8])[H:9]"
+        "[H:10][c:3]1[c:2]([c:1]([c:6]([c:5]([c:4]1[H:11])[H:12])[C:7]([H:13])([H:14])[H:15])[H:8])[H:9]",
     )
     toluene.generate_conformers(n_conformers=1)
     off_top = toluene.to_topology()
@@ -340,13 +340,13 @@ def test_dampedexp6810_energies():
             "c6": 3.581767e-04 * unit.kilojoule_per_mole * unit.nanometer**6,
             "c8": 1.097581e-05 * unit.kilojoule_per_mole * unit.nanometer**8,
             "c10": 4.120140e-07 * unit.kilojoule_per_mole * unit.nanometer**10,
-        }
+        },
     )
 
     ff.get_parameter_handler("Electrostatics")
     library_charge = ff.get_parameter_handler("LibraryCharges")
     library_charge.add_parameter(
-        {"smirks": "[#10:1]", "charge1": 0 * unit.elementary_charge}
+        {"smirks": "[#10:1]", "charge1": 0 * unit.elementary_charge},
     )
 
     neon = Molecule.from_smiles("[Ne]")
@@ -385,7 +385,9 @@ def test_dampedexp6810_energies():
     ] * unit.kilojoule_per_mole
 
     omm_integrator: openmm.LangevinMiddleIntegrator = openmm.LangevinMiddleIntegrator(
-        298, 1.0, 0.002
+        298,
+        1.0,
+        0.002,
     )
     omm_simulation: openmm.app.Simulation = openmm.app.Simulation(
         off_top.to_openmm(),
@@ -396,11 +398,12 @@ def test_dampedexp6810_energies():
 
     for energy, distance in zip(energies, distances):
         omm_context.setPositions(
-            to_openmm([[0, 0, 0], [distance, 0, 0]] * unit.angstrom)
+            to_openmm([[0, 0, 0], [distance, 0, 0]] * unit.angstrom),
         )
         omm_state: openmm.State = omm_context.getState(getEnergy=True)
         assert from_openmm(omm_state.getPotentialEnergy()).m == pytest.approx(
-            energy.m, rel=1e-5
+            energy.m,
+            rel=1e-5,
         )
 
 
@@ -449,7 +452,7 @@ def test_14_recombining_energies_match(monkeypatch):
     )
 
     assert split_energies.total_energy.m == pytest.approx(
-        combined_energies.total_energy.m
+        combined_energies.total_energy.m,
     )
 
 
@@ -462,25 +465,25 @@ def test_axilrodteller_assignment():
         {
             "smirks": "[#1:1]",
             "c9": 1.0 * unit.kilojoule_per_mole * unit.angstrom**9,
-        }
+        },
     )
 
     handler.add_parameter(
         {
             "smirks": "[#6:1]",
             "c9": 10.0 * unit.kilojoule_per_mole * unit.angstrom**9,
-        }
+        },
     )
 
     handler.add_parameter(
         {
             "smirks": "[#8:1]",
             "c9": 5.0 * unit.kilojoule_per_mole * unit.angstrom**9,
-        }
+        },
     )
 
     toluene = Molecule.from_mapped_smiles(
-        "[H:10][c:3]1[c:2]([c:1]([c:6]([c:5]([c:4]1[H:11])[H:12])[C:7]([H:13])([H:14])[H:15])[H:8])[H:9]"
+        "[H:10][c:3]1[c:2]([c:1]([c:6]([c:5]([c:4]1[H:11])[H:12])[C:7]([H:13])([H:14])[H:15])[H:8])[H:9]",
     )
     toluene.generate_conformers(n_conformers=1)
     off_top = toluene.to_topology()
@@ -509,7 +512,7 @@ def test_axilrodteller_assignment():
         expected_param = expected_params[atom_idx]
         actual_param = force.getParticleParameters(atom_idx)[0][0]
         assert pytest.approx(actual_param) == expected_param.m_as(
-            "kilojoule_per_mole * nanometer ** 9"
+            "kilojoule_per_mole * nanometer ** 9",
         )
 
 
@@ -526,13 +529,13 @@ def test_axilrodteller_energies():
             "c6": 0.0 * unit.kilojoule_per_mole * unit.nanometer**6,
             "c8": 0.0 * unit.kilojoule_per_mole * unit.nanometer**8,
             "c10": 0.0 * unit.kilojoule_per_mole * unit.nanometer**10,
-        }
+        },
     )
 
     ff.get_parameter_handler("Electrostatics")
     library_charge = ff.get_parameter_handler("LibraryCharges")
     library_charge.add_parameter(
-        {"smirks": "[#10:1]", "charge1": 0 * unit.elementary_charge}
+        {"smirks": "[#10:1]", "charge1": 0 * unit.elementary_charge},
     )
 
     axilrod_handler = ff.get_parameter_handler(
@@ -540,7 +543,7 @@ def test_axilrodteller_energies():
         {"version": "0.3", "cutoff": "2 * nanometer"},
     )
     axilrod_handler.add_parameter(
-        {"smirks": "[#10:1]", "c9": 0.1 * unit.kilojoule_per_mole * unit.nanometer**9}
+        {"smirks": "[#10:1]", "c9": 0.1 * unit.kilojoule_per_mole * unit.nanometer**9},
     )
 
     neon = Molecule.from_smiles("[Ne]")
@@ -569,23 +572,26 @@ def test_axilrodteller_energies():
 
     distances = [3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 7.0]
     energies = [
-        -2 * 0.1 / ((distance / 10) ** 6 * (2 * distance / 10) ** 3)
-        for distance in distances
+        -2 * 0.1 / ((distance / 10) ** 6 * (2 * distance / 10) ** 3) for distance in distances
     ] * unit.kilojoule_per_mole
 
     omm_integrator: openmm.LangevinMiddleIntegrator = openmm.LangevinMiddleIntegrator(
-        298, 1.0, 0.002
+        298,
+        1.0,
+        0.002,
     )
     omm_simulation: openmm.app.Simulation = openmm.app.Simulation(
-        off_top.to_openmm(), omm_system, omm_integrator
+        off_top.to_openmm(),
+        omm_system,
+        omm_integrator,
     )
     omm_context: openmm.Context = omm_simulation.context
 
     for energy, distance in zip(energies, distances):
         omm_context.setPositions(
             to_openmm(
-                [[0, 0, 0], [distance, 0, 0], [2 * distance, 0, 0]] * unit.angstrom
-            )
+                [[0, 0, 0], [distance, 0, 0], [2 * distance, 0, 0]] * unit.angstrom,
+            ),
         )
         omm_state: openmm.State = omm_context.getState(getEnergy=True)
         assert from_openmm(omm_state.getPotentialEnergy()).m == pytest.approx(energy.m)
@@ -594,9 +600,7 @@ def test_axilrodteller_energies():
 
     distances = [3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 7.0]
 
-    energies = [
-        0.1 * 11 / 8 * (r / 10) ** (-9) for r in distances
-    ] * unit.kilojoule_per_mole
+    energies = [0.1 * 11 / 8 * (r / 10) ** (-9) for r in distances] * unit.kilojoule_per_mole
 
     for energy, distance in zip(energies, distances):
         omm_context.setPositions(
@@ -606,8 +610,8 @@ def test_axilrodteller_energies():
                     [distance, 0, 0],
                     [distance / 2, distance * 3 ** (1 / 2) / 2, 0],
                 ]
-                * unit.angstrom
-            )
+                * unit.angstrom,
+            ),
         )
         omm_state: openmm.State = omm_context.getState(getEnergy=True)
         assert from_openmm(omm_state.getPotentialEnergy()).m == pytest.approx(energy.m)
@@ -636,14 +640,14 @@ def test_multipole_assignment():
         {
             "smirks": "[#1:1]",
             "polarity": 0.301856 * unit.angstrom**3,
-        }
+        },
     )
 
     multipole_handler.add_parameter(
         {
             "smirks": "[#6:1]",
             "polarity": 1.243042 * unit.angstrom**3,
-        }
+        },
     )
 
     de6810_handler = ff.get_parameter_handler("DampedExp6810", {"version": "0.3"})
@@ -656,7 +660,7 @@ def test_multipole_assignment():
             "c6": 1.0 * unit.kilojoule_per_mole * unit.nanometer**6,
             "c8": 10.0 * unit.kilojoule_per_mole * unit.nanometer**8,
             "c10": 100.0 * unit.kilojoule_per_mole * unit.nanometer**10,
-        }
+        },
     )
 
     de6810_handler.add_parameter(
@@ -667,11 +671,11 @@ def test_multipole_assignment():
             "c6": 10.0 * unit.kilojoule_per_mole * unit.nanometer**6,
             "c8": 100.0 * unit.kilojoule_per_mole * unit.nanometer**8,
             "c10": 1000.0 * unit.kilojoule_per_mole * unit.nanometer**10,
-        }
+        },
     )
 
     toluene = Molecule.from_mapped_smiles(
-        "[H:10][c:3]1[c:2]([c:1]([c:6]([c:5]([c:4]1[H:11])[H:12])[C:7]([H:13])([H:14])[H:15])[H:8])[H:9]"
+        "[H:10][c:3]1[c:2]([c:1]([c:6]([c:5]([c:4]1[H:11])[H:12])[C:7]([H:13])([H:14])[H:15])[H:8])[H:9]",
     )
     toluene.generate_conformers(n_conformers=1)
     off_top: Topology = toluene.to_topology()
@@ -695,15 +699,13 @@ def test_multipole_assignment():
 
     c_polarity = 1.243042 * unit.angstrom**3
     h_polarity = 0.301856 * unit.angstrom**3
-    expected_polarities = (
-        [c_polarity] * 7 + [h_polarity] * 8 + [c_polarity] * 7 + [h_polarity] * 8
-    )
+    expected_polarities = [c_polarity] * 7 + [h_polarity] * 8 + [c_polarity] * 7 + [h_polarity] * 8
 
     for particle_idx in range(amoeba_force.getNumMultipoles()):
         multipole_parameters = amoeba_force.getMultipoleParameters(particle_idx)
         expected_polarity = expected_polarities[particle_idx].m_as(unit.nanometer**3)
         assigned_polarity = from_openmm(multipole_parameters[-1]).m_as(
-            unit.nanometer**3
+            unit.nanometer**3,
         )
         assert assigned_polarity == expected_polarity
 
@@ -735,19 +737,19 @@ def test_multipole_energies():
             "c6": 0.0 * unit.kilojoule_per_mole * unit.nanometer**6,
             "c8": 0.0 * unit.kilojoule_per_mole * unit.nanometer**8,
             "c10": 0.0 * unit.kilojoule_per_mole * unit.nanometer**10,
-        }
+        },
     )
 
     ff.get_parameter_handler("Electrostatics")
     library_charge = ff.get_parameter_handler("LibraryCharges")
     library_charge.add_parameter(
-        {"smirks": "[#1:1]", "charge1": 0.5 * unit.elementary_charge}
+        {"smirks": "[#1:1]", "charge1": 0.5 * unit.elementary_charge},
     )
     library_charge.add_parameter(
-        {"smirks": "[#9:1]", "charge1": -0.5 * unit.elementary_charge}
+        {"smirks": "[#9:1]", "charge1": -0.5 * unit.elementary_charge},
     )
     library_charge.add_parameter(
-        {"smirks": "[#10:1]", "charge1": 0.0 * unit.elementary_charge}
+        {"smirks": "[#10:1]", "charge1": 0.0 * unit.elementary_charge},
     )
 
     multipole_handler = ff.get_parameter_handler(
@@ -760,7 +762,7 @@ def test_multipole_energies():
     multipole_handler.add_parameter({"smirks": "[#1:1]", "polarity": "0 * angstrom**3"})
     multipole_handler.add_parameter({"smirks": "[#9:1]", "polarity": "0 * angstrom**3"})
     multipole_handler.add_parameter(
-        {"smirks": "[#10:1]", "polarity": "1 * angstrom**3"}
+        {"smirks": "[#10:1]", "polarity": "1 * angstrom**3"},
     )
 
     hf = Molecule.from_mapped_smiles("[F:1][H:2]")
@@ -788,10 +790,14 @@ def test_multipole_energies():
     distances = [0.3, 0.35, 0.4, 0.5, 0.6]
 
     omm_integrator: openmm.LangevinMiddleIntegrator = openmm.LangevinMiddleIntegrator(
-        298, 1.0, 0.002
+        298,
+        1.0,
+        0.002,
     )
     omm_simulation: openmm.app.Simulation = openmm.app.Simulation(
-        off_top.to_openmm(), omm_system, omm_integrator
+        off_top.to_openmm(),
+        omm_system,
+        omm_integrator,
     )
     omm_context: openmm.Context = omm_simulation.context
 
@@ -803,8 +809,8 @@ def test_multipole_energies():
                     [-0.1, 0, 0],
                     [distance, 0, 0],
                 ]
-                * unit.nanometer
-            )
+                * unit.nanometer,
+            ),
         )
         omm_state: openmm.State = omm_context.getState(getEnergy=True)
         omm_dipoles = multipole_force.getInducedDipoles(omm_context)
@@ -818,7 +824,8 @@ def test_multipole_energies():
 
         assert omm_dipoles[2][0] == pytest.approx(induced_dipole, rel=1e-3)
         assert from_openmm(omm_state.getPotentialEnergy()).m == pytest.approx(
-            predicted_energy, rel=1e-1
+            predicted_energy,
+            rel=1e-1,
         )
 
 
@@ -844,7 +851,7 @@ def test_multipole_de6810_axilrod_options():
     ff.get_parameter_handler("Electrostatics")
 
     library_charge.add_parameter(
-        {"smirks": "[*:1]", "charge1": 0 * unit.elementary_charge}
+        {"smirks": "[*:1]", "charge1": 0 * unit.elementary_charge},
     )
     de6810_handler.add_parameter(
         {
@@ -854,16 +861,16 @@ def test_multipole_de6810_axilrod_options():
             "c6": 0.0 * unit.kilojoule_per_mole * unit.nanometer**6,
             "c8": 0.0 * unit.kilojoule_per_mole * unit.nanometer**8,
             "c10": 0.0 * unit.kilojoule_per_mole * unit.nanometer**10,
-        }
+        },
     )
     multipole_handler.add_parameter(
-        {"smirks": "[*:1]", "polarity": 0.0 * unit.angstrom**3}
+        {"smirks": "[*:1]", "polarity": 0.0 * unit.angstrom**3},
     )
     axilrod_handler.add_parameter(
         {
             "smirks": "[*:1]",
             "c9": 0.0 * unit.kilojoule_per_mole * unit.angstrom**9,
-        }
+        },
     )
 
     neon = Molecule.from_smiles("[Ne]")
@@ -912,31 +919,29 @@ def test_multipole_de6810_axilrod_options():
     assert custom_nonbonded_force.getNumParticles() == 2
 
     assert from_openmm(custom_nonbonded_force.getCutoffDistance()).m_as(
-        "nanometer"
+        "nanometer",
     ) == pytest.approx(1.0)
     assert from_openmm(multipole_force.getCutoffDistance()).m_as(
-        "nanometer"
+        "nanometer",
     ) == pytest.approx(1.0)
     assert from_openmm(custom_manyp_force.getCutoffDistance()).m_as(
-        "nanometer"
+        "nanometer",
     ) == pytest.approx(1.0)
 
     assert multipole_force.getNonbondedMethod() == openmm.AmoebaMultipoleForce.PME
     assert multipole_force.getPolarizationType() == openmm.AmoebaMultipoleForce.Direct
-    assert (
-        custom_manyp_force.getNonbondedMethod()
-        == openmm.CustomManyParticleForce.CutoffPeriodic
-    )
-    assert (
-        custom_nonbonded_force.getNonbondedMethod()
-        == openmm.CustomNonbondedForce.CutoffPeriodic
-    )
+    assert custom_manyp_force.getNonbondedMethod() == openmm.CustomManyParticleForce.CutoffPeriodic
+    assert custom_nonbonded_force.getNonbondedMethod() == openmm.CustomNonbondedForce.CutoffPeriodic
 
     omm_integrator: openmm.LangevinMiddleIntegrator = openmm.LangevinMiddleIntegrator(
-        298, 1.0, 0.002
+        298,
+        1.0,
+        0.002,
     )
     omm_simulation: openmm.app.Simulation = openmm.app.Simulation(
-        off_top.to_openmm(), omm_system, omm_integrator
+        off_top.to_openmm(),
+        omm_system,
+        omm_integrator,
     )
     omm_context: openmm.Context = omm_simulation.context
 
@@ -946,8 +951,8 @@ def test_multipole_de6810_axilrod_options():
                 [0, 0, 0],
                 [5, 0, 0],
             ]
-            * unit.angstrom
-        )
+            * unit.angstrom,
+        ),
     )
     omm_state: openmm.State = omm_context.getState(getEnergy=True)
     assert from_openmm(omm_state.getPotentialEnergy()).m == pytest.approx(0.0)
@@ -976,18 +981,18 @@ def test_non_lj_on_virtual_site(ideal_water_force_field):
             "smirks": "[#1]-[#8X2H2+0:1]-[#1]",
             "r_min": 1 * unit.angstrom,
             "epsilon": 0 * unit.kilocalorie_per_mole,
-        }
+        },
     )
     double_exp.add_parameter(
         {
             "smirks": "[#1:1]-[#8X2H2+0]-[#1]",
             "r_min": 1 * unit.angstrom,
             "epsilon": 0 * unit.kilocalorie_per_mole,
-        }
+        },
     )
 
     double_exp_vs = ideal_water_force_field.get_parameter_handler(
-        "DoubleExponentialVirtualSites"
+        "DoubleExponentialVirtualSites",
     )
     double_exp_vs.add_parameter(
         {
@@ -1003,11 +1008,12 @@ def test_non_lj_on_virtual_site(ideal_water_force_field):
             "charge_increment2": 0.0 * unit.elementary_charge,
             "charge_increment3": 0.0 * unit.elementary_charge,
             "name": "EP",
-        }
+        },
     )
 
     energies = evaluate_water_energy_at_distances(
-        force_field=ideal_water_force_field, distances=[2, r_min, 4]
+        force_field=ideal_water_force_field,
+        distances=[2, r_min, 4],
     )
 
     # calculated by hand (kJ / mol), at r_min the energy should be epsilon
