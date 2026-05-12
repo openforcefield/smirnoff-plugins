@@ -13,9 +13,9 @@ from openff.toolkit import Quantity
 from pydantic import AfterValidator, WrapSerializer, WrapValidator
 
 __all__ = (
-    "_InverseDistanceQuantity",
-    "_DistanceQuantity",
     "_DimensionlessQuantity",
+    "_DistanceQuantity",
+    "_InverseDistanceQuantity",
     "_kJMolNanometerQuantity",
 )
 
@@ -23,8 +23,8 @@ __all__ = (
     _is_inverse_distance,
     _is_kj_mol_nanometer,
 ) = (
-    _dimensionality_validator_factory(unit=_unit)
-    for _unit in [
+    _dimensionality_validator_factory(unit=unit_)
+    for unit_ in [
         "nanometer ** -1",
         "kilojoules_per_mole * nanometer ** -1",
     ]

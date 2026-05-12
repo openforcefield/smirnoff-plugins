@@ -35,14 +35,11 @@ def main():
     positions = openmm.unit.Quantity(
         numpy.vstack(
             [
-                (
-                    molecule.conformers[0].m_as(unit.angstrom)
-                    + numpy.array([[x, y, z]]) * 2.5
-                )
+                (molecule.conformers[0].m_as(unit.angstrom) + numpy.array([[x, y, z]]) * 2.5)
                 for x in range(math.ceil(n_molecules ** (1 / 3)))
                 for y in range(math.ceil(n_molecules ** (1 / 3)))
                 for z in range(math.ceil(n_molecules ** (1 / 3)))
-            ]
+            ],
         ),
         openmm.unit.angstrom,
     )

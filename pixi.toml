@@ -1,0 +1,47 @@
+[workspace]
+authors = ["Matthew W. Thompson <mattwthompson@protonmail.com>"]
+channels = ["conda-forge"]
+name = "smirnoff-plugins"
+platforms = ["osx-arm64", "linux-64"]
+
+[tasks]
+run_tests = "python -m pytest -v -n logical smirnoff_plugins/_tests/ --cov=smirnoff_plugins --cov-report=xml --color=yes"
+run_example = "python examples/buckingham-water.py"
+run_mypy = "python -m mypy smirnoff_plugins/"
+
+[dependencies]
+python = "*"
+openff-toolkit = ">=0.17.0"
+openff-interchange = ">=0.5.0"
+# Shim to help solver, NAGL needs Rich which needs 4.x but pytest-markdown-docs needs <4
+markdown-it-py = "3.*"
+
+[pypi-dependencies]
+numpy = "*"
+smirnoff-plugins = { path = ".", editable = true}
+
+[feature.test.pypi-dependencies]
+pytest = "*"
+pytest-cov = "*"
+pytest-xdist = "*"
+pytest-randomly = "*"
+pytest-markdown-docs = "*"
+
+[feature.typing.pypi-dependencies]
+mypy = "*"
+
+[feature.dev.pypi-dependencies]
+pre-commit = "*"
+ruff = "*"
+ipython = "*"
+
+[feature.py312.dependencies]
+python = "3.12.*"
+
+[feature.py313.dependencies]
+python = "3.13.*"
+
+[environments]
+dev = [ "py312", "test", "typing", "dev"]
+py312 = [ "py312", "test", "typing"]
+py313 = [ "py313", "test", "typing"]

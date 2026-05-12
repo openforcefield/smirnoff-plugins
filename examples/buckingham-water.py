@@ -24,11 +24,11 @@ def build_force_field() -> ForceField:
     constraint_handler = force_field.get_parameter_handler("Constraints")
     # Keep the H-O bond length fixed at 0.9572 angstroms.
     constraint_handler.add_parameter(
-        {"smirks": "[#1:1]-[#8X2H2+0:2]-[#1]", "distance": 0.9572 * unit.angstrom}
+        {"smirks": "[#1:1]-[#8X2H2+0:2]-[#1]", "distance": 0.9572 * unit.angstrom},
     )
     # Keep the H-O-H angle fixed at 104.52 degrees.
     constraint_handler.add_parameter(
-        {"smirks": "[#1:1]-[#8X2H2+0]-[#1:2]", "distance": 1.5139 * unit.angstrom}
+        {"smirks": "[#1:1]-[#8X2H2+0]-[#1:2]", "distance": 1.5139 * unit.angstrom},
     )
 
     # Add a charge handler to zero the charges on water. The charges will be
@@ -52,7 +52,7 @@ def build_force_field() -> ForceField:
             "charge_increment1": 0.0 * unit.elementary_charge,
             "charge_increment2": 1.0552 * 0.5 * unit.elementary_charge,
             "charge_increment3": 1.0552 * 0.5 * unit.elementary_charge,
-        }
+        },
     )
     virtual_site_handler._parameters = ParameterList(virtual_site_handler._parameters)
 
@@ -71,7 +71,7 @@ def build_force_field() -> ForceField:
             "b": 0.0 / unit.nanometer,
             "c6": 0.0 * unit.kilojoule_per_mole * unit.nanometer**6,
             "c8": 0.0 * unit.kilojoule_per_mole * unit.nanometer**8,
-        }
+        },
     )
     buckingham_handler.add_parameter(
         {
@@ -80,7 +80,7 @@ def build_force_field() -> ForceField:
             "b": 42.00 / unit.nanometer,
             "c6": 0.003 * unit.kilojoule_per_mole * unit.nanometer**6,
             "c8": 0.00003 * unit.kilojoule_per_mole * unit.nanometer**8,
-        }
+        },
     )
 
     return force_field
@@ -108,14 +108,11 @@ def main():
     positions = openmm.unit.Quantity(
         numpy.vstack(
             [
-                (
-                    molecule.conformers[0].m_as(unit.angstrom)
-                    + numpy.array([[x, y, z]]) * 2.5
-                )
+                (molecule.conformers[0].m_as(unit.angstrom) + numpy.array([[x, y, z]]) * 2.5)
                 for x in range(math.ceil(n_molecules ** (1 / 3)))
                 for y in range(math.ceil(n_molecules ** (1 / 3)))
                 for z in range(math.ceil(n_molecules ** (1 / 3)))
-            ]
+            ],
         ),
         openmm.unit.angstrom,
     )
