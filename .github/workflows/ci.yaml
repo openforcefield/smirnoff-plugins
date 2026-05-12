@@ -45,7 +45,7 @@ jobs:
       run: pixi run -e ${{ matrix.environment }} run_tests
 
     - name: Run Example
-      run: pixi run -e ${{ matrix.environment }} examples/buckingham-water.py
+      run: pixi run -e ${{ matrix.environment }} python examples/buckingham-water.py
 
     - name: Run mypy
       run: pixi run -e ${{ matrix.environment }} run_mypy
