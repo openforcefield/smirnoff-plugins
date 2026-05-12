@@ -6,7 +6,7 @@ platforms = ["osx-arm64", "linux-64"]
 
 [tasks]
 run_tests = "python -m pytest -v -n logical smirnoff_plugins/_tests/ --cov=smirnoff_plugins --cov-report=xml --color=yes"
-run_example = "python examples/buckingham-water.py"
+run_examples = "python examples/buckingham-water.py && python examples/double-exponential-water.py"
 run_mypy = "python -m mypy smirnoff_plugins/"
 
 [dependencies]
