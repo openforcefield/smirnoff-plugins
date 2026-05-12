@@ -10079,8 +10079,8 @@ packages:
   timestamp: 1756274982526
 - pypi: ./
   name: smirnoff-plugins
-  version: 2025.9.1.dev10+gbb31f995f.d20260512
-  sha256: 50ca5d06d0b50f1c336eaf044f1df8a337a9f705ac05749ae23cace2a722a92e
+  version: 2025.9.1.dev12+g3078a4512.d20260512
+  sha256: 48f89567f4b36402081ae493ecf5e357fef22fda9b6252ea5b81749de7ea1352
   requires_python: '>=3.12'
 - conda: https://conda.anaconda.org/conda-forge/linux-64/snappy-1.2.2-h03e3b7b_1.conda
   sha256: 48f3f6a76c34b2cfe80de9ce7f2283ecb55d5ed47367ba91e8bb8104e12b8f11

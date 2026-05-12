@@ -45,11 +45,13 @@ preview = true
 lint.select = [ "E", "F", "I", "NPY", "RUF", "UP", "W" ]
 
 [tool.mypy]
+python_version = "3.12"
 plugins = [ "pydantic.mypy" ]
 warn_unused_configs = true
 warn_unused_ignores = true
 warn_incomplete_stub = true
 show_error_codes = true
+exclude = "smirnoff_plugins/_tests"
 
 [[tool.mypy.overrides]]
 module = [

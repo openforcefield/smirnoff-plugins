@@ -1,7 +1,7 @@
 import builtins
 import math
 from collections.abc import Iterable
-from typing import Literal, Self, TypeVar, Union
+from typing import Literal, Self, Union
 
 from openff.interchange import Interchange
 from openff.interchange.components.potentials import Potential
@@ -31,8 +31,6 @@ from smirnoff_plugins.handlers.nonbonded import (
     MultipoleHandler,
 )
 
-T = TypeVar("T", bound="_NonbondedPlugin")
-
 
 class _NonbondedPlugin(_SMIRNOFFNonbondedCollection):
     is_plugin: bool = True
@@ -45,12 +43,12 @@ class _NonbondedPlugin(_SMIRNOFFNonbondedCollection):
     switch_width: _DistanceQuantity = Quantity("1.0 angstrom")
 
     @classmethod
-    def check_openmm_requirements(cls: type[T], combine_nonbonded_forces: bool):
+    def check_openmm_requirements[T](cls, combine_nonbonded_forces: bool):
         """SMIRNOFF plugins using non-LJ functional forms cannot combine forces."""
         assert combine_nonbonded_forces is False
 
     @classmethod
-    def global_parameters(cls: type[T]) -> Iterable[str]:
+    def global_parameters[T](cls) -> Iterable[str]:
         """Return an iterable of global parameters, i.e. not per-potential parameters."""
         return tuple()
 
