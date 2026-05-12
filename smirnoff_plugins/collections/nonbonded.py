@@ -133,7 +133,8 @@ class _NonbondedPlugin(_SMIRNOFFNonbondedCollection):
                 exception_index,
             )
 
-            tuple(sorted([particle1, particle2])) not in pairs
+            if tuple(sorted([particle1, particle2])) not in pairs:
+                pass
 
             charge1 = electrostatics_force.getParticleParameters(particle1)[0]
             charge2 = electrostatics_force.getParticleParameters(particle2)[0]
