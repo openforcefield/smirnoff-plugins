@@ -75,6 +75,6 @@ report.exclude_lines = [
   "raise NotImplementedError",
 ]
 
-[roolf.ruff.format]
+[tool.ruff.format]
 include = [ "*.py", "*.pyi", "*.md", "**/*.py", "**/*.pyi", "**/*.md" ]
 docstring-code-format = true
