@@ -43,12 +43,12 @@ class _NonbondedPlugin(_SMIRNOFFNonbondedCollection):
     switch_width: _DistanceQuantity = Quantity("1.0 angstrom")
 
     @classmethod
-    def check_openmm_requirements[T](cls, combine_nonbonded_forces: bool):
+    def check_openmm_requirements(cls, combine_nonbonded_forces: bool):
         """SMIRNOFF plugins using non-LJ functional forms cannot combine forces."""
         assert combine_nonbonded_forces is False
 
     @classmethod
-    def global_parameters[T](cls) -> Iterable[str]:
+    def global_parameters(cls) -> Iterable[str]:
         """Return an iterable of global parameters, i.e. not per-potential parameters."""
         return tuple()
 
@@ -134,7 +134,7 @@ class _NonbondedPlugin(_SMIRNOFFNonbondedCollection):
             )
 
             if tuple(sorted([particle1, particle2])) not in pairs:
-                pass
+                pass  # unhandled: should this be continue?? or maybe an error?
 
             charge1 = electrostatics_force.getParticleParameters(particle1)[0]
             charge2 = electrostatics_force.getParticleParameters(particle2)[0]
