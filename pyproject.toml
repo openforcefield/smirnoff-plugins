@@ -40,7 +40,7 @@ fallback_version = "0.0.0"
 
 [tool.ruff]
 line-length = 119
-extend-include = [ "**/*.md", "README.md" ]
+extend-include = [ "**/*.ipynb", "**/*.md" ]
 preview = true
 lint.select = [ "E", "F", "I", "NPY", "RUF", "UP", "W" ]
 
@@ -74,7 +74,3 @@ report.exclude_lines = [
   "pragma: no cover",
   "raise NotImplementedError",
 ]
-
-[tool.ruff.format]
-include = [ "*.py", "*.pyi", "*.md", "**/*.py", "**/*.pyi", "**/*.md" ]
-docstring-code-format = true

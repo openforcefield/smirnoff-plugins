@@ -18,10 +18,10 @@ Currently, these include:
 
 ## Installation
 
-This framework and its required dependencies can be installed using `conda`:
+The package can be installed for general use with `conda`:
 
 ```shell
-mamba env create --name smirnoff-plugins smirnoff-plugins
+mamba create --name smirnoff-plugins smirnoff-plugins
 ```
 
 Development uses Pixi, see the manifest `pixi.toml` for details.
@@ -61,13 +61,11 @@ Next we will add a `vdW` parameter handler to the force field with all the water
 
 ```python
 vdw_handler = force_field.get_parameter_handler("vdW")
-vdw_handler.add_parameter(
-    {
-        "smirks": "[*:1]",
-        "epsilon": Quantity(0.0, "kilojoule_per_mole"),
-        "sigma": Quantity(1.0, "angstrom"),
-    }
-)
+vdw_handler.add_parameter({
+    "smirks": "[*:1]",
+    "epsilon": Quantity(0.0, "kilojoule_per_mole"),
+    "sigma": Quantity(1.0, "angstrom"),
+})
 ```
 
 and a set of electrostatics handlers with all the charges zeroed out:
@@ -81,18 +79,16 @@ virtual site handler to define the charges on the virtual site **and** the hydro
 
 ```python
 virtual_site_handler = force_field.get_parameter_handler("VirtualSites")
-virtual_site_handler.add_parameter(
-    {
-        "smirks": "[#1:2]-[#8X2H2+0:1]-[#1:3]",
-        "type": "DivalentLonePair",
-        "distance": Quantity(-0.0106, "nanometers"),
-        "outOfPlaneAngle": Quantity(0.0, "degrees"),
-        "match": "once",
-        "charge_increment2": Quantity(1.0552 * 0.5, "elementary_charge"),
-        "charge_increment1": Quantity(0.0, "elementary_charge"),
-        "charge_increment3": Quantity(1.0552 * 0.5, "elementary_charge"),
-    }
-)
+virtual_site_handler.add_parameter({
+    "smirks": "[#1:2]-[#8X2H2+0:1]-[#1:3]",
+    "type": "DivalentLonePair",
+    "distance": Quantity(-0.0106, "nanometers"),
+    "outOfPlaneAngle": Quantity(0.0, "degrees"),
+    "match": "once",
+    "charge_increment2": Quantity(1.0552 * 0.5, "elementary_charge"),
+    "charge_increment1": Quantity(0.0, "elementary_charge"),
+    "charge_increment3": Quantity(1.0552 * 0.5, "elementary_charge"),
+})
 ```
 
 We are now finally ready to add the custom damped buckingham potential:
@@ -103,7 +99,7 @@ buckingham_handler.gamma = Quantity(35.8967, "nanometer ** -1")
 buckingham_handler.add_parameter({
     "smirks": "[#1:1]-[#8X2H2+0]-[#1]",
     "a": Quantity(0.0, "kilojoule_per_mole"),
-    "b": Quantity(0.0 / "nanometer ** -1"),
+    "b": Quantity(0.0, "nanometer ** -1"),
     "c6": Quantity(0.0, "kilojoule_per_mole * nanometer ** 6"),
     "c8": Quantity(0.0, "kilojoule_per_mole * nanometer ** 8"),
 })

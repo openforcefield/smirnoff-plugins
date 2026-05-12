@@ -13,10 +13,11 @@ repos:
 - repo: https://github.com/astral-sh/ruff-pre-commit
   rev: v0.15.12
   hooks:
-    - id: ruff-check
-      args: ["--fix"]
-    - id: ruff-format
+  - id: ruff-check
+    args: ["--fix"]
+  - id: ruff-format
+    types_or: [python, pyi, jupyter, markdown]
 - repo: https://github.com/tox-dev/pyproject-fmt
   rev: v2.21.2
   hooks:
-    - id: pyproject-fmt
+  - id: pyproject-fmt
