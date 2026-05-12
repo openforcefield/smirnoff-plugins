@@ -11,10 +11,6 @@ on:
     - cron: "0 7 * * *"
   workflow_dispatch:
 
-defaults:
-  run:
-    shell: pixi run bash -e {0}
-
 jobs:
   test:
 
