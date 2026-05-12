@@ -106,7 +106,7 @@ buckingham_handler.add_parameter({
 buckingham_handler.add_parameter({
     "smirks": "[#1]-[#8X2H2+0:1]-[#1]",
     "a": Quantity(1600000.0, "kilojoule_per_mole"),
-    "b": Quantity(42.00, "nanometer"),
+    "b": Quantity(42.00, "nanometer ** -1"),
     "c6": Quantity(0.003, "kilojoule_per_mole * nanometer ** 6"),
     "c8": Quantity(0.00003, "kilojoule_per_mole * nanometer ** 8"),
 })
