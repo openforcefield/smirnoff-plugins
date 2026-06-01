@@ -32,8 +32,8 @@ entry-points."openff.toolkit.plugins.handlers".MultipoleHandler = "smirnoff_plug
 entry-points."openff.toolkit.plugins.handlers".UreyBradleyHandler = "smirnoff_plugins.handlers.valence:UreyBradleyHandler"
 
 [tool.setuptools]
-include-package-data = true
 packages.find.where = [ "." ]
+include-package-data = true
 
 [tool.setuptools_scm]
 fallback_version = "0.0.0"
@@ -45,13 +45,13 @@ preview = true
 lint.select = [ "E", "F", "I", "NPY", "RUF", "UP", "W" ]
 
 [tool.mypy]
-python_version = "3.12"
-plugins = [ "pydantic.mypy" ]
-warn_unused_configs = true
-warn_unused_ignores = true
-warn_incomplete_stub = true
-show_error_codes = true
 exclude = "smirnoff_plugins/_tests"
+python_version = "3.12"
+warn_unused_ignores = true
+plugins = [ "pydantic.mypy" ]
+warn_incomplete_stub = true
+warn_unused_configs = true
+show_error_codes = true
 
 [[tool.mypy.overrides]]
 module = [
