@@ -17,13 +17,14 @@ class UreyBradleyHandler(ParameterHandler):
         _ELEMENT_NAME = "UreyBradley"
 
         k = ParameterAttribute(
-            default=None, unit=unit.kilojoule_per_mole / unit.nanometer**2
+            default=None,
+            unit=unit.kilojoule_per_mole / unit.nanometer**2,
         )
         length = ParameterAttribute(default=None, unit=unit.nanometers)
 
     _TAGNAME = "UreyBradley"
     _INFOTYPE = UreyBradleyType
-    _DEPENDENCIES = [ConstraintHandler]
+    _DEPENDENCIES = (ConstraintHandler,)
 
     def find_matches(self, entity, unique=True):
         """Find the UreyBradley matches in the topology/molecule."""

@@ -1,6 +1,5 @@
 from typing import cast
 
-import openmm
 import openmm.unit
 import pytest
 from openff.interchange import Interchange
@@ -38,7 +37,8 @@ def methane_molecule():
     ids=["no_constraints", "with_constraints"],
 )
 def test_urey_bradley_assignment_methane(
-    angle_constraints: bool, methane_molecule: Molecule
+    angle_constraints: bool,
+    methane_molecule: Molecule,
 ):
     """Check that the correct Urey-Bradley terms are assigned to methane."""
 
@@ -59,7 +59,7 @@ def test_urey_bradley_assignment_methane(
             "k": 500 * unit.kilojoule_per_mole / unit.nanometer**2,
             # Slightly less than equilibrium distance of ~ 1.8 A
             "length": 0.17 * unit.nanometers,
-        }
+        },
     )
 
     if angle_constraints:
@@ -69,7 +69,7 @@ def test_urey_bradley_assignment_methane(
             {
                 "smirks": "[#1:1]-[#6X4]-[#1:2]",
                 "distance": 0.18 * unit.nanometers,
-            }
+            },
         )
 
     topology = Topology.from_molecules([methane_molecule])
@@ -77,7 +77,8 @@ def test_urey_bradley_assignment_methane(
 
     # Check that the Urey-Bradley terms are present in the interchange object.
     collection = cast(
-        SMIRNOFFUreyBradleyCollection, interchange.collections["UreyBradley"]
+        SMIRNOFFUreyBradleyCollection,
+        interchange.collections["UreyBradley"],
     )
     urey_bradley_terms_interchange = list(collection.valence_terms(topology))
 
@@ -103,34 +104,29 @@ def test_urey_bradley_assignment_methane(
     forces = omm_system.getForces()
     ub_forces = [force for force in forces if force.getName() == "UreyBradleyForce"]
 
-    assert (
-        len(ub_forces) == 1
-    ), "Expected exactly one Urey-Bradley force in the OpenMM system, "
+    assert len(ub_forces) == 1, "Expected exactly one Urey-Bradley force in the OpenMM system, "
 
     ub_force = ub_forces[0]
     num_ub_bonds = ub_force.getNumBonds()
     ub_force_idx = forces.index(ub_force)
     ub_energy = raw_energies[ub_force_idx].value_in_unit(
-        openmm.unit.kilojoules_per_mole
+        openmm.unit.kilojoules_per_mole,
     )
 
     if angle_constraints:
         # If angle constraints are applied, we should not have any Urey-Bradley terms.
-        assert (
-            num_ub_bonds == 0
-        ), "Expected no Urey-Bradley terms when angle constraints are applied."
+        assert num_ub_bonds == 0, "Expected no Urey-Bradley terms when angle constraints are applied."
 
         # The bond energies should be non-zero, as we haven't constrained the bonds,
         # but the Urey-Bradley terms should be zero.
-        assert (
-            pytest.approx(0.0) == ub_energy
-        ), f"Expected Urey-Bradley energy to be 0.0 kJ/mol, but got {ub_energy} kJ/mol."
+        assert pytest.approx(0.0) == ub_energy, (
+            f"Expected Urey-Bradley energy to be 0.0 kJ/mol, but got {ub_energy} kJ/mol."
+        )
 
     else:
         # Check we have the expected number of Urey-Bradley terms.
         assert num_ub_bonds == EXPECTED_NUM_UREY_BRADLEY_TERMS, (
-            f"Expected {EXPECTED_NUM_UREY_BRADLEY_TERMS} Urey-Bradley terms, "
-            f"but got {num_ub_bonds}."
+            f"Expected {EXPECTED_NUM_UREY_BRADLEY_TERMS} Urey-Bradley terms, but got {num_ub_bonds}."
         )
 
         # Check that the parameters of the Urey-Bradley terms are as expected.
@@ -143,14 +139,12 @@ def test_urey_bradley_assignment_methane(
             actual_params = ub_force.getBondParameters(i)
             actual_params_without_idx = actual_params[2:]
             assert actual_params_without_idx == expected_params, (
-                f"Bond parameters {i} do not match expected values: "
-                f"{actual_params_without_idx} != {expected_params}"
+                f"Bond parameters {i} do not match expected values: {actual_params_without_idx} != {expected_params}"
             )
 
         # Check that the energies are as expected.
         assert pytest.approx(EXPECTED_UREY_BRADLEY_ENERGY) == ub_energy, (
-            f"Expected Urey-Bradley energy to be {EXPECTED_UREY_BRADLEY_ENERGY} kJ/mol, "
-            f"but got {ub_energy} kJ/mol."
+            f"Expected Urey-Bradley energy to be {EXPECTED_UREY_BRADLEY_ENERGY} kJ/mol, but got {ub_energy} kJ/mol."
         )
 
 
@@ -165,14 +159,15 @@ def test_urey_bradley_incorrect_smirks(methane_molecule: Molecule):
             "k": 500 * unit.kilojoule_per_mole / unit.nanometer**2,
             # Slightly less than equilibrium distance of ~ 1.8 A
             "length": 0.17 * unit.nanometers,
-        }
+        },
     )
 
     topology = Topology.from_molecules([methane_molecule])
     interchange = Interchange.from_smirnoff(force_field=ff, topology=topology)
 
     with pytest.raises(
-        ValueError, match="Expected 2 indices for Urey-Bradley potential"
+        ValueError,
+        match="Expected 2 indices for Urey-Bradley potential",
     ):
         interchange.to_openmm()
 

@@ -6,7 +6,7 @@ import math
 
 import numpy
 import openmm.unit
-from openff.toolkit import ForceField, Molecule, Quantity, Topology, unit
+from openff.toolkit import ForceField, Molecule, Quantity, Topology
 from openff.utilities import get_data_file_path
 
 from smirnoff_plugins.utilities.openmm import simulate
@@ -29,20 +29,17 @@ def main():
     # Create some coordinates (without the v-sites) and estimate box vectors.
     topology.box_vectors = Quantity(
         numpy.eye(3) * math.ceil(n_molecules ** (1 / 3) + 2) * 2.5,
-        unit.angstrom,
+        "angstrom",
     )
 
     positions = openmm.unit.Quantity(
         numpy.vstack(
             [
-                (
-                    molecule.conformers[0].m_as(unit.angstrom)
-                    + numpy.array([[x, y, z]]) * 2.5
-                )
+                (molecule.conformers[0].m_as("angstrom") + numpy.array([[x, y, z]]) * 2.5)
                 for x in range(math.ceil(n_molecules ** (1 / 3)))
                 for y in range(math.ceil(n_molecules ** (1 / 3)))
                 for z in range(math.ceil(n_molecules ** (1 / 3)))
-            ]
+            ],
         ),
         openmm.unit.angstrom,
     )

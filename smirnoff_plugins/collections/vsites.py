@@ -11,6 +11,7 @@ from openff.interchange.smirnoff._virtual_sites import (
 )
 from openff.toolkit.typing.engines.smirnoff.parameters import VirtualSiteHandler
 
+from smirnoff_plugins.handlers.nonbonded import DoubleExponentialHandler
 from smirnoff_plugins.handlers.vsites import DoubleExponentialVirtualSiteHandler
 
 from pydantic import Field
@@ -50,6 +51,12 @@ class _VsitePlugin(SMIRNOFFVirtualSiteCollection, abc.ABC):
         """Return a list of allowed types of ParameterHandler classes."""
         ...
 
+    @classmethod
+    @abc.abstractmethod
+    def allowed_vdw_parameter_handlers(cls):
+        """Return a list of allowed types of vdW ParameterHandler classes."""
+        ...
+
     def store_potentials(  # type: ignore[override]
         self,
         parameter_handler: VirtualSiteHandler,
@@ -85,7 +92,7 @@ class _VsitePlugin(SMIRNOFFVirtualSiteCollection, abc.ABC):
                 parameters=dict(
                     (parameter_name, getattr(parameter, parameter_name))
                     for parameter_name in self.specific_parameters()
-                )
+                ),
             )
             vdw_collection.key_map[virtual_site_key] = vdw_key
             vdw_collection.potentials[vdw_key] = vdw_potential
@@ -102,9 +109,7 @@ class _VsitePlugin(SMIRNOFFVirtualSiteCollection, abc.ABC):
                 },
             )
             electrostatics_collection.key_map[virtual_site_key] = electrostatics_key
-            electrostatics_collection.potentials[electrostatics_key] = (
-                electrostatics_potential
-            )
+            electrostatics_collection.potentials[electrostatics_key] = electrostatics_potential
 
     @classmethod
     def create(
@@ -125,7 +130,7 @@ class _VsitePlugin(SMIRNOFFVirtualSiteCollection, abc.ABC):
 
         if hasattr(collection, "fractional_bondorder_method"):
             raise NotImplementedError(
-                "Plugins with fractional bond order not yet supported"
+                "Plugins with fractional bond order not yet supported",
             )
 
         collection.store_matches(parameter_handler=parameter_handler, topology=topology)
@@ -139,10 +144,13 @@ class _VsitePlugin(SMIRNOFFVirtualSiteCollection, abc.ABC):
 
 
 class SMIRNOFFDoubleExponentialVirtualSiteCollection(_VsitePlugin):
-
     @classmethod
     def allowed_parameter_handlers(cls):
         return [DoubleExponentialVirtualSiteHandler]
+
+    @classmethod
+    def allowed_vdw_parameter_handlers(cls):
+        return [DoubleExponentialHandler]
 
     @classmethod
     def specific_parameters(cls) -> list[str]:

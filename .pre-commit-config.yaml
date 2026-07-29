@@ -1,20 +1,23 @@
-ci:
-  autoupdate_schedule: "quarterly"
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v5.0.0
+  rev: v6.0.0
   hooks:
   - id: check-yaml
+  - id: end-of-file-fixer
+  - id: trailing-whitespace
   - id: debug-statements
-- repo: https://github.com/psf/black
-  rev: 24.10.0
+- repo: https://github.com/asottile/add-trailing-comma
+  rev: v4.0.0
   hooks:
-  - id: black
-- repo: https://github.com/PyCQA/isort
-  rev: 5.13.2
+  - id: add-trailing-comma
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  rev: v0.15.16
   hooks:
-  - id: isort
-- repo: https://github.com/PyCQA/flake8
-  rev: 7.1.1
+  - id: ruff-check
+    args: ["--fix"]
+  - id: ruff-format
+    types_or: [python, pyi, jupyter, markdown]
+- repo: https://github.com/tox-dev/pyproject-fmt
+  rev: v2.23.0
   hooks:
-  - id: flake8
+  - id: pyproject-fmt
