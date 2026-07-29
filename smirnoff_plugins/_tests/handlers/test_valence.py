@@ -7,9 +7,6 @@ from openff.interchange.drivers.openmm import _get_openmm_energies
 from openff.toolkit import ForceField, Molecule, Topology, unit
 
 from smirnoff_plugins.collections.valence import (
-    SMIRNOFFHarmonicAngleCollection,
-    SMIRNOFFHarmonicHeightCollection,
-    SMIRNOFFLeeKrimmCollection,
     SMIRNOFFUreyBradleyCollection,
 )
 

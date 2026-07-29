@@ -144,7 +144,7 @@ class SMIRNOFFHarmonicHeightCollection(SMIRNOFFCollection):
     )
 
     @classmethod
-    def allowed_parameter_handlers(cls) -> Iterable[Type[ParameterHandler]]:
+    def allowed_parameter_handlers(cls) -> Iterable[builtins.type[ParameterHandler]]:
         """Return an iterable of allowed types of ParameterHandler classes."""
         return (HarmonicHeightHandler,)
 
@@ -179,8 +179,8 @@ class SMIRNOFFHarmonicHeightCollection(SMIRNOFFCollection):
         interchange: Interchange,
         system: openmm.System,
         add_constrained_forces: bool,
-        constrained_pairs: Set[Tuple[int, ...]],
-        particle_map: Dict[Union[int, VirtualSiteKey], int],
+        constrained_pairs: set[tuple[int, ...]],
+        particle_map: dict[int | VirtualSiteKey, int],
     ) -> None:
         force = openmm.CustomCompoundBondForce(4, self.expression)
         force.addPerBondParameter("k")
@@ -221,7 +221,7 @@ class SMIRNOFFLeeKrimmCollection(SMIRNOFFCollection):
     )
 
     @classmethod
-    def allowed_parameter_handlers(cls) -> Iterable[Type[ParameterHandler]]:
+    def allowed_parameter_handlers(cls) -> Iterable[builtins.type[ParameterHandler]]:
         """Return an iterable of allowed types of ParameterHandler classes."""
         return (LeeKrimmHandler,)
 
@@ -258,8 +258,8 @@ class SMIRNOFFLeeKrimmCollection(SMIRNOFFCollection):
         interchange: Interchange,
         system: openmm.System,
         add_constrained_forces: bool,
-        constrained_pairs: Set[Tuple[int, ...]],
-        particle_map: Dict[Union[int, VirtualSiteKey], int],
+        constrained_pairs: set[tuple[int, ...]],
+        particle_map: dict[int | VirtualSiteKey, int],
     ) -> None:
         force = openmm.CustomCompoundBondForce(4, self.expression)
         force.addPerBondParameter("V2")
@@ -325,7 +325,7 @@ class SMIRNOFFHarmonicAngleCollection(SMIRNOFFCollection):
     )
 
     @classmethod
-    def allowed_parameter_handlers(cls) -> Iterable[Type[ParameterHandler]]:
+    def allowed_parameter_handlers(cls) -> Iterable[builtins.type[ParameterHandler]]:
         """Return an iterable of allowed types of ParameterHandler classes."""
         return (HarmonicAngleHandler,)
 
@@ -421,8 +421,8 @@ class SMIRNOFFHarmonicAngleCollection(SMIRNOFFCollection):
         interchange: Interchange,
         system: openmm.System,
         add_constrained_forces: bool,
-        constrained_pairs: Set[Tuple[int, ...]],
-        particle_map: Dict[Union[int, VirtualSiteKey], int],
+        constrained_pairs: set[tuple[int, ...]],
+        particle_map: dict[int | VirtualSiteKey, int],
     ) -> None:
         force = openmm.CustomCompoundBondForce(4, self.expression)
         force.addPerBondParameter("k")
