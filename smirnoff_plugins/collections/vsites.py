@@ -14,7 +14,6 @@ from openff.toolkit.typing.engines.smirnoff.parameters import VirtualSiteHandler
 from smirnoff_plugins.handlers.nonbonded import DoubleExponentialHandler
 from smirnoff_plugins.handlers.vsites import DoubleExponentialVirtualSiteHandler
 
-from pydantic import Field
 
 class _VsitePlugin(SMIRNOFFVirtualSiteCollection, abc.ABC):
     """

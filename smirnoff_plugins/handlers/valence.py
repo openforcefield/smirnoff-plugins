@@ -38,7 +38,8 @@ class HarmonicHeightHandler(ParameterHandler):
         _ELEMENT_NAME = "HarmonicHeight"
 
         k = ParameterAttribute(
-            default=None, unit=unit.kilojoule_per_mole / unit.nanometer**2
+            default=None,
+            unit=unit.kilojoule_per_mole / unit.nanometer**2,
         )
         h0 = ParameterAttribute(default=None, unit=unit.nanometer)
 
@@ -48,7 +49,9 @@ class HarmonicHeightHandler(ParameterHandler):
     def find_matches(self, entity, unique=True):
         """Find HarmonicHeight matches, symmetrizing impropers like ImproperTorsionHandler."""
         return self._find_matches(
-            entity, transformed_dict_cls=ImproperDict, unique=unique
+            entity,
+            transformed_dict_cls=ImproperDict,
+            unique=unique,
         )
 
 
@@ -59,7 +62,8 @@ class HarmonicAngleHandler(ParameterHandler):
         _ELEMENT_NAME = "HarmonicAngle"
 
         k = ParameterAttribute(
-            default=None, unit=unit.kilocalorie_per_mole / unit.radians**2
+            default=None,
+            unit=unit.kilocalorie_per_mole / unit.radians**2,
         )
         theta0 = ParameterAttribute(default=None, unit=unit.radians)
 
@@ -69,7 +73,9 @@ class HarmonicAngleHandler(ParameterHandler):
     def find_matches(self, entity, unique=True):
         """Find HarmonicAngle matches, symmetrizing impropers like ImproperTorsionHandler."""
         return self._find_matches(
-            entity, transformed_dict_cls=ImproperDict, unique=unique
+            entity,
+            transformed_dict_cls=ImproperDict,
+            unique=unique,
         )
 
 
@@ -90,5 +96,7 @@ class LeeKrimmHandler(ParameterHandler):
     def find_matches(self, entity, unique=True):
         """Find LeeKrimm matches, symmetrizing impropers like ImproperTorsionHandler."""
         return self._find_matches(
-            entity, transformed_dict_cls=ImproperDict, unique=unique
+            entity,
+            transformed_dict_cls=ImproperDict,
+            unique=unique,
         )

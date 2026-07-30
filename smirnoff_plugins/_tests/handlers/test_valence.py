@@ -185,7 +185,7 @@ def test_harmonic_height_assignment_methane(methane_molecule: Molecule):
             "smirks": "[#1:1][#6X4:2]([#1:3])[#1:4]",
             "k": 500 * unit.kilojoule_per_mole / unit.nanometer**2,
             "h0": 0.0 * unit.nanometers,
-        }
+        },
     )
 
     topology = Topology.from_molecules([methane_molecule])
@@ -212,9 +212,9 @@ def test_harmonic_height_assignment_methane(methane_molecule: Molecule):
     # plane. Each choice must be matched exactly once -- regression test for a
     # bug where un-symmetrized matching produced 24 duplicate (and, for h0 != 0,
     # sign-inconsistent) terms instead.
-    assert (
-        hh_force.getNumBonds() == 4
-    ), f"Expected exactly 4 HarmonicHeight terms for methane, got {hh_force.getNumBonds()}."
+    assert hh_force.getNumBonds() == 4, (
+        f"Expected exactly 4 HarmonicHeight terms for methane, got {hh_force.getNumBonds()}."
+    )
 
     hh_idx = forces.index(hh_force)
     hh_energy = raw_energies[hh_idx].value_in_unit(openmm.unit.kilojoules_per_mole)
@@ -241,7 +241,7 @@ def test_lee_krimm_assignment_methane(methane_molecule: Molecule):
             "V4": 1.0 * unit.kilojoule_per_mole,
             "t": 2.0,
             "s": 1.0,
-        }
+        },
     )
 
     topology = Topology.from_molecules([methane_molecule])
@@ -266,9 +266,7 @@ def test_lee_krimm_assignment_methane(methane_molecule: Molecule):
     # See test_harmonic_height_assignment_methane: 4 distinct (unordered) choices
     # of which 3 of methane's 4 H's form the base plane. Regression test for a
     # bug where matches weren't symmetrized, producing 24 duplicate terms.
-    assert (
-        lk_force.getNumBonds() == 4
-    ), f"Expected exactly 4 LeeKrimm terms for methane, got {lk_force.getNumBonds()}."
+    assert lk_force.getNumBonds() == 4, f"Expected exactly 4 LeeKrimm terms for methane, got {lk_force.getNumBonds()}."
 
     lk_idx = forces.index(lk_force)
     lk_energy = raw_energies[lk_idx].value_in_unit(openmm.unit.kilojoules_per_mole)
@@ -293,7 +291,7 @@ def test_harmonic_angle_assignment_methane(methane_molecule: Molecule):
             "smirks": "[#1:1][#6X4:2]([#1:3])[#1:4]",
             "k": 100 * unit.kilocalorie_per_mole / unit.radians**2,
             "theta0": 0.0 * unit.radians,
-        }
+        },
     )
 
     topology = Topology.from_molecules([methane_molecule])
@@ -317,14 +315,12 @@ def test_harmonic_angle_assignment_methane(methane_molecule: Molecule):
     ha_force = ha_forces[0]
     # 4 distinct improper centers (see test_harmonic_height_assignment_methane),
     # each expanded into 3 bond-plane angles (one per choice of "bond" neighbor).
-    assert (
-        ha_force.getNumBonds() == 12
-    ), f"Expected exactly 12 HarmonicAngle terms for methane, got {ha_force.getNumBonds()}."
+    assert ha_force.getNumBonds() == 12, (
+        f"Expected exactly 12 HarmonicAngle terms for methane, got {ha_force.getNumBonds()}."
+    )
 
     ha_idx = forces.index(ha_force)
     ha_energy = raw_energies[ha_idx].value_in_unit(openmm.unit.kilojoules_per_mole)
 
     # For tetrahedral methane with theta0=0, all bond-plane angles are > 0 so energy > 0
-    assert (
-        ha_energy > 0
-    ), f"Expected positive energy, got {ha_energy} kJ/mol."  # pyright: ignore[reportOperatorIssue]
+    assert ha_energy > 0, f"Expected positive energy, got {ha_energy} kJ/mol."  # pyright: ignore[reportOperatorIssue]

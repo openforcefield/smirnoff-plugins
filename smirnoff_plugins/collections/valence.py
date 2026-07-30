@@ -171,7 +171,7 @@ class SMIRNOFFHarmonicHeightCollection(SMIRNOFFCollection):
                 parameters={
                     "k": param.k,
                     "h0": param.h0,
-                }
+                },
             )
 
     def modify_openmm_forces(
@@ -250,7 +250,7 @@ class SMIRNOFFLeeKrimmCollection(SMIRNOFFCollection):
                     "V4": param.V4,
                     "t": param.t * off_unit.dimensionless,
                     "s": param.s * off_unit.dimensionless,
-                }
+                },
             )
 
     def modify_openmm_forces(
@@ -413,7 +413,7 @@ class SMIRNOFFHarmonicAngleCollection(SMIRNOFFCollection):
                 parameters={
                     "k": param.k / 3,
                     "theta0": param.theta0,
-                }
+                },
             )
 
     def modify_openmm_forces(
