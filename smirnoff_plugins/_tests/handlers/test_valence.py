@@ -6,7 +6,9 @@ from openff.interchange import Interchange
 from openff.interchange.drivers.openmm import _get_openmm_energies
 from openff.toolkit import ForceField, Molecule, Topology, unit
 
-from smirnoff_plugins.collections.valence import SMIRNOFFUreyBradleyCollection
+from smirnoff_plugins.collections.valence import (
+    SMIRNOFFUreyBradleyCollection,
+)
 
 
 @pytest.fixture(scope="module")
@@ -47,7 +49,7 @@ def test_urey_bradley_assignment_methane(
     ff = ForceField("openff_unconstrained-2.2.1.offxml", load_plugins=True)
 
     # Add H-C-H Urey-Bradley term, with arbitrary parameters.
-    urey_bradley_handler = ff.get_parameter_handler("UreyBradleys")
+    urey_bradley_handler = ff.get_parameter_handler("UreyBradley")
     urey_bradley_handler.add_parameter(
         {
             "smirks": "[#1:1]-[#6X4]-[#1:2]",
@@ -73,7 +75,7 @@ def test_urey_bradley_assignment_methane(
     # Check that the Urey-Bradley terms are present in the interchange object.
     collection = cast(
         SMIRNOFFUreyBradleyCollection,
-        interchange.collections["UreyBradleys"],
+        interchange.collections["UreyBradley"],
     )
     urey_bradley_terms_interchange = list(collection.valence_terms(topology))
 
@@ -147,7 +149,7 @@ def test_urey_bradley_incorrect_smirks(methane_molecule: Molecule):
     """Check that an error is raised for incorrect SMIRKS patterns which return too many atoms."""
 
     ff = ForceField("openff_unconstrained-2.2.1.offxml", load_plugins=True)
-    urey_bradley_handler = ff.get_parameter_handler("UreyBradleys")
+    urey_bradley_handler = ff.get_parameter_handler("UreyBradley")
     urey_bradley_handler.add_parameter(
         {
             "smirks": "[#1:1]-[#6X4:2]-[#1:3]",  # Invalid SMIRKS - this specifies three atoms
@@ -165,3 +167,160 @@ def test_urey_bradley_incorrect_smirks(methane_molecule: Molecule):
         match="Expected 2 indices for Urey-Bradley potential",
     ):
         interchange.to_openmm()
+
+
+# ---------- HarmonicHeight tests ----------
+
+
+def test_harmonic_height_assignment_methane(methane_molecule: Molecule):
+    """Check that HarmonicHeight forces are created and yield finite energy for methane."""
+
+    ff = ForceField("openff_unconstrained-2.2.1.offxml", load_plugins=True)
+
+    handler = ff.get_parameter_handler("HarmonicHeight")
+    handler.add_parameter(
+        {
+            # Central atom (the apex whose height is restrained) is tagged second,
+            # matching Topology.impropers/ImproperDict convention.
+            "smirks": "[#1:1][#6X4:2]([#1:3])[#1:4]",
+            "k": 500 * unit.kilojoule_per_mole / unit.nanometer**2,
+            "h0": 0.0 * unit.nanometers,
+        },
+    )
+
+    topology = Topology.from_molecules([methane_molecule])
+    interchange = Interchange.from_smirnoff(force_field=ff, topology=topology)
+    omm_system = interchange.to_openmm()
+    positions = interchange.positions
+    assert positions is not None
+
+    raw_energies = _get_openmm_energies(
+        system=omm_system,
+        box_vectors=None,
+        positions=positions.to_openmm(),
+        round_positions=None,
+        platform="Reference",
+    )
+
+    forces = omm_system.getForces()
+    hh_forces = [f for f in forces if f.getName() == "HarmonicHeight"]
+    assert len(hh_forces) == 1, "Expected exactly one HarmonicHeight force."
+
+    hh_force = hh_forces[0]
+    # Methane's carbon has 4 hydrogens; the smirks only tags 3 branches, so there
+    # are exactly 4 distinct (unordered) choices of which 3 H's form the base
+    # plane. Each choice must be matched exactly once -- regression test for a
+    # bug where un-symmetrized matching produced 24 duplicate (and, for h0 != 0,
+    # sign-inconsistent) terms instead.
+    assert hh_force.getNumBonds() == 4, (
+        f"Expected exactly 4 HarmonicHeight terms for methane, got {hh_force.getNumBonds()}."
+    )
+
+    hh_idx = forces.index(hh_force)
+    hh_energy = raw_energies[hh_idx].value_in_unit(openmm.unit.kilojoules_per_mole)
+
+    # For tetrahedral methane with h0=0, all heights are > 0 so energy should be > 0
+    assert hh_energy > 0, f"Expected positive energy, got {hh_energy} kJ/mol."
+
+
+# ---------- LeeKrimm tests ----------
+
+
+def test_lee_krimm_assignment_methane(methane_molecule: Molecule):
+    """Check that LeeKrimm forces are created and yield finite energy for methane."""
+
+    ff = ForceField("openff_unconstrained-2.2.1.offxml", load_plugins=True)
+
+    handler = ff.get_parameter_handler("LeeKrimm")
+    handler.add_parameter(
+        {
+            # Central atom (the apex whose height is used) is tagged second,
+            # matching Topology.impropers/ImproperDict convention.
+            "smirks": "[#1:1][#6X4:2]([#1:3])[#1:4]",
+            "V2": 10.0 * unit.kilojoule_per_mole,
+            "V4": 1.0 * unit.kilojoule_per_mole,
+            "t": 2.0,
+            "s": 1.0,
+        },
+    )
+
+    topology = Topology.from_molecules([methane_molecule])
+    interchange = Interchange.from_smirnoff(force_field=ff, topology=topology)
+    omm_system = interchange.to_openmm()
+    positions = interchange.positions
+    assert positions is not None
+
+    raw_energies = _get_openmm_energies(
+        system=omm_system,
+        box_vectors=None,
+        positions=positions.to_openmm(),
+        round_positions=None,
+        platform="Reference",
+    )
+
+    forces = omm_system.getForces()
+    lk_forces = [f for f in forces if f.getName() == "LeeKrimm"]
+    assert len(lk_forces) == 1, "Expected exactly one LeeKrimm force."
+
+    lk_force = lk_forces[0]
+    # See test_harmonic_height_assignment_methane: 4 distinct (unordered) choices
+    # of which 3 of methane's 4 H's form the base plane. Regression test for a
+    # bug where matches weren't symmetrized, producing 24 duplicate terms.
+    assert lk_force.getNumBonds() == 4, f"Expected exactly 4 LeeKrimm terms for methane, got {lk_force.getNumBonds()}."
+
+    lk_idx = forces.index(lk_force)
+    lk_energy = raw_energies[lk_idx].value_in_unit(openmm.unit.kilojoules_per_mole)
+
+    # For tetrahedral methane the height is nonzero, so energy should be > 0
+    assert lk_energy > 0, f"Expected positive energy, got {lk_energy} kJ/mol."
+
+
+# ---------- HarmonicAngle tests ----------
+
+
+def test_harmonic_angle_assignment_methane(methane_molecule: Molecule):
+    """Check that HarmonicAngle forces are created and yield finite energy for methane."""
+
+    ff = ForceField("openff_unconstrained-2.2.1.offxml", load_plugins=True)
+
+    handler = ff.get_parameter_handler("HarmonicAngle")
+    handler.add_parameter(
+        {
+            # Central atom is tagged second, matching Topology.impropers/ImproperDict
+            # convention.
+            "smirks": "[#1:1][#6X4:2]([#1:3])[#1:4]",
+            "k": 100 * unit.kilocalorie_per_mole / unit.radians**2,
+            "theta0": 0.0 * unit.radians,
+        },
+    )
+
+    topology = Topology.from_molecules([methane_molecule])
+    interchange = Interchange.from_smirnoff(force_field=ff, topology=topology)
+    omm_system = interchange.to_openmm()
+    positions = interchange.positions
+    assert positions is not None
+
+    raw_energies = _get_openmm_energies(
+        system=omm_system,
+        box_vectors=None,
+        positions=positions.to_openmm(),
+        round_positions=None,
+        platform="Reference",
+    )
+
+    forces = omm_system.getForces()
+    ha_forces = [f for f in forces if f.getName() == "HarmonicAngle"]
+    assert len(ha_forces) == 1, "Expected exactly one HarmonicAngle force."
+
+    ha_force = ha_forces[0]
+    # 4 distinct improper centers (see test_harmonic_height_assignment_methane),
+    # each expanded into 3 bond-plane angles (one per choice of "bond" neighbor).
+    assert ha_force.getNumBonds() == 12, (
+        f"Expected exactly 12 HarmonicAngle terms for methane, got {ha_force.getNumBonds()}."
+    )
+
+    ha_idx = forces.index(ha_force)
+    ha_energy = raw_energies[ha_idx].value_in_unit(openmm.unit.kilojoules_per_mole)
+
+    # For tetrahedral methane with theta0=0, all bond-plane angles are > 0 so energy > 0
+    assert ha_energy > 0, f"Expected positive energy, got {ha_energy} kJ/mol."  # pyright: ignore[reportOperatorIssue]
