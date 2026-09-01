@@ -11,13 +11,20 @@ repos:
   hooks:
   - id: add-trailing-comma
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.15.16
+  rev: v0.16.5
   hooks:
   - id: ruff-check
     args: ["--fix"]
   - id: ruff-format
     types_or: [python, pyi, jupyter, markdown]
 - repo: https://github.com/tox-dev/pyproject-fmt
-  rev: v2.23.0
+  rev: v2.29.2
   hooks:
   - id: pyproject-fmt
+- repo: https://github.com/tombi-toml/tombi-pre-commit
+  rev: v1.5.0
+  hooks:
+    - id: tombi-format
+      files: 'pixi.toml'
+    - id: tombi-lint
+      files: 'pixi.toml'
