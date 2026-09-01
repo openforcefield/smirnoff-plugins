@@ -1,5 +1,5 @@
 [workspace]
-authors = ["Matthew W. Thompson <mattwthompson@protonmail.com>"]
+authors = ["Open Force Field Initiative <info@openforcefield.org>"]
 channels = ["conda-forge"]
 name = "smirnoff-plugins"
 platforms = ["osx-arm64", "linux-64"]
@@ -18,7 +18,7 @@ markdown-it-py = "3.*"
 
 [pypi-dependencies]
 numpy = "*"
-smirnoff-plugins = { path = ".", editable = true}
+smirnoff-plugins = { path = ".", editable = true }
 
 [feature.test.pypi-dependencies]
 pytest = "*"
@@ -42,6 +42,6 @@ python = "3.12.*"
 python = "3.13.*"
 
 [environments]
-dev = [ "py312", "test", "typing", "dev"]
-py312 = [ "py312", "test", "typing"]
-py313 = [ "py313", "test", "typing"]
+dev = ["py312", "test", "typing", "dev"]
+py312 = ["py312", "test", "typing"]
+py313 = ["py313", "test", "typing"]
