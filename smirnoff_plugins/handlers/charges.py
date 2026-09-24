@@ -84,13 +84,13 @@ class NAGLMBISChargesHandler(_NonbondedHandler):
             if getattr(self, attribute) != getattr(other_handler, attribute):
                 raise IncompatibleParameterError(
                     f"Attempted to initialize two NAGLMBISCharges sections with different {attribute} values: "
-                    f"{getattr(self, attribute)} is not identical to {getattr(other_handler, attribute)}"
+                    f"{getattr(self, attribute)} is not identical to {getattr(other_handler, attribute)}",
                 )
 
         if abs(self.alpha - other_handler.alpha) > self._SCALETOL:
             raise IncompatibleParameterError(
                 "Attempted to initialize two NAGLMBISCharges sections with different alpha values: "
-                f"{self.alpha} is not identical to {other_handler.alpha}"
+                f"{self.alpha} is not identical to {other_handler.alpha}",
             )
 
 
