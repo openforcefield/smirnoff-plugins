@@ -20,6 +20,10 @@ markdown-it-py = "3.*"
 numpy = "*"
 smirnoff-plugins = { path = ".", editable = true }
 
+[feature.test.dependencies]
+# Needed for AM1-BCC charges in the tests, no longer pulled in by openff-toolkit >= 0.19
+ambertools = "*"
+
 [feature.test.pypi-dependencies]
 pytest = "*"
 pytest-cov = "*"
@@ -35,6 +39,17 @@ pre-commit = "*"
 ruff = "*"
 ipython = "*"
 
+# Minimal runtime dependencies for NAGL-MBIS charges, taken from the inference
+# environment of the feature-minimal-pixi-env branch of fjclark/nagl-mbis. The rev is
+# pinned (rather than tracking the branch) so that the lock file is reproducible.
+[feature.naglmbis.dependencies]
+openff-nagl-base = "*"
+pytorch = "*"
+rdkit = "*"
+
+[feature.naglmbis.pypi-dependencies]
+naglmbis = { git = "https://github.com/fjclark/nagl-mbis", rev = "6aff69795748123032c296ec298689e6b4a41d50" }
+
 [feature.py312.dependencies]
 python = "3.12.*"
 
@@ -45,3 +60,4 @@ python = "3.13.*"
 dev = ["py312", "test", "typing", "dev"]
 py312 = ["py312", "test", "typing"]
 py313 = ["py313", "test", "typing"]
+naglmbis = ["py312", "test", "typing", "naglmbis"]

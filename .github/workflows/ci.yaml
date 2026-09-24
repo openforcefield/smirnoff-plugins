@@ -26,6 +26,7 @@ jobs:
         environment:
           - py312
           - py313
+          - naglmbis
 
     steps:
     - uses: actions/checkout@v7.0.1

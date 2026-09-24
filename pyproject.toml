@@ -53,6 +53,9 @@ entry-points."openff.toolkit.plugins.handlers".DoubleExponentialVirtualSiteHandl
   smirnoff_plugins.handlers.vsites:DoubleExponentialVirtualSiteHandler\
   """
 entry-points."openff.toolkit.plugins.handlers".MultipoleHandler = "smirnoff_plugins.handlers.nonbonded:MultipoleHandler"
+entry-points."openff.toolkit.plugins.handlers".NAGLMBISChargesHandler = """\
+  smirnoff_plugins.handlers.charges:NAGLMBISChargesHandler\
+  """
 entry-points."openff.toolkit.plugins.handlers".UreyBradleyHandler = """\
   smirnoff_plugins.handlers.valence:UreyBradleyHandler\
   """
@@ -81,6 +84,7 @@ show_error_codes = true
 
 [[tool.mypy.overrides]]
 module = [
+  "naglmbis.*",
   "openff.toolkit.*",
   "openff.units",
   "openff.units.openmm",

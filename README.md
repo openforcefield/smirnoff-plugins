@@ -15,6 +15,7 @@ Currently, these include:
 * `Multipole` - an induced dipole polarizability potential implemented with the AmoebaMultipoleForce in OpenMM
 * `AxilrodTeller` - a three-body dispersion potential proposed by [Axilrod and Teller](https://doi.org/10.1063%2F1.1723844)
 * `UreyBradley` - a harmonic [Urey-Bradley](https://journals.aps.org/pr/abstract/10.1103/PhysRev.38.1969) potential.
+* `NAGLMBISCharges` - partially polarised [NAGL-MBIS](https://github.com/fjclark/nagl-mbis) partial charges, see [below](#nagl-mbis-charges).
 
 ## Installation
 
@@ -120,6 +121,32 @@ force_field.to_file("buckingham-force-field.offxml")
 
 For a more detailed example of how to use this force field to actually simulate a box of water, see the
 [`buckingham-water` example](examples/buckingham-water.py) in the `examples` directory.
+
+## NAGL-MBIS charges
+
+The `NAGLMBISCharges` handler assigns partial charges from the pre-trained [NAGL-MBIS](https://github.com/fjclark/nagl-mbis)
+models, in the same way that the `NAGLCharges` section of `openff-2.3.0.offxml` assigns AM1-BCC charges from an OpenFF
+NAGL model. The charges are a mix of the charges predicted by a gas phase model and a water phase model:
+
+    q = (1 - alpha) * q_gas + alpha * q_water
+
+where `alpha` (between 0 and 1) defaults to 0.5. For example, the `NAGLCharges` section of a force field can be replaced by
+
+```xml
+<NAGLMBISCharges version="0.1" alpha="0.5"
+                 gas_model="nagl-gas-charge-dipole-esp-wb-default"
+                 water_model="nagl-water-charge-dipole-esp-wb-default"/>
+```
+
+where `gas_model` and `water_model` are optional and default to the values shown. As with `NAGLCharges`, library charges
+(e.g. for water and ions) take precedence over the NAGL-MBIS charges.
+
+`naglmbis` is not a dependency of this package. With Pixi, use the `naglmbis` environment, which contains only the
+minimal NAGL-MBIS runtime dependencies (e.g. `pixi run -e naglmbis run_tests`).
+
+Note that Interchange does not currently provide a hook for plugins which assign partial charges, so this plugin
+patches Interchange's (private) electrostatics creation code the first time `Interchange.from_smirnoff` is called, see
+`smirnoff_plugins/_interchange_patch.py`. Force fields without a `NAGLMBISCharges` section are unaffected.
 
 ## Purpose and contributing
 
