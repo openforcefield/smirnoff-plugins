@@ -11,8 +11,8 @@ run_mypy = "python -m mypy smirnoff_plugins/"
 
 [dependencies]
 python = "*"
-openff-toolkit = ">=0.17.0"
-openff-interchange = ">=0.5.0"
+openff-toolkit = ">=0.19.0"
+ambertools = "*"
 # Shim to help solver, NAGL needs Rich which needs 4.x but pytest-markdown-docs needs <4
 markdown-it-py = "3.*"
 
